@@ -1,0 +1,484 @@
+from flask import Blueprint, request, jsonify
+from models import get_db, dict_from_row, dicts_from_rows
+from services.scheduler import publish_post, run_scheduler, force_publish_all
+from services.cloudinary_service import upload_image
+
+posts_bp = Blueprint('posts', __name__)
+
+VALID_WORKFLOW_STATUSES = ['draft', 'in_design', 'design_review', 'approved', 'scheduled', 'posted']
+
+
+@posts_bp.route('/api/all-posts', methods=['GET'])
+def all_posts():
+    db = get_db()
+    status = request.args.get('status')
+    platform = request.args.get('platform')
+    client_id = request.args.get('client_id')
+
+    query = """
+        SELECT sp.*, c.name as client_name
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        WHERE 1=1
+    """
+    params = []
+
+    if status:
+        query += " AND sp.status=?"
+        params.append(status)
+    if platform:
+        query += " AND sp.platforms LIKE ?"
+        params.append(f'%{platform}%')
+    if client_id:
+        query += " AND sp.client_id=?"
+        params.append(client_id)
+
+    query += " ORDER BY sp.scheduled_at DESC, sp.created_at DESC"
+
+    posts = dicts_from_rows(db.execute(query, params).fetchall())
+    db.close()
+    return jsonify(posts)
+
+
+# ============ SINGLE POST DETAIL ============
+
+@posts_bp.route('/api/posts/<int:post_id>', methods=['GET'])
+def get_post(post_id):
+    db = get_db()
+    post = dict_from_row(db.execute("""
+        SELECT sp.*,
+               c.name as client_name,
+               u_designer.username as assigned_designer_name,
+               u_sm.username as assigned_sm_name,
+               u_motion.username as assigned_motion_name,
+               u_created.username as created_by_name
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        LEFT JOIN users u_designer ON sp.assigned_designer_id = u_designer.id
+        LEFT JOIN users u_sm ON sp.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_motion ON sp.assigned_motion_id = u_motion.id
+        LEFT JOIN users u_created ON sp.created_by_id = u_created.id
+        WHERE sp.id=?
+    """, (post_id,)).fetchone())
+
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    db.close()
+    return jsonify(post)
+
+
+# ============ UPDATE POST ============
+
+@posts_bp.route('/api/posts/<int:post_id>', methods=['PUT'])
+def update_post(post_id):
+    data = request.json or {}
+    db = get_db()
+
+    post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    updatable = [
+        'topic', 'caption', 'tov', 'brief_notes', 'priority',
+        'assigned_designer_id', 'assigned_motion_id', 'assigned_sm_id',
+        'design_reference_urls', 'design_output_urls', 'platforms',
+        'scheduled_at', 'image_url', 'image_size', 'post_type'
+    ]
+    fields = []
+    params = []
+    for field in updatable:
+        if field in data:
+            fields.append(f"{field}=?")
+            params.append(data[field])
+
+    if fields:
+        fields.append("updated_at=datetime('now')")
+        params.append(post_id)
+        db.execute(f"UPDATE scheduled_posts SET {', '.join(fields)} WHERE id=?", params)
+        db.commit()
+
+    db.close()
+    return jsonify({'success': True})
+
+
+# ============ WORKFLOW STATUS ============
+
+@posts_bp.route('/api/posts/<int:post_id>/workflow', methods=['PUT'])
+def change_workflow(post_id):
+    data = request.json or {}
+    new_status = data.get('status', '')
+    user_id = data.get('user_id', 1)
+    comment = data.get('comment', '')
+
+    if new_status not in VALID_WORKFLOW_STATUSES:
+        return jsonify({'error': f'Invalid status. Must be one of: {VALID_WORKFLOW_STATUSES}'}), 400
+
+    db = get_db()
+    post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    old_status = post.get('workflow_status', 'draft') or 'draft'
+
+    # Update workflow_status
+    db.execute(
+        "UPDATE scheduled_posts SET workflow_status=?, updated_at=datetime('now') WHERE id=?",
+        (new_status, post_id)
+    )
+
+    # Log to workflow_history
+    db.execute(
+        """INSERT INTO workflow_history (post_id, user_id, from_status, to_status, comment)
+           VALUES (?,?,?,?,?)""",
+        (post_id, user_id, old_status, new_status, comment)
+    )
+
+    # Create notification when moving to in_design and designer is assigned
+    if new_status == 'in_design' and post.get('assigned_designer_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_designer_id'], 'design_assigned',
+             'New Design Brief', f'You have been assigned a new design brief: {post.get("topic", "Untitled")}',
+             'post', post_id)
+        )
+
+    # Create notification when moving to design_review and SM is assigned
+    if new_status == 'design_review' and post.get('assigned_sm_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_sm_id'], 'design_review_ready',
+             'Design Ready for Review', f'Design submitted for review: {post.get("topic", "Untitled")}',
+             'post', post_id)
+        )
+
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+# ============ UPLOAD DESIGN ============
+
+@posts_bp.route('/api/posts/<int:post_id>/upload-design', methods=['POST'])
+def upload_design(post_id):
+    db = get_db()
+    post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    files = request.files.getlist('images')
+    if not files:
+        db.close()
+        return jsonify({'error': 'No images provided'}), 400
+
+    # Upload to Cloudinary
+    urls = []
+    errors = []
+    for f in files:
+        try:
+            result = upload_image(f, folder='social_agent/designs')
+            urls.append(result['url'])
+        except Exception as e:
+            errors.append({'filename': f.filename, 'error': str(e)})
+
+    if urls:
+        # Append to existing design_output_urls
+        existing = post.get('design_output_urls', '') or ''
+        existing_list = [u.strip() for u in existing.split(',') if u.strip()] if existing else []
+        all_urls = existing_list + urls
+        design_output_str = ','.join(all_urls)
+
+        db.execute(
+            "UPDATE scheduled_posts SET design_output_urls=?, updated_at=datetime('now') WHERE id=?",
+            (design_output_str, post_id)
+        )
+
+        # Auto-advance to design_review if currently in_design
+        current_workflow = post.get('workflow_status', '') or ''
+        if current_workflow == 'in_design':
+            user_id = request.form.get('user_id', 1)
+            db.execute(
+                "UPDATE scheduled_posts SET workflow_status='design_review', updated_at=datetime('now') WHERE id=?",
+                (post_id,)
+            )
+            db.execute(
+                """INSERT INTO workflow_history (post_id, user_id, from_status, to_status, comment)
+                   VALUES (?,?,?,?,?)""",
+                (post_id, user_id, 'in_design', 'design_review', 'Design uploaded')
+            )
+            # Notify SM
+            if post.get('assigned_sm_id'):
+                db.execute(
+                    """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+                       VALUES (?,?,?,?,?,?)""",
+                    (post['assigned_sm_id'], 'design_review_ready',
+                     'Design Ready for Review', f'Design submitted for review: {post.get("topic", "Untitled")}',
+                     'post', post_id)
+                )
+
+        db.commit()
+
+    db.close()
+    return jsonify({'success': True, 'urls': urls, 'errors': errors})
+
+
+# ============ PIPELINE BOARD ============
+
+@posts_bp.route('/api/pipeline', methods=['GET'])
+def pipeline():
+    db = get_db()
+    client_id = request.args.get('client_id')
+    assigned_to = request.args.get('assigned_to')
+
+    query = """
+        SELECT sp.*,
+               c.name as client_name,
+               u_designer.username as assigned_designer_name,
+               u_sm.username as assigned_sm_name,
+               u_created.username as created_by_name
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        LEFT JOIN users u_designer ON sp.assigned_designer_id = u_designer.id
+        LEFT JOIN users u_sm ON sp.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_created ON sp.created_by_id = u_created.id
+        WHERE sp.workflow_status IS NOT NULL AND sp.workflow_status != ''
+    """
+    params = []
+
+    if client_id:
+        query += " AND sp.client_id=?"
+        params.append(client_id)
+    if assigned_to:
+        query += " AND (sp.assigned_designer_id=? OR sp.assigned_sm_id=? OR sp.assigned_motion_id=? OR sp.created_by_id=?)"
+        params.extend([assigned_to, assigned_to, assigned_to, assigned_to])
+
+    query += " ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END, sp.created_at DESC"
+
+    posts = dicts_from_rows(db.execute(query, params).fetchall())
+    db.close()
+
+    board = {
+        'draft': [],
+        'in_design': [],
+        'design_review': [],
+        'approved': [],
+        'scheduled': []
+    }
+    for post in posts:
+        s = post.get('workflow_status', 'draft') or 'draft'
+        if s in board:
+            board[s].append(post)
+        elif s == 'posted':
+            pass  # Skip posted
+        else:
+            board['draft'].append(post)
+
+    return jsonify(board)
+
+
+# ============ POST COMMENTS ============
+
+@posts_bp.route('/api/posts/<int:post_id>/comments', methods=['GET'])
+def get_post_comments(post_id):
+    db = get_db()
+    comments = dicts_from_rows(db.execute("""
+        SELECT pc.*, u.username as user_name
+        FROM post_comments pc
+        LEFT JOIN users u ON pc.user_id = u.id
+        WHERE pc.post_id=?
+        ORDER BY pc.created_at ASC
+    """, (post_id,)).fetchall())
+    db.close()
+    return jsonify(comments)
+
+
+@posts_bp.route('/api/posts/<int:post_id>/comments', methods=['POST'])
+def add_post_comment(post_id):
+    data = request.json or {}
+    content = data.get('content', '').strip()
+    user_id = data.get('user_id', 1)
+
+    if not content:
+        return jsonify({'error': 'Content required'}), 400
+
+    db = get_db()
+    db.execute(
+        """INSERT INTO post_comments (post_id, user_id, content, comment_type, attachment_urls)
+           VALUES (?,?,?,?,?)""",
+        (post_id, user_id, content, data.get('comment_type', 'comment'), data.get('attachment_urls', ''))
+    )
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+# ============ CREATE POST (expanded with brief fields) ============
+
+@posts_bp.route('/api/clients/<int:client_id>/posts', methods=['POST'])
+def create_post(client_id):
+    data = request.json or {}
+    db = get_db()
+    cursor = db.execute(
+        """INSERT INTO scheduled_posts
+           (client_id, topic, caption, image_url, platforms, scheduled_at, image_size, post_type,
+            tov, brief_notes, design_reference_urls, assigned_designer_id, assigned_sm_id,
+            assigned_motion_id, priority, workflow_status, created_by_id)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            client_id,
+            data.get('topic', ''),
+            data.get('caption', ''),
+            data.get('image_url', ''),
+            data.get('platforms', ''),
+            data.get('scheduled_at', ''),
+            data.get('image_size', '1080x1080'),
+            data.get('post_type', 'post'),
+            data.get('tov', ''),
+            data.get('brief_notes', ''),
+            data.get('design_reference_urls', ''),
+            data.get('assigned_designer_id') or None,
+            data.get('assigned_sm_id') or None,
+            data.get('assigned_motion_id') or None,
+            data.get('priority', 'normal'),
+            data.get('workflow_status', ''),
+            data.get('created_by_id') or None,
+        )
+    )
+    db.commit()
+    post_id = cursor.lastrowid
+
+    # Log workflow history if workflow_status is set
+    wf_status = data.get('workflow_status', '')
+    if wf_status:
+        user_id = data.get('created_by_id') or 1
+        db.execute(
+            """INSERT INTO workflow_history (post_id, user_id, from_status, to_status, comment)
+               VALUES (?,?,?,?,?)""",
+            (post_id, user_id, '', wf_status, 'Post created')
+        )
+        # Notify designer if assigned and status is in_design
+        if wf_status == 'in_design' and data.get('assigned_designer_id'):
+            db.execute(
+                """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+                   VALUES (?,?,?,?,?,?)""",
+                (data['assigned_designer_id'], 'design_assigned',
+                 'New Design Brief', f'You have been assigned a new design brief: {data.get("topic", "Untitled")}',
+                 'post', post_id)
+            )
+        db.commit()
+
+    db.close()
+    return jsonify({'success': True, 'id': post_id})
+
+
+# ============ EXISTING ENDPOINTS ============
+
+@posts_bp.route('/api/post-now-single', methods=['POST'])
+def post_now_single():
+    data = request.json or {}
+    client_id = data.get('client_id')
+    topic = data.get('topic', '')
+    caption = data.get('caption', '') or topic
+    platform = data.get('platform', '')
+    image_urls = data.get('image_urls', [])
+    video_url = data.get('video_url', '')
+    post_type = data.get('post_type', 'post')
+    image_size = data.get('image_size', '1080x1080')
+
+    # Build image_url string
+    if video_url:
+        image_url_str = video_url
+    elif image_urls:
+        image_url_str = ','.join(image_urls)
+    else:
+        image_url_str = ''
+
+    # Save to DB first
+    db = get_db()
+    cursor = db.execute(
+        """INSERT INTO scheduled_posts
+           (client_id, topic, caption, image_url, platforms, scheduled_at, status, image_size, post_type)
+           VALUES (?,?,?,?,?,datetime('now'),?,?,?)""",
+        (client_id, topic, caption, image_url_str, platform, 'pending', image_size, post_type)
+    )
+    db.commit()
+    post_id = cursor.lastrowid
+
+    post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+    db.close()
+
+    # Publish immediately
+    results = publish_post(post)
+    platform_result = results.get(platform, {})
+
+    return jsonify(platform_result)
+
+
+@posts_bp.route('/api/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    db = get_db()
+    db.execute("DELETE FROM post_comments WHERE post_id=?", (post_id,))
+    db.execute("DELETE FROM workflow_history WHERE post_id=?", (post_id,))
+    db.execute("DELETE FROM post_logs WHERE post_id=?", (post_id,))
+    db.execute("DELETE FROM scheduled_posts WHERE id=?", (post_id,))
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+@posts_bp.route('/api/bulk-schedule', methods=['POST'])
+def bulk_schedule():
+    data = request.json or {}
+    posts = data.get('posts', [])
+    success_count = 0
+
+    db = get_db()
+    for p in posts:
+        try:
+            db.execute(
+                """INSERT INTO scheduled_posts
+                   (client_id, topic, caption, image_url, platforms, scheduled_at, image_size, post_type)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    p.get('client_id'),
+                    p.get('topic', ''),
+                    p.get('caption', ''),
+                    p.get('image_url', ''),
+                    p.get('platforms', ''),
+                    p.get('scheduled_at', ''),
+                    p.get('image_size', '1080x1080'),
+                    p.get('post_type', 'post')
+                )
+            )
+            success_count += 1
+        except Exception as e:
+            print(f"Error scheduling post: {e}")
+    db.commit()
+    db.close()
+
+    return jsonify({'success': True, 'success_count': success_count, 'total': len(posts)})
+
+
+@posts_bp.route('/api/run-scheduler', methods=['POST'])
+def run_scheduler_now():
+    try:
+        results = run_scheduler()
+        return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@posts_bp.route('/api/force-publish-all', methods=['POST'])
+def force_publish():
+    try:
+        result = force_publish_all()
+        msg = f"Published: {result['published']}, Failed: {result['failed']}, Total: {result['total']}"
+        return jsonify({'success': True, 'message': msg, **result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})

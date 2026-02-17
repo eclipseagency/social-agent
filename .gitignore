@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+social_agent.db
+uploads/
+*.exe
+venv/
+.venv/

@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مصمم الستوري - Story Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #0f0a1e;
+            color: white;
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Canvas wrapper */
+        .canvas-wrapper {
+            position: relative;
+            width: 360px;
+            height: 640px;
+            margin: 0 auto;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(99, 102, 241, 0.3), 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+        .canvas-wrapper canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: default;
+        }
+
+        /* Sticker button */
+        .sticker-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Cairo', sans-serif;
+        }
+        .sticker-btn:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Gradient presets */
+        .gradient-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .gradient-btn:hover, .gradient-btn.active {
+            border-color: white;
+            transform: scale(1.15);
+        }
+
+        /* Properties panel */
+        .prop-input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
+            color: white;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+        }
+        .prop-input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+        .prop-input::placeholder { color: rgba(255,255,255,0.4); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .canvas-wrapper { width: 300px; height: 533px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="sticky top-0 z-50 bg-[#0f0a1e]/90 backdrop-blur-md border-b border-white/10 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="/" class="text-white/60 hover:text-white transition">
+                <i class="fas fa-arrow-right text-lg"></i>
+            </a>
+            <h1 class="text-lg font-bold">🎨 مصمم الستوري</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="undoAction()" class="p-2 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white" title="تراجع">
+                <i class="fas fa-undo text-sm"></i>
+            </button>
+            <button onclick="redoAction()" class="p-2 rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white" title="إعادة">
+                <i class="fas fa-redo text-sm"></i>
+            </button>
+            <button onclick="exportStory()" id="exportBtn" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-2 rounded-xl font-bold text-sm hover:from-indigo-700 hover:to-purple-700 transition flex items-center gap-2">
+                <i class="fas fa-upload"></i>
+                <span>احفظ وانشر</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Main Layout -->
+<div class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px_1fr] gap-6 mt-2">
+
+    <!-- Right Panel: Stickers -->
+    <div class="order-2 lg:order-1 space-y-4">
+        <!-- Background -->
+        <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+            <h3 class="font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-image text-indigo-400"></i> خلفية الستوري</h3>
+
+            <button onclick="document.getElementById('bgImageInput').click()" class="sticker-btn w-full justify-center mb-3">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span>ارفع صورة للخلفية</span>
+            </button>
+            <input type="file" id="bgImageInput" class="hidden" accept="image/*" onchange="setBackgroundImage(this)">
+
+            <div class="flex flex-wrap gap-2">
+                <button class="gradient-btn" style="background: linear-gradient(135deg, #667eea, #764ba2)" onclick="setGradientBg('#667eea','#764ba2')"></button>
+                <button class="gradient-btn" style="background: linear-gradient(135deg, #f093fb, #f5576c)" onclick="setGradientBg('#f093fb','#f5576c')"></button>
+                <button class="gradient-btn" style="background: linear-gradient(135deg, #4facfe, #00f2fe)" onclick="setGradientBg('#4facfe','#00f2fe')"></button>
+                <button class="gradient-btn" style="background: linear-gradient(135deg, #43e97b, #38f9d7)" onclick="setGradientBg('#43e97b','#38f9d7')"></button>
+                <button class="gradient-btn" style="background: linear-gradient(135deg, #fa709a, #fee140)" onclick="setGradientBg('#fa709a','#fee140')"></button>
+                <button class="gradient-btn" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb)" onclick="setGradientBg('#a18cd1','#fbc2eb')"></button>
+                <button class="gradient-btn" style="background: linear-gradient(135deg, #fccb90, #d57eeb)" onclick="setGradientBg('#fccb90','#d57eeb')"></button>
+                <button class="gradient-btn" style="background: #000" onclick="setSolidBg('#000000')"></button>
+                <button class="gradient-btn" style="background: #1a1a2e" onclick="setSolidBg('#1a1a2e')"></button>
+                <button class="gradient-btn" style="background: #fff; border-color: #555;" onclick="setSolidBg('#ffffff')"></button>
+                <div class="relative">
+                    <button class="gradient-btn" style="background: conic-gradient(red,yellow,lime,aqua,blue,magenta,red)" onclick="document.getElementById('customColor').click()"></button>
+                    <input type="color" id="customColor" class="hidden" onchange="setSolidBg(this.value)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Stickers -->
+        <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+            <h3 class="font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-sticky-note text-pink-400"></i> الستيكرات التفاعلية</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button class="sticker-btn" onclick="addSticker('location')">📍 موقع</button>
+                <button class="sticker-btn" onclick="addSticker('mention')">@ إشارة</button>
+                <button class="sticker-btn" onclick="addSticker('hashtag')"># هاشتاق</button>
+                <button class="sticker-btn" onclick="addSticker('poll')">📊 تصويت</button>
+                <button class="sticker-btn" onclick="addSticker('question')">❓ بوكس أسئلة</button>
+                <button class="sticker-btn" onclick="addSticker('link')">🔗 رابط</button>
+                <button class="sticker-btn" onclick="addSticker('countdown')">⏱️ عد تنازلي</button>
+                <button class="sticker-btn" onclick="addSticker('music')">🎵 موسيقى</button>
+                <button class="sticker-btn col-span-2" onclick="addSticker('text')">📝 نص حر</button>
+            </div>
+        </div>
+
+        <!-- Add image sticker -->
+        <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+            <h3 class="font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-photo-video text-green-400"></i> ستيكر صورة</h3>
+            <button onclick="document.getElementById('stickerImageInput').click()" class="sticker-btn w-full justify-center">
+                <i class="fas fa-plus"></i>
+                <span>ارفع صورة كستيكر</span>
+            </button>
+            <input type="file" id="stickerImageInput" class="hidden" accept="image/*" onchange="addImageSticker(this)">
+        </div>
+    </div>
+
+    <!-- Center: Canvas -->
+    <div class="order-1 lg:order-2 flex flex-col items-center">
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="storyCanvas"></canvas>
+        </div>
+        <p class="text-white/40 text-xs mt-3 text-center">اضغط على ستيكر لتحديده • اسحب لتحريكه • اضغط ✕ لحذفه</p>
+    </div>
+
+    <!-- Left Panel: Properties -->
+    <div class="order-3 space-y-4">
+        <!-- Selected sticker properties -->
+        <div id="propsPanel" class="bg-white/5 rounded-2xl p-4 border border-white/10 hidden">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-sm flex items-center gap-2"><i class="fas fa-sliders-h text-yellow-400"></i> تعديل الستيكر</h3>
+                <button onclick="deleteSelected()" class="text-red-400 hover:text-red-300 text-sm"><i class="fas fa-trash"></i></button>
+            </div>
+            <div id="propsContent" class="space-y-3">
+                <!-- Dynamically filled -->
+            </div>
+        </div>
+
+        <!-- Layers -->
+        <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+            <h3 class="font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-layer-group text-cyan-400"></i> ترتيب الطبقات</h3>
+            <div id="layersList" class="space-y-1 max-h-64 overflow-y-auto">
+                <p class="text-white/30 text-xs">ما في ستيكرات لسا</p>
+            </div>
+        </div>
+
+        <!-- Export result -->
+        <div id="exportResult" class="hidden bg-white/5 rounded-2xl p-4 border border-green-500/30">
+        </div>
+    </div>
+</div>
+
+<script>
+// ======================== STORY DESIGNER ENGINE ========================
+
+const CANVAS_W = 1080;
+const CANVAS_H = 1920;
+const canvas = document.getElementById('storyCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CANVAS_W;
+canvas.height = CANVAS_H;
+
+// State
+let stickers = [];
+let selectedId = null;
+let dragging = false;
+let dragOffsetX = 0, dragOffsetY = 0;
+let bgType = 'gradient'; // 'gradient', 'solid', 'image'
+let bgColor1 = '#667eea', bgColor2 = '#764ba2';
+let bgImage = null;
+let undoStack = [];
+let redoStack = [];
+
+// ======================== BACKGROUND ========================
+
+function setGradientBg(c1, c2) {
+    bgType = 'gradient';
+    bgColor1 = c1;
+    bgColor2 = c2;
+    render();
+}
+
+function setSolidBg(color) {
+    bgType = 'solid';
+    bgColor1 = color;
+    render();
+}
+
+function setBackgroundImage(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            bgType = 'image';
+            bgImage = img;
+            render();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function drawBackground() {
+    if (bgType === 'image' && bgImage) {
+        // Cover fit
+        const imgRatio = bgImage.width / bgImage.height;
+        const canvasRatio = CANVAS_W / CANVAS_H;
+        let sx = 0, sy = 0, sw = bgImage.width, sh = bgImage.height;
+        if (imgRatio > canvasRatio) {
+            sw = bgImage.height * canvasRatio;
+            sx = (bgImage.width - sw) / 2;
+        } else {
+            sh = bgImage.width / canvasRatio;
+            sy = (bgImage.height - sh) / 2;
+        }
+        ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, CANVAS_W, CANVAS_H);
+    } else if (bgType === 'gradient') {
+        const grad = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
+        grad.addColorStop(0, bgColor1);
+        grad.addColorStop(1, bgColor2);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    } else {
+        ctx.fillStyle = bgColor1;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+}
+
+// ======================== STICKER CLASSES ========================
+
+let nextId = 1;
+
+function createSticker(type) {
+    const base = {
+        id: nextId++,
+        type: type,
+        x: CANVAS_W / 2 - 150,
+        y: CANVAS_H / 2 - 60,
+        w: 300,
+        h: 120,
+        rotation: 0,
+        opacity: 1,
+    };
+
+    switch (type) {
+        case 'location':
+            return { ...base, text: 'الرياض، السعودية', w: 480, h: 100 };
+        case 'mention':
+            return { ...base, text: '@username', w: 400, h: 100 };
+        case 'hashtag':
+            return { ...base, text: '#ديجيتال_ماركتنق', w: 420, h: 100 };
+        case 'poll':
+            return { ...base, question: 'وش رأيكم؟', option1: 'أكيد نعم 🔥', option2: 'مو متأكد 🤔', pct1: 65, pct2: 35, w: 550, h: 340 };
+        case 'question':
+            return { ...base, text: 'اسألني أي شي', w: 550, h: 280 };
+        case 'link':
+            return { ...base, text: 'اعرف أكثر', url: 'https://example.com', w: 420, h: 100 };
+        case 'countdown':
+            return { ...base, title: 'العرض ينتهي قريب! 🔥', days: '03', hours: '12', mins: '45', w: 500, h: 280 };
+        case 'music':
+            return { ...base, song: 'اسم الأغنية', artist: 'اسم الفنان', w: 480, h: 120 };
+        case 'text':
+            return { ...base, text: 'اكتب نصك هنا', fontSize: 64, fontColor: '#ffffff', fontBold: true, w: 400, h: 100 };
+        case 'image':
+            return { ...base, img: null, w: 300, h: 300 };
+        default:
+            return base;
+    }
+}
+
+// ======================== DRAWING STICKERS ========================
+
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
+function drawSticker(s) {
+    ctx.save();
+    ctx.globalAlpha = s.opacity;
+
+    const cx = s.x + s.w / 2;
+    const cy = s.y + s.h / 2;
+    if (s.rotation) {
+        ctx.translate(cx, cy);
+        ctx.rotate(s.rotation * Math.PI / 180);
+        ctx.translate(-cx, -cy);
+    }
+
+    switch (s.type) {
+        case 'location': drawLocationSticker(s); break;
+        case 'mention': drawMentionSticker(s); break;
+        case 'hashtag': drawHashtagSticker(s); break;
+        case 'poll': drawPollSticker(s); break;
+        case 'question': drawQuestionSticker(s); break;
+        case 'link': drawLinkSticker(s); break;
+        case 'countdown': drawCountdownSticker(s); break;
+        case 'music': drawMusicSticker(s); break;
+        case 'text': drawTextSticker(s); break;
+        case 'image': drawImageSticker(s); break;
+    }
+
+    // Selection outline
+    if (selectedId === s.id) {
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([12, 6]);
+        roundRect(ctx, s.x - 4, s.y - 4, s.w + 8, s.h + 8, 14);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Delete button
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(s.x + s.w + 4, s.y - 4, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('×', s.x + s.w + 4, s.y - 4);
+    }
+
+    ctx.restore();
+}
+
+function drawPill(s, bgColor, iconType, text, textColor = 'white') {
+    ctx.save();
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    roundRect(ctx, s.x, s.y, s.w, s.h, s.h / 2);
+    ctx.fillStyle = bgColor;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Border
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 3;
+    roundRect(ctx, s.x, s.y, s.w, s.h, s.h / 2);
+    ctx.stroke();
+
+    // Icon
+    const iconSize = s.h * 0.4;
+    const iconX = s.x + 30;
+    const centerY = s.y + s.h / 2;
+
+    if (iconType === 'pin') {
+        // Draw pin icon
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize / 2, centerY - iconSize * 0.15, iconSize * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(iconX + iconSize / 2, centerY + iconSize * 0.25);
+        ctx.lineTo(iconX + iconSize / 2 - iconSize * 0.25, centerY - iconSize * 0.1);
+        ctx.lineTo(iconX + iconSize / 2 + iconSize * 0.25, centerY - iconSize * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize / 2, centerY - iconSize * 0.15, iconSize * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (iconType === 'at') {
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${iconSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('@', iconX + iconSize / 2, centerY);
+    } else if (iconType === 'hash') {
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${iconSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('#', iconX + iconSize / 2, centerY);
+    } else if (iconType === 'link') {
+        ctx.strokeStyle = textColor;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize * 0.3, centerY, iconSize * 0.25, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.lineTo(iconX + iconSize * 0.5, centerY - iconSize * 0.25);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize * 0.7, centerY, iconSize * 0.25, -Math.PI * 0.5, Math.PI * 0.5);
+        ctx.lineTo(iconX + iconSize * 0.5, centerY + iconSize * 0.25);
+        ctx.stroke();
+    }
+
+    // Text
+    const textX = iconType ? iconX + iconSize + 16 : s.x + s.w / 2;
+    const textAlign = iconType ? 'left' : 'center';
+    ctx.fillStyle = textColor;
+    ctx.font = `bold ${Math.round(s.h * 0.38)}px Cairo, Arial, sans-serif`;
+    ctx.textAlign = textAlign;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, textX, centerY);
+    ctx.restore();
+}
+
+function drawLocationSticker(s) {
+    drawPill(s, 'rgba(0,0,0,0.7)', 'pin', s.text);
+}
+
+function drawMentionSticker(s) {
+    drawPill(s, 'rgba(0,0,0,0.7)', 'at', s.text);
+}
+
+function drawHashtagSticker(s) {
+    drawPill(s, 'rgba(0,0,0,0.7)', 'hash', s.text);
+}
+
+function drawLinkSticker(s) {
+    drawPill(s, 'rgba(255,255,255,0.95)', 'link', s.text, '#111');
+}
+
+function drawPollSticker(s) {
+    ctx.save();
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    roundRect(ctx, s.x, s.y, s.w, s.h, 28);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Border
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 3;
+    roundRect(ctx, s.x, s.y, s.w, s.h, 28);
+    ctx.stroke();
+
+    // Question
+    ctx.fillStyle = 'white';
+    ctx.font = `bold ${Math.round(s.h * 0.13)}px Cairo, Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.question, s.x + s.w / 2, s.y + s.h * 0.15);
+
+    // Option bars
+    const barX = s.x + 30;
+    const barW = s.w - 60;
+    const barH = s.h * 0.2;
+    const barY1 = s.y + s.h * 0.3;
+    const barY2 = s.y + s.h * 0.58;
+    const fontSize = Math.round(s.h * 0.1);
+
+    // Option 1
+    roundRect(ctx, barX, barY1, barW, barH, barH / 2);
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.4)';
+    ctx.fill();
+    roundRect(ctx, barX, barY1, barW * Math.max(0.05, s.pct1 / 100), barH, barH / 2);
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.9)';
+    ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.font = `bold ${fontSize}px Cairo, Arial, sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.option1, barX + barW - 20, barY1 + barH / 2);
+    ctx.textAlign = 'left';
+    ctx.fillText(s.pct1 + '%', barX + 20, barY1 + barH / 2);
+
+    // Option 2
+    roundRect(ctx, barX, barY2, barW, barH, barH / 2);
+    ctx.fillStyle = 'rgba(236, 72, 153, 0.4)';
+    ctx.fill();
+    roundRect(ctx, barX, barY2, barW * Math.max(0.05, s.pct2 / 100), barH, barH / 2);
+    ctx.fillStyle = 'rgba(236, 72, 153, 0.9)';
+    ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.font = `bold ${fontSize}px Cairo, Arial, sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.option2, barX + barW - 20, barY2 + barH / 2);
+    ctx.textAlign = 'left';
+    ctx.fillText(s.pct2 + '%', barX + 20, barY2 + barH / 2);
+
+    ctx.restore();
+}
+
+function drawQuestionSticker(s) {
+    ctx.save();
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    roundRect(ctx, s.x, s.y, s.w, s.h, 28);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Border gradient
+    const grad = ctx.createLinearGradient(s.x, s.y, s.x + s.w, s.y + s.h);
+    grad.addColorStop(0, '#f093fb');
+    grad.addColorStop(1, '#f5576c');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 4;
+    roundRect(ctx, s.x, s.y, s.w, s.h, 28);
+    ctx.stroke();
+
+    // Title
+    ctx.fillStyle = 'white';
+    ctx.font = `bold ${Math.round(s.h * 0.14)}px Cairo, Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.text, s.x + s.w / 2, s.y + s.h * 0.22);
+
+    // Input box visual
+    const boxPad = 30;
+    roundRect(ctx, s.x + boxPad, s.y + s.h * 0.42, s.w - boxPad * 2, s.h * 0.42, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    roundRect(ctx, s.x + boxPad, s.y + s.h * 0.42, s.w - boxPad * 2, s.h * 0.42, 16);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = `${Math.round(s.h * 0.1)}px Cairo, Arial, sans-serif`;
+    ctx.fillText('اكتب ردك هنا...', s.x + s.w / 2, s.y + s.h * 0.63);
+
+    ctx.restore();
+}
+
+function drawCountdownSticker(s) {
+    ctx.save();
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    roundRect(ctx, s.x, s.y, s.w, s.h, 28);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Title
+    ctx.fillStyle = '#f5576c';
+    ctx.font = `bold ${Math.round(s.h * 0.12)}px Cairo, Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.title, s.x + s.w / 2, s.y + s.h * 0.18);
+
+    // Timer boxes
+    const boxW = s.w * 0.25;
+    const boxH = s.h * 0.4;
+    const gap = s.w * 0.04;
+    const totalW = boxW * 3 + gap * 2;
+    const startX = s.x + (s.w - totalW) / 2;
+    const boxY = s.y + s.h * 0.35;
+
+    const vals = [
+        { v: s.days, l: 'يوم' },
+        { v: s.hours, l: 'ساعة' },
+        { v: s.mins, l: 'دقيقة' }
+    ];
+
+    vals.forEach((item, i) => {
+        const bx = startX + i * (boxW + gap);
+        roundRect(ctx, bx, boxY, boxW, boxH, 16);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${Math.round(boxH * 0.45)}px Cairo, Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.v, bx + boxW / 2, boxY + boxH * 0.4);
+        ctx.font = `${Math.round(boxH * 0.2)}px Cairo, Arial, sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(item.l, bx + boxW / 2, boxY + boxH * 0.78);
+    });
+
+    ctx.restore();
+}
+
+function drawMusicSticker(s) {
+    ctx.save();
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    roundRect(ctx, s.x, s.y, s.w, s.h, 20);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Album art placeholder
+    const artSize = s.h - 24;
+    roundRect(ctx, s.x + s.w - artSize - 12, s.y + 12, artSize, artSize, 12);
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.5)';
+    ctx.fill();
+    // Music note drawn manually (no emoji)
+    ctx.fillStyle = 'white';
+    const noteX = s.x + s.w - artSize / 2 - 12;
+    const noteY = s.y + s.h / 2;
+    const noteR = artSize * 0.15;
+    ctx.beginPath();
+    ctx.ellipse(noteX - noteR, noteY + noteR * 0.8, noteR, noteR * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(noteX - noteR + noteR * 0.7, noteY - noteR * 2, 4, noteR * 3.5);
+    ctx.fillRect(noteX - noteR + noteR * 0.7, noteY - noteR * 2, noteR * 1.5, 5);
+
+    // Song info
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'white';
+    ctx.font = `bold ${Math.round(s.h * 0.28)}px Cairo, Arial, sans-serif`;
+    ctx.fillText(s.song, s.x + s.w - artSize - 24, s.y + s.h * 0.35);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = `${Math.round(s.h * 0.22)}px Cairo, Arial, sans-serif`;
+    ctx.fillText(s.artist, s.x + s.w - artSize - 24, s.y + s.h * 0.68);
+
+    ctx.restore();
+}
+
+function drawTextSticker(s) {
+    ctx.save();
+    ctx.fillStyle = s.fontColor || '#ffffff';
+    ctx.font = (s.fontBold ? 'bold ' : '') + (s.fontSize || 48) + 'px Cairo, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Text shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+
+    // Word wrap
+    const words = s.text.split(' ');
+    let lines = [];
+    let line = '';
+    const maxW = s.w - 10;
+    words.forEach(word => {
+        const test = line + word + ' ';
+        if (ctx.measureText(test).width > maxW && line) {
+            lines.push(line.trim());
+            line = word + ' ';
+        } else {
+            line = test;
+        }
+    });
+    lines.push(line.trim());
+
+    const lineH = (s.fontSize || 48) * 1.2;
+    const totalH = lines.length * lineH;
+    const startY = s.y + (s.h - totalH) / 2 + lineH / 2;
+
+    lines.forEach((l, i) => {
+        ctx.fillText(l, s.x + s.w / 2, startY + i * lineH);
+    });
+
+    ctx.restore();
+}
+
+function drawImageSticker(s) {
+    if (!s.img) return;
+    ctx.save();
+    roundRect(ctx, s.x, s.y, s.w, s.h, 12);
+    ctx.clip();
+    ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
+    ctx.restore();
+}
+
+// ======================== ADD STICKERS ========================
+
+function addSticker(type) {
+    saveUndo();
+    const s = createSticker(type);
+    stickers.push(s);
+    selectedId = s.id;
+    render();
+    showProperties(s);
+    updateLayers();
+}
+
+function addImageSticker(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            saveUndo();
+            const s = createSticker('image');
+            s.img = img;
+            const ratio = img.width / img.height;
+            s.w = 300;
+            s.h = 300 / ratio;
+            stickers.push(s);
+            selectedId = s.id;
+            render();
+            updateLayers();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+// ======================== RENDER ========================
+
+function render() {
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    drawBackground();
+    stickers.forEach(s => drawSticker(s));
+}
+
+// ======================== INTERACTION ========================
+
+function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_W / rect.width;
+    const scaleY = CANVAS_H / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+function findStickerAt(px, py) {
+    for (let i = stickers.length - 1; i >= 0; i--) {
+        const s = stickers[i];
+        if (px >= s.x && px <= s.x + s.w && py >= s.y && py <= s.y + s.h) {
+            return s;
+        }
+    }
+    return null;
+}
+
+function isOnDeleteBtn(px, py, s) {
+    const dx = px - (s.x + s.w + 4);
+    const dy = py - (s.y - 4);
+    return Math.sqrt(dx * dx + dy * dy) <= 18;
+}
+
+canvas.addEventListener('mousedown', onDown);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup', onUp);
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onDown(e); }, { passive: false });
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); }, { passive: false });
+canvas.addEventListener('touchend', (e) => { onUp(e); }, { passive: false });
+
+function onDown(e) {
+    const pos = getCanvasPos(e);
+
+    // Check delete button
+    if (selectedId) {
+        const sel = stickers.find(s => s.id === selectedId);
+        if (sel && isOnDeleteBtn(pos.x, pos.y, sel)) {
+            deleteSelected();
+            return;
+        }
+    }
+
+    const hit = findStickerAt(pos.x, pos.y);
+    if (hit) {
+        saveUndo();
+        selectedId = hit.id;
+        dragging = true;
+        dragOffsetX = pos.x - hit.x;
+        dragOffsetY = pos.y - hit.y;
+        // Bring to front
+        stickers = stickers.filter(s => s.id !== hit.id);
+        stickers.push(hit);
+        showProperties(hit);
+        updateLayers();
+    } else {
+        selectedId = null;
+        document.getElementById('propsPanel').classList.add('hidden');
+    }
+    render();
+}
+
+function onMove(e) {
+    if (!dragging || !selectedId) return;
+    const pos = getCanvasPos(e);
+    const s = stickers.find(s => s.id === selectedId);
+    if (s) {
+        s.x = Math.max(0, Math.min(CANVAS_W - s.w, pos.x - dragOffsetX));
+        s.y = Math.max(0, Math.min(CANVAS_H - s.h, pos.y - dragOffsetY));
+        render();
+    }
+}
+
+function onUp(e) {
+    dragging = false;
+}
+
+// ======================== PROPERTIES PANEL ========================
+
+function showProperties(s) {
+    const panel = document.getElementById('propsPanel');
+    const content = document.getElementById('propsContent');
+    panel.classList.remove('hidden');
+
+    let html = '';
+
+    // Common: position
+    html += `<div class="grid grid-cols-2 gap-2">
+        <div><label class="text-xs text-white/50">X</label><input type="number" class="prop-input" value="${Math.round(s.x)}" onchange="updateProp(${s.id},'x',+this.value)"></div>
+        <div><label class="text-xs text-white/50">Y</label><input type="number" class="prop-input" value="${Math.round(s.y)}" onchange="updateProp(${s.id},'y',+this.value)"></div>
+    </div>`;
+
+    // Type-specific
+    switch (s.type) {
+        case 'location':
+        case 'mention':
+        case 'hashtag':
+            html += `<div><label class="text-xs text-white/50">النص</label><input class="prop-input" value="${s.text}" oninput="updateProp(${s.id},'text',this.value)"></div>`;
+            break;
+        case 'link':
+            html += `<div><label class="text-xs text-white/50">نص الزر</label><input class="prop-input" value="${s.text}" oninput="updateProp(${s.id},'text',this.value)"></div>`;
+            html += `<div><label class="text-xs text-white/50">الرابط (URL)</label><input class="prop-input" dir="ltr" value="${s.url}" oninput="updateProp(${s.id},'url',this.value)"></div>`;
+            break;
+        case 'poll':
+            html += `<div><label class="text-xs text-white/50">السؤال</label><input class="prop-input" value="${s.question}" oninput="updateProp(${s.id},'question',this.value)"></div>`;
+            html += `<div class="grid grid-cols-2 gap-2">
+                <div><label class="text-xs text-white/50">الخيار 1</label><input class="prop-input" value="${s.option1}" oninput="updateProp(${s.id},'option1',this.value)"></div>
+                <div><label class="text-xs text-white/50">الخيار 2</label><input class="prop-input" value="${s.option2}" oninput="updateProp(${s.id},'option2',this.value)"></div>
+            </div>`;
+            html += `<div class="grid grid-cols-2 gap-2">
+                <div><label class="text-xs text-white/50">النسبة 1 (%)</label><input type="number" class="prop-input" value="${s.pct1}" min="0" max="100" oninput="updateProp(${s.id},'pct1',+this.value);updateProp(${s.id},'pct2',100-this.value)"></div>
+                <div><label class="text-xs text-white/50">النسبة 2 (%)</label><input type="number" class="prop-input" value="${s.pct2}" min="0" max="100" disabled></div>
+            </div>`;
+            break;
+        case 'question':
+            html += `<div><label class="text-xs text-white/50">السؤال</label><input class="prop-input" value="${s.text}" oninput="updateProp(${s.id},'text',this.value)"></div>`;
+            break;
+        case 'countdown':
+            html += `<div><label class="text-xs text-white/50">عنوان العد التنازلي</label><input class="prop-input" value="${s.title}" oninput="updateProp(${s.id},'title',this.value)"></div>`;
+            html += `<div class="grid grid-cols-3 gap-2">
+                <div><label class="text-xs text-white/50">يوم</label><input class="prop-input" value="${s.days}" oninput="updateProp(${s.id},'days',this.value)"></div>
+                <div><label class="text-xs text-white/50">ساعة</label><input class="prop-input" value="${s.hours}" oninput="updateProp(${s.id},'hours',this.value)"></div>
+                <div><label class="text-xs text-white/50">دقيقة</label><input class="prop-input" value="${s.mins}" oninput="updateProp(${s.id},'mins',this.value)"></div>
+            </div>`;
+            break;
+        case 'music':
+            html += `<div><label class="text-xs text-white/50">اسم الأغنية</label><input class="prop-input" value="${s.song}" oninput="updateProp(${s.id},'song',this.value)"></div>`;
+            html += `<div><label class="text-xs text-white/50">الفنان</label><input class="prop-input" value="${s.artist}" oninput="updateProp(${s.id},'artist',this.value)"></div>`;
+            break;
+        case 'text':
+            html += `<div><label class="text-xs text-white/50">النص</label><textarea class="prop-input" rows="2" oninput="updateProp(${s.id},'text',this.value)">${s.text}</textarea></div>`;
+            html += `<div class="grid grid-cols-2 gap-2">
+                <div><label class="text-xs text-white/50">حجم الخط</label><input type="number" class="prop-input" value="${s.fontSize}" min="16" max="120" oninput="updateProp(${s.id},'fontSize',+this.value)"></div>
+                <div><label class="text-xs text-white/50">لون الخط</label><input type="color" class="prop-input h-9 p-1" value="${s.fontColor}" oninput="updateProp(${s.id},'fontColor',this.value)"></div>
+            </div>`;
+            html += `<label class="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                <input type="checkbox" ${s.fontBold ? 'checked' : ''} onchange="updateProp(${s.id},'fontBold',this.checked)"> خط عريض (Bold)
+            </label>`;
+            break;
+    }
+
+    // Opacity
+    html += `<div><label class="text-xs text-white/50">الشفافية</label><input type="range" min="0.1" max="1" step="0.1" value="${s.opacity}" class="w-full" oninput="updateProp(${s.id},'opacity',+this.value)"></div>`;
+
+    content.innerHTML = html;
+}
+
+function updateProp(id, key, value) {
+    const s = stickers.find(s => s.id === id);
+    if (s) {
+        s[key] = value;
+        // Auto-resize text sticker width
+        if (s.type === 'text' && (key === 'text' || key === 'fontSize')) {
+            ctx.font = (s.fontBold ? 'bold ' : '') + s.fontSize + 'px Cairo, sans-serif';
+            const measured = ctx.measureText(s.text).width;
+            s.w = Math.max(100, measured + 40);
+            s.h = Math.max(60, s.fontSize * 1.5);
+        }
+        // Auto-resize pill stickers
+        if (['location', 'mention', 'hashtag', 'link'].includes(s.type) && key === 'text') {
+            ctx.font = 'bold 26px Cairo, sans-serif';
+            const prefix = s.type === 'location' ? '📍 ' : s.type === 'link' ? '🔗 ' : '';
+            const measured = ctx.measureText(prefix + s.text).width;
+            s.w = Math.max(150, measured + 50);
+        }
+        render();
+    }
+}
+
+// ======================== LAYERS ========================
+
+function updateLayers() {
+    const list = document.getElementById('layersList');
+    if (stickers.length === 0) {
+        list.innerHTML = '<p class="text-white/30 text-xs">ما في ستيكرات لسا</p>';
+        return;
+    }
+    list.innerHTML = stickers.slice().reverse().map(s => {
+        const icons = { location: '📍', mention: '@', hashtag: '#', poll: '📊', question: '❓', link: '🔗', countdown: '⏱️', music: '🎵', text: '📝', image: '🖼️' };
+        const names = { location: 'موقع', mention: 'إشارة', hashtag: 'هاشتاق', poll: 'تصويت', question: 'بوكس أسئلة', link: 'رابط', countdown: 'عد تنازلي', music: 'موسيقى', text: 'نص حر', image: 'صورة' };
+        const active = selectedId === s.id ? 'bg-indigo-500/20 border-indigo-500/40' : 'bg-white/5 border-white/10 hover:bg-white/10';
+        return `<div class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm ${active}" onclick="selectSticker(${s.id})">
+            <span>${icons[s.type] || '?'}</span>
+            <span class="flex-1 truncate">${names[s.type] || s.type}</span>
+            <button onclick="event.stopPropagation();deleteSticker(${s.id})" class="text-red-400 hover:text-red-300 text-xs"><i class="fas fa-times"></i></button>
+        </div>`;
+    }).join('');
+}
+
+function selectSticker(id) {
+    selectedId = id;
+    const s = stickers.find(s => s.id === id);
+    if (s) showProperties(s);
+    render();
+    updateLayers();
+}
+
+function deleteSelected() {
+    if (!selectedId) return;
+    deleteSticker(selectedId);
+}
+
+function deleteSticker(id) {
+    saveUndo();
+    stickers = stickers.filter(s => s.id !== id);
+    if (selectedId === id) {
+        selectedId = null;
+        document.getElementById('propsPanel').classList.add('hidden');
+    }
+    render();
+    updateLayers();
+}
+
+// ======================== UNDO / REDO ========================
+
+// Store image references by sticker id so they survive undo/redo
+let imageCache = {};
+
+function saveUndo() {
+    // Cache image objects before serializing
+    stickers.forEach(s => {
+        if (s.img) imageCache[s.id] = s.img;
+    });
+    undoStack.push(JSON.stringify(stickers.map(s => {
+        const copy = { ...s };
+        if (copy.img) copy._hasImg = true;
+        delete copy.img;
+        return copy;
+    })));
+    if (undoStack.length > 30) undoStack.shift();
+    redoStack = [];
+}
+
+function restoreImages(state) {
+    state.forEach(s => {
+        if (s._hasImg && imageCache[s.id]) {
+            s.img = imageCache[s.id];
+            delete s._hasImg;
+        }
+    });
+    return state;
+}
+
+function undoAction() {
+    if (undoStack.length === 0) return;
+    stickers.forEach(s => { if (s.img) imageCache[s.id] = s.img; });
+    redoStack.push(JSON.stringify(stickers.map(s => {
+        const copy = { ...s };
+        if (copy.img) copy._hasImg = true;
+        delete copy.img;
+        return copy;
+    })));
+    const state = JSON.parse(undoStack.pop());
+    stickers = restoreImages(state);
+    selectedId = null;
+    document.getElementById('propsPanel').classList.add('hidden');
+    render();
+    updateLayers();
+}
+
+function redoAction() {
+    if (redoStack.length === 0) return;
+    stickers.forEach(s => { if (s.img) imageCache[s.id] = s.img; });
+    undoStack.push(JSON.stringify(stickers.map(s => {
+        const copy = { ...s };
+        if (copy.img) copy._hasImg = true;
+        delete copy.img;
+        return copy;
+    })));
+    const state = JSON.parse(redoStack.pop());
+    stickers = restoreImages(state);
+    selectedId = null;
+    render();
+    updateLayers();
+}
+
+// ======================== EXPORT ========================
+
+async function exportStory() {
+    const btn = document.getElementById('exportBtn');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner"></div><span>جاري الحفظ...</span>';
+    btn.disabled = true;
+
+    // Deselect before export
+    selectedId = null;
+    render();
+
+    try {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
+        const formData = new FormData();
+        formData.append('image', blob, 'story-design.png');
+
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.url) {
+            // Save the story image URL and go back to the New Post page
+            localStorage.setItem('story_image_url', data.url);
+            window.location.href = '/';
+            return;
+        } else {
+            alert('ما قدرنا نحفظ الستوري: ' + (data.error || 'خطأ غير معروف'));
+        }
+    } catch (err) {
+        console.error('Export error:', err);
+        alert('صار خطأ وقت الحفظ: ' + err.message);
+    }
+
+    btn.innerHTML = originalHTML;
+    btn.disabled = false;
+}
+
+// ======================== KEYBOARD ========================
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        deleteSelected();
+    }
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undoAction(); }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redoAction(); }
+});
+
+// ======================== INIT ========================
+
+render();
+</script>
+
+</body>
+</html>

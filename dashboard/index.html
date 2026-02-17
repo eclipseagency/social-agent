@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eclipse Agency</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+    body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+    .stat-card { transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-5px); }
+    .result-card { border-radius: 16px; padding: 24px; text-align: center; color: white; min-width: 180px; transition: transform 0.2s, box-shadow 0.2s; }
+    .result-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+    .result-card.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+    .result-card.linkedin { background: #0A66C2; }
+    .result-card.facebook { background: #1877F2; }
+    .result-card.error { background: #dc2626 !important; }
+    .result-card .icon { width: 48px; height: 48px; margin: 0 auto 12px; }
+    .result-card .icon svg { width: 100%; height: 100%; }
+    .result-card .platform-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .result-card .status { font-size: 14px; opacity: 0.95; }
+    .upload-zone { border: 2px dashed #cbd5e1; transition: all 0.3s; background: linear-gradient(135deg, #f8fafc, #f1f5f9); }
+    .upload-zone:hover, .upload-zone.dragover { border-color: #6366f1; background: linear-gradient(135deg, #eef2ff, #e0e7ff); transform: scale(1.01); }
+    .image-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+    .image-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; cursor: grab; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .image-item:hover { transform: scale(1.05); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+    .image-item.sortable-ghost { opacity: 0.4; }
+    .image-item.sortable-chosen { transform: scale(1.1); box-shadow: 0 8px 24px rgba(99,102,241,0.3); }
+    .image-item img { width: 100%; height: 100%; object-fit: cover; }
+    .image-item .order-badge { position: absolute; top: 6px; right: 6px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+    .image-item .delete-btn { position: absolute; top: 6px; left: 6px; background: rgba(239,68,68,0.9); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+    .image-item:hover .delete-btn { opacity: 1; }
+    .platform-card { border-radius: 16px; padding: 20px; transition: all 0.3s; }
+    .platform-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+    .platform-card.instagram { background: linear-gradient(135deg, #fdf2f8, #fce7f3); border: 1px solid #fbcfe8; }
+    .platform-card.linkedin { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; }
+    .platform-card.facebook { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; }
+    .post-preview { background: white; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); overflow: hidden; }
+    .post-preview-header { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 12px; }
+    .post-preview-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+    .carousel-preview { position: relative; aspect-ratio: 1; background: #f8fafc; overflow: hidden; }
+    .carousel-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .carousel-dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+    .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+    .carousel-dot.active { background: white; }
+    .carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .carousel-nav.prev { left: 12px; }
+    .carousel-nav.next { right: 12px; }
+    body.dark { background-color: #1a1a2e; color: #e0e0e0; }
+    .dark .bg-white { background-color: #16213e !important; }
+    .dark .bg-gray-100 { background-color: #1a1a2e !important; }
+    .dark .bg-gray-50 { background-color: #0f3460 !important; color: #e0e0e0 !important; }
+    .dark .bg-gray-200 { background-color: #374151 !important; color: #e0e0e0 !important; }
+    .dark .bg-gray-200:hover { background-color: #4b5563 !important; }
+    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-700 { color: #a0a0a0 !important; }
+    .dark .text-gray-400 { color: #9ca3af !important; }
+    .dark .border { border-color: #2a2a4a !important; }
+    .dark input, .dark select, .dark textarea { background-color: #0f3460 !important; color: #e0e0e0 !important; border-color: #2a2a4a !important; }
+    .dark .hover\:bg-gray-50:hover { background-color: #0f3460 !important; }
+    .dark th { background-color: #0f3460 !important; }
+    .dark .bg-pink-100, .dark .bg-pink-50, .dark .platform-card.instagram { background: linear-gradient(135deg, #831843, #9d174d) !important; color: #fce7f3 !important; border-color: #be185d !important; }
+    .dark .bg-blue-100, .dark .bg-blue-50, .dark .platform-card.linkedin { background: linear-gradient(135deg, #1e3a5f, #1e40af) !important; color: #bfdbfe !important; border-color: #3b82f6 !important; }
+    .dark .bg-green-100, .dark .bg-green-50 { background-color: #14532d !important; color: #bbf7d0 !important; }
+    .dark .bg-yellow-100, .dark .bg-yellow-50 { background-color: #713f12 !important; color: #fef08a !important; }
+    .dark .bg-red-100, .dark .bg-red-50 { background-color: #7f1d1d !important; color: #fecaca !important; }
+    .dark .bg-purple-100, .dark .bg-purple-50 { background-color: #581c87 !important; color: #e9d5ff !important; }
+    .dark .bg-indigo-100, .dark .bg-indigo-50, .dark .platform-card.facebook { background: linear-gradient(135deg, #1e3a8a, #1d4ed8) !important; color: #c7d2fe !important; border-color: #3b82f6 !important; }
+    .dark .text-indigo-600, .dark .text-indigo-700 { color: #818cf8 !important; }
+    .dark .text-green-600, .dark .text-green-700, .dark .text-green-800 { color: #4ade80 !important; }
+    .dark .text-red-600, .dark .text-red-700, .dark .text-red-800 { color: #f87171 !important; }
+    .dark .text-yellow-600, .dark .text-yellow-700, .dark .text-yellow-800 { color: #facc15 !important; }
+    .dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800 { color: #60a5fa !important; }
+    .dark .text-pink-800 { color: #f9a8d4 !important; }
+    .dark .text-purple-800 { color: #c4b5fd !important; }
+    .dark .shadow-sm, .dark .shadow-lg, .dark .shadow-2xl { box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important; }
+    .dark #calendar-grid > div { color: #e0e0e0 !important; }
+    .dark #calendar-grid .font-semibold { color: #e0e0e0 !important; }
+    .dark #day-posts-modal > div { background-color: #16213e !important; }
+    .dark #day-posts-modal .border { border-color: #2a2a4a !important; }
+    .dark .upload-zone { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #475569; }
+    .dark .upload-zone:hover, .dark .upload-zone.dragover { background: linear-gradient(135deg, #312e81, #1e1b4b); border-color: #6366f1; }
+    .dark .post-preview { background: #1e293b; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .dark .post-preview-header { border-color: #334155; }
+    .dark .carousel-preview { background: #0f172a; }
+    .kanban-board { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px; min-height: 400px; }
+    .kanban-column { min-width: 280px; max-width: 320px; flex: 1; background: #f8fafc; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; }
+    .dark .kanban-column { background: #1e293b; }
+    .kanban-column-header { font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .kanban-cards { flex: 1; min-height: 100px; display: flex; flex-direction: column; gap: 10px; }
+    .kanban-card { background: white; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: grab; transition: all 0.2s; border-left: 4px solid #6366f1; }
+    .dark .kanban-card { background: #16213e; }
+    .kanban-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .kanban-card.sortable-ghost { opacity: 0.4; }
+    .kanban-card.priority-urgent { border-left-color: #ef4444; }
+    .kanban-card.priority-high { border-left-color: #f97316; }
+    .kanban-card.priority-normal { border-left-color: #3b82f6; }
+    .kanban-card.priority-low { border-left-color: #9ca3af; }
+    .badge-urgent { background: #fef2f2; color: #dc2626; }
+    .badge-high { background: #fff7ed; color: #ea580c; }
+    .badge-normal { background: #eff6ff; color: #2563eb; }
+    .badge-low { background: #f3f4f6; color: #6b7280; }
+    .notif-badge { position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+    .day-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin: 2px; }
+    .day-badge.active { background: #dbeafe; color: #1d4ed8; }
+    .day-badge.inactive { background: #f3f4f6; color: #9ca3af; }
+    .tab-btn { padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { background: #6366f1; color: white; }
+    .tab-btn:not(.active) { background: #f1f5f9; color: #64748b; }
+    .dark .tab-btn:not(.active) { background: #1e293b; color: #94a3b8; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .loading-spinner { width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes success-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    .success-animation { animation: success-pulse 0.5s ease-in-out; }
+    @media (max-width: 1023px) {
+        #sidebar { left: 0; }
+        #sidebar.open { transform: translateX(0) !important; }
+        .stat-card { padding: 12px; }
+        .stat-card p { font-size: 1.25rem; }
+        table { font-size: 13px; }
+        table th, table td { padding: 8px 10px; }
+        .platform-card { padding: 12px; }
+        .result-card { padding: 12px; min-width: auto; }
+    }
+    @media (max-width: 640px) {
+        .quick-actions-grid { grid-template-columns: 1fr 1fr !important; }
+        .result-card { padding: 12px; min-width: auto; }
+        .result-card .platform-name { font-size: 14px; }
+        .result-card .icon { width: 32px; height: 32px; }
+        input, select, textarea { font-size: 16px !important; }
+        .mobile-card-table tr { display: block; margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+        .mobile-card-table td { display: block; padding: 4px 0; }
+        #calendar-grid > div { min-height: 50px; font-size: 11px; }
+        .modal-content { width: 95% !important; max-width: 95% !important; margin: 10px; }
+        .image-gallery { grid-template-columns: repeat(2, 1fr) !important; }
+        .carousel-preview { height: 200px !important; }
+        .platform-card { padding: 12px; }
+        .platform-card textarea { height: 80px !important; }
+    }
+    @media (max-width: 375px) {
+        .stat-card p { font-size: 1rem; }
+        #calendar-grid > div { min-height: 40px; font-size: 10px; }
+    }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Login / Register Screen -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-white tracking-tight">Eclipse Agency</h1>
+                <p class="text-slate-400 text-sm mt-2">Marketing Team Platform</p>
+            </div>
+            <!-- Login Form -->
+            <div id="login-form" class="bg-white rounded-2xl shadow-2xl p-8">
+                <h2 class="text-xl font-bold mb-6 text-center">Sign In</h2>
+                <div id="login-error" class="hidden bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4"></div>
+                <div class="mb-4">
+                    <label class="block text-gray-600 text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="login-email" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="you@company.com">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-600 text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="login-password" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Enter your password" onkeypress="if(event.key==='Enter') login()">
+                </div>
+                <button onclick="login()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition shadow-lg">Sign In</button>
+                <p class="text-center text-sm text-gray-500 mt-4">Don't have an account? <a href="#" onclick="showRegister()" class="text-indigo-600 font-medium hover:underline">Create one</a></p>
+            </div>
+            <!-- Register Form -->
+            <div id="register-form" class="bg-white rounded-2xl shadow-2xl p-8 hidden">
+                <h2 class="text-xl font-bold mb-6 text-center">Create Account</h2>
+                <div id="register-error" class="hidden bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4"></div>
+                <div id="register-success" class="hidden bg-green-50 text-green-600 text-sm p-3 rounded-lg mb-4"></div>
+                <div class="mb-4">
+                    <label class="block text-gray-600 text-sm font-medium mb-2">Full Name</label>
+                    <input type="text" id="register-name" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Your full name">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-600 text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="register-email" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="you@company.com">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-600 text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="register-password" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="At least 6 characters">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-600 text-sm font-medium mb-2">Confirm Password</label>
+                    <input type="password" id="register-confirm" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Re-enter your password" onkeypress="if(event.key==='Enter') register()">
+                </div>
+                <button onclick="register()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition shadow-lg">Create Account</button>
+                <p class="text-center text-sm text-gray-500 mt-4">Already have an account? <a href="#" onclick="showLogin()" class="text-indigo-600 font-medium hover:underline">Sign in</a></p>
+            </div>
+        </div>
+    </div>
+    <div id="main-app" class="hidden">
+        <!-- Mobile Header -->
+        <div class="lg:hidden fixed top-0 left-0 right-0 bg-[#0f172a] z-40 px-4 py-3 flex items-center justify-between">
+            <button onclick="toggleMobileMenu()" class="text-white text-xl"><i class="fa-solid fa-bars"></i></button>
+            <h1 class="text-white font-bold text-sm">Eclipse Agency</h1>
+            <button onclick="toggleDarkMode()" class="text-white"><i class="fa-solid fa-moon"></i></button>
+        </div>
+        <div id="mobile-overlay" class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleMobileMenu()"></div>
+        <div class="flex">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="w-64 bg-[#0f172a] min-h-screen p-6 fixed left-0 z-50 transition-transform duration-300 transform lg:translate-x-0 -translate-x-full">
+                <div class="lg:hidden flex justify-between items-center mb-4">
+                    <h1 class="text-white text-lg font-bold">Eclipse Agency</h1>
+                    <button onclick="toggleMobileMenu()" class="text-white text-2xl">&times;</button>
+                </div>
+                <div class="hidden lg:block mb-6">
+                    <h1 class="text-white text-xl font-bold tracking-tight">Eclipse Agency</h1>
+                    <p class="text-slate-500 text-xs mt-1">Marketing Team Platform</p>
+                </div>
+                <p class="text-slate-400 text-sm">Hello, <span id="user-name" class="text-white font-medium">User</span></p>
+                <p id="user-job-title" class="text-slate-500 text-xs mb-6 hidden"></p>
+                <nav class="space-y-1">
+                    <a href="#" onclick="showSection('dashboard'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-chart-line w-5 text-center"></i> Dashboard</a>
+                    <a href="#" onclick="showSection('clients'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-users w-5 text-center"></i> Clients</a>
+                    <a href="#" onclick="showSection('newpost'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-pen-to-square w-5 text-center"></i> New Post</a>
+                    <a href="#" onclick="showSection('bulk'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-layer-group w-5 text-center"></i> Bulk Schedule</a>
+                    <a href="#" onclick="showSection('tasks'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-clipboard-list w-5 text-center"></i> Tasks</a>
+                    <a href="#" onclick="showSection('pipeline'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-arrows-spin w-5 text-center"></i> Pipeline</a>
+                    <a href="#" onclick="showSection('calendar'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar</a>
+                    <a href="#" onclick="showSection('analytics'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-chart-bar w-5 text-center"></i> Analytics</a>
+                    <a href="#" onclick="showSection('scheduled'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-clock w-5 text-center"></i> Scheduled</a>
+                    <a href="#" id="users-nav" onclick="showSection('users'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-user-gear w-5 text-center"></i> Users</a>
+                    <a href="#" onclick="showSection('settings'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm"><i class="fa-solid fa-gear w-5 text-center"></i> Settings</a>
+                    <a href="#" onclick="showSection('notifications-page'); closeMobileMenu();" class="flex items-center gap-3 text-slate-300 py-2.5 px-3 rounded-lg hover:bg-slate-800 hover:text-white transition text-sm relative"><i class="fa-solid fa-bell w-5 text-center"></i> Notifications <span id="sidebar-notif-badge" class="notif-badge hidden">0</span></a>
+                </nav>
+                <div class="mt-6 space-y-2 lg:absolute lg:bottom-6 lg:left-6 lg:right-6">
+                    <button onclick="toggleDarkMode()" class="w-full bg-slate-800 text-slate-300 py-2 rounded-lg hover:bg-slate-700 text-sm transition"><i class="fa-solid fa-moon mr-2"></i>Dark Mode</button>
+                    <button onclick="logout()" class="w-full bg-red-900/30 text-red-400 py-2 rounded-lg hover:bg-red-900/50 text-sm transition"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sign Out</button>
+                </div>
+            </aside>
+            <!-- Main Content -->
+            <main class="flex-1 p-4 lg:p-8 lg:ml-64 mt-14 lg:mt-0">
+                <!-- Dashboard -->
+                <section id="section-dashboard">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-chart-line text-indigo-600 mr-2"></i>Dashboard</h2>
+                        <p class="text-gray-500 text-sm" id="current-time"></p>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+                        <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
+                            <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Clients</h3>
+                            <p class="text-xl sm:text-3xl font-bold text-indigo-600" id="stat-clients">0</p>
+                        </div>
+                        <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                            <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Linked Accounts</h3>
+                            <p class="text-xl sm:text-3xl font-bold text-green-600" id="stat-accounts">0</p>
+                        </div>
+                        <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-yellow-500">
+                            <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Pending</h3>
+                            <p class="text-xl sm:text-3xl font-bold text-yellow-600" id="stat-pending">0</p>
+                        </div>
+                        <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                            <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Published</h3>
+                            <p class="text-xl sm:text-3xl font-bold text-blue-600" id="stat-posted">0</p>
+                        </div>
+                        <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-red-500 col-span-2 sm:col-span-1">
+                            <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Failed</h3>
+                            <p class="text-xl sm:text-3xl font-bold text-red-600" id="stat-failed">0</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-bolt text-indigo-500 mr-2"></i>Quick Actions</h3>
+                            <div class="grid grid-cols-2 gap-3 quick-actions-grid">
+                                <button onclick="showSection('newpost')" class="bg-indigo-50 text-indigo-700 p-3 rounded-lg hover:bg-indigo-100 transition text-sm font-medium"><i class="fa-solid fa-pen-to-square mr-1"></i> New Post</button>
+                                <button onclick="showSection('bulk')" class="bg-green-50 text-green-700 p-3 rounded-lg hover:bg-green-100 transition text-sm font-medium"><i class="fa-solid fa-layer-group mr-1"></i> Bulk Schedule</button>
+                                <button onclick="showSection('tasks')" class="bg-purple-50 text-purple-700 p-3 rounded-lg hover:bg-purple-100 transition text-sm font-medium"><i class="fa-solid fa-clipboard-list mr-1"></i> Tasks</button>
+                                <button onclick="showSection('calendar')" class="bg-yellow-50 text-yellow-700 p-3 rounded-lg hover:bg-yellow-100 transition text-sm font-medium"><i class="fa-solid fa-calendar-days mr-1"></i> Calendar</button>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i>Recent Activity</h3>
+                            <div id="recent-activity" class="space-y-3 text-sm"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Analytics -->
+                <section id="section-analytics" class="hidden">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-6"><i class="fa-solid fa-chart-bar text-indigo-600 mr-2"></i>Analytics & Reports</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm text-center">
+                            <p class="text-gray-500 text-xs sm:text-sm">Total Posts</p>
+                            <p class="text-xl sm:text-3xl font-bold text-indigo-600" id="analytics-total">0</p>
+                        </div>
+                        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm text-center">
+                            <p class="text-gray-500 text-xs sm:text-sm">Success Rate</p>
+                            <p class="text-xl sm:text-3xl font-bold text-green-600" id="analytics-rate">0%</p>
+                        </div>
+                        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm text-center">
+                            <p class="text-gray-500 text-xs sm:text-sm">Published</p>
+                            <p class="text-xl sm:text-3xl font-bold text-blue-600" id="analytics-posted">0</p>
+                        </div>
+                        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm text-center">
+                            <p class="text-gray-500 text-xs sm:text-sm">Failed</p>
+                            <p class="text-xl sm:text-3xl font-bold text-red-600" id="analytics-failed">0</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">Posts (Last 30 Days)</h3>
+                            <canvas id="postsChart" height="200"></canvas>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">Platform Distribution</h3>
+                            <canvas id="platformChart" height="200"></canvas>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">Top Clients</h3>
+                            <div id="top-clients" class="space-y-3"></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">Best Posting Hours</h3>
+                            <canvas id="hourlyChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bulk Schedule -->
+                <section id="section-bulk" class="hidden">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-6"><i class="fa-solid fa-layer-group text-indigo-600 mr-2"></i>Bulk Schedule</h2>
+                    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2 text-sm">Select Client</label>
+                            <select id="bulk-client" class="w-full border rounded-lg px-4 py-3"></select>
+                        </div>
+                        <div id="bulk-posts" class="space-y-4"></div>
+                        <div class="flex flex-col sm:flex-row gap-3 mt-6">
+                            <button onclick="addBulkPost()" class="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 text-sm font-medium"><i class="fa-solid fa-plus mr-1"></i> Add Post</button>
+                            <button onclick="submitBulkPosts()" class="bg-indigo-600 text-white px-8 py-2.5 rounded-lg hover:bg-indigo-700 font-semibold text-sm"><i class="fa-solid fa-rocket mr-1"></i> Schedule All</button>
+                        </div>
+                    </div>
+                    <div id="bulk-result"></div>
+                </section>
+
+                <!-- Users -->
+                <section id="section-users" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-user-gear text-indigo-600 mr-2"></i>User Management</h2>
+                        <button onclick="showAddUserModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm w-full sm:w-auto"><i class="fa-solid fa-plus mr-1"></i> New User</button>
+                    </div>
+                    <div class="mb-4">
+                        <input type="text" id="user-search" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" placeholder="Search users by name or email..." oninput="filterUsersTable()">
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                        <table class="w-full min-w-[500px]">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Username</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Email</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Role</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Job Title</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Status</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Settings -->
+                <section id="section-settings" class="hidden">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-6"><i class="fa-solid fa-gear text-indigo-600 mr-2"></i>Settings</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">Appearance</h3>
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                <span class="text-sm">Dark Mode</span>
+                                <button onclick="toggleDarkMode()" id="dark-mode-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-moon mr-1"></i> Toggle</button>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">Notifications</h3>
+                            <div class="space-y-3">
+                                <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer">
+                                    <span class="text-sm">Notify on successful publish</span>
+                                    <input type="checkbox" id="notify-post" checked class="w-5 h-5">
+                                </label>
+                                <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer">
+                                    <span class="text-sm">Notify on publish failure</span>
+                                    <input type="checkbox" id="notify-fail" checked class="w-5 h-5">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">API Status</h3>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center p-3 bg-pink-50 rounded-lg text-sm"><span><i class="fa-brands fa-instagram mr-2"></i>Instagram</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+                                <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg text-sm"><span><i class="fa-brands fa-linkedin mr-2"></i>LinkedIn</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+                                <div class="flex justify-between items-center p-3 bg-indigo-50 rounded-lg text-sm"><span><i class="fa-brands fa-facebook mr-2"></i>Facebook</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg text-sm"><span><i class="fa-solid fa-cloud mr-2"></i>Cloudinary</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+                            <h3 class="font-bold mb-4 text-sm sm:text-base">System Info</h3>
+                            <div class="space-y-2">
+                                <div class="flex justify-between p-3 bg-gray-50 rounded-lg text-sm"><span>Version</span><span class="font-semibold">3.0.0</span></div>
+                                <div class="flex justify-between p-3 bg-gray-50 rounded-lg text-sm"><span>Database</span><span>SQLite</span></div>
+                                <div class="flex justify-between p-3 bg-gray-50 rounded-lg text-sm"><span>Platforms</span><span class="font-semibold">3 platforms</span></div>
+                                <div class="flex justify-between p-3 bg-purple-50 rounded-lg text-sm"><span>Carousel</span><span class="text-green-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Enabled</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Clients -->
+                <section id="section-clients" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-users text-indigo-600 mr-2"></i>Clients</h2>
+                        <button onclick="showAddClientModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm w-full sm:w-auto"><i class="fa-solid fa-plus mr-1"></i> Add Client</button>
+                    </div>
+                    <div class="mb-4">
+                        <input type="text" id="client-search" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" placeholder="Search clients by name, company, or email..." oninput="filterClientsTable()">
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                        <table class="w-full min-w-[500px]">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Client Name</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Company</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600 hidden sm:table-cell">Email</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Linked Accounts</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clients-table"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- New Post -->
+                <section id="section-newpost" class="hidden">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-pen-to-square text-indigo-600 mr-2"></i>New Post</h2>
+                        <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">Carousel Supported</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+                        <div class="lg:col-span-2 space-y-4 lg:space-y-6">
+                            <!-- Basic Info -->
+                            <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+                                <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-clipboard-list text-indigo-600"></i></span> Basic Info</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-gray-600 text-sm font-medium mb-2">Select Client</label>
+                                        <select id="post-client" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" onchange="loadScheduleSuggestions(this.value); updateLivePreview()"></select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-600 text-sm font-medium mb-2">Post Topic</label>
+                                    <input type="text" id="post-topic" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="e.g. Exclusive offers on latest products">
+                                </div>
+                            </div>
+                            <!-- Brief Info -->
+                            <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+                                <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-file-lines text-purple-600"></i></span> Brief Info</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-gray-600 text-sm font-medium mb-2">Tone of Voice</label>
+                                        <textarea id="post-tov" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="e.g. Professional, friendly, bold..."></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-600 text-sm font-medium mb-2">Brief Notes</label>
+                                        <textarea id="post-brief-notes" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Design instructions, requirements..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-gray-600 text-sm font-medium mb-2">Assign Designer</label>
+                                        <select id="post-designer" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="">None</option></select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-600 text-sm font-medium mb-2">Assign SM</label>
+                                        <select id="post-sm" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="">None</option></select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-600 text-sm font-medium mb-2">Priority</label>
+                                        <select id="post-priority" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm">
+                                            <option value="normal">Normal</option>
+                                            <option value="high">High</option>
+                                            <option value="urgent">Urgent</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-gray-600 text-sm font-medium mb-2">Reference Images</label>
+                                    <div class="upload-zone rounded-lg p-3 text-center cursor-pointer" onclick="document.getElementById('brief-reference-images').click()">
+                                        <input type="file" id="brief-reference-images" class="hidden" accept="image/*" multiple onchange="uploadBriefReferences(this)">
+                                        <i class="fa-solid fa-cloud-arrow-up text-2xl text-gray-400 mb-1"></i>
+                                        <p class="text-xs text-gray-600 font-medium">Upload reference images for designer</p>
+                                    </div>
+                                    <div id="brief-references-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button onclick="saveBrief('draft')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-300 transition"><i class="fa-solid fa-bookmark mr-1"></i> Save as Brief</button>
+                                    <button onclick="saveBrief('in_design')" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-purple-700 transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
+                                </div>
+                            </div>
+                            <!-- Post Type -->
+                            <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+                                <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-shapes text-orange-600"></i></span> Post Type</h3>
+                                <select id="post-type-select" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" onchange="onPostTypeChange()">
+                                    <option value="post">Regular Post</option>
+                                    <option value="story">Story (Instagram & Facebook)</option>
+                                </select>
+                            </div>
+                            <!-- Platforms & Captions -->
+                            <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+                                <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-share-nodes text-blue-600"></i></span> Platforms & Captions</h3>
+                                <div class="grid grid-cols-1 gap-4">
+                                    <!-- Instagram -->
+                                    <div class="platform-card instagram">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <label class="flex items-center gap-2 font-semibold text-pink-800 cursor-pointer text-sm"><input type="checkbox" id="platform-instagram" checked class="w-5 h-5 rounded"><i class="fa-brands fa-instagram"></i> Instagram</label>
+                                            <select id="size-instagram" class="text-xs border border-pink-200 rounded-lg px-2 py-1 bg-white"><option value="1080x1080">1080x1080</option><option value="1080x1350">1080x1350</option><option value="1080x1920">1080x1920</option></select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-pink-200 bg-pink-50/30 hover:bg-pink-50 transition" onclick="document.getElementById('instagram-images').click()">
+                                                    <input type="file" id="instagram-images" class="hidden" accept="image/*" multiple onchange="uploadPlatformImages('instagram', this)">
+                                                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-pink-400 mb-1"></i>
+                                                    <p class="text-xs text-gray-600 font-medium">Upload Images (up to 10)</p>
+                                                </div>
+                                                <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-pink-200 bg-pink-50/30 hover:bg-pink-50 transition" onclick="document.getElementById('instagram-video').click()">
+                                                    <input type="file" id="instagram-video" class="hidden" accept="video/*" onchange="uploadPlatformVideo('instagram', this)">
+                                                    <i class="fa-solid fa-film text-2xl text-pink-400 mb-1"></i>
+                                                    <p class="text-xs text-gray-600 font-medium">Upload Video (Reels)</p>
+                                                </div>
+                                            </div>
+                                            <div id="instagram-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+                                            <div id="instagram-video-preview" class="mt-2"></div>
+                                        </div>
+                                        <textarea id="caption-instagram" class="w-full border-0 bg-white/60 rounded-xl px-4 py-3 h-28 text-sm resize-none focus:ring-2 focus:ring-pink-300 transition" placeholder="Write Instagram caption..." oninput="updateLivePreview()"></textarea>
+                                        <div id="instagram-story-features" class="hidden mt-3 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-pink-100">
+                                            <div class="text-center">
+                                                <a href="/story-designer" class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:from-indigo-700 hover:to-purple-700 transition shadow-lg"><i class="fa-solid fa-palette"></i> Story Designer</a>
+                                                <p class="text-xs text-gray-500 mt-3">Design professional stories with stickers, hashtags, polls, and links</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3 mt-3">
+                                            <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-instagram" value="now" checked class="w-4 h-4"> Publish Now</label>
+                                            <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-instagram" value="later" class="w-4 h-4"> Schedule</label>
+                                        </div>
+                                        <input type="datetime-local" id="schedule-instagram-time" class="w-full border border-pink-200 rounded-lg px-3 py-2 text-sm mt-2 hidden">
+                                    </div>
+                                    <!-- LinkedIn -->
+                                    <div class="platform-card linkedin">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <label class="flex items-center gap-2 font-semibold text-blue-800 cursor-pointer text-sm"><input type="checkbox" id="platform-linkedin" checked class="w-5 h-5 rounded"><i class="fa-brands fa-linkedin"></i> LinkedIn</label>
+                                            <select id="size-linkedin" class="text-xs border border-blue-200 rounded-lg px-2 py-1 bg-white"><option value="1200x627">1200x627</option><option value="1080x1080">1080x1080</option><option value="1080x1350">1080x1350</option></select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition" onclick="document.getElementById('linkedin-images').click()">
+                                                    <input type="file" id="linkedin-images" class="hidden" accept="image/*" multiple onchange="uploadPlatformImages('linkedin', this)">
+                                                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-blue-400 mb-1"></i>
+                                                    <p class="text-xs text-gray-600 font-medium">Upload Images (up to 9)</p>
+                                                </div>
+                                                <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition" onclick="document.getElementById('linkedin-video').click()">
+                                                    <input type="file" id="linkedin-video" class="hidden" accept="video/*" onchange="uploadPlatformVideo('linkedin', this)">
+                                                    <i class="fa-solid fa-film text-2xl text-blue-400 mb-1"></i>
+                                                    <p class="text-xs text-gray-600 font-medium">Upload Video</p>
+                                                </div>
+                                            </div>
+                                            <div id="linkedin-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+                                            <div id="linkedin-video-preview" class="mt-2"></div>
+                                        </div>
+                                        <textarea id="caption-linkedin" class="w-full border-0 bg-white/60 rounded-xl px-4 py-3 h-28 text-sm resize-none focus:ring-2 focus:ring-blue-300 transition" placeholder="Write LinkedIn caption..." oninput="updateLivePreview()"></textarea>
+                                        <div class="flex items-center gap-3 mt-3">
+                                            <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-linkedin" value="now" checked class="w-4 h-4"> Publish Now</label>
+                                            <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-linkedin" value="later" class="w-4 h-4"> Schedule</label>
+                                        </div>
+                                        <input type="datetime-local" id="schedule-linkedin-time" class="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm mt-2 hidden">
+                                    </div>
+                                    <!-- Facebook -->
+                                    <div class="platform-card facebook">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <label class="flex items-center gap-2 font-semibold text-indigo-800 cursor-pointer text-sm"><input type="checkbox" id="platform-facebook" checked class="w-5 h-5 rounded"><i class="fa-brands fa-facebook"></i> Facebook</label>
+                                            <select id="size-facebook" class="text-xs border border-indigo-200 rounded-lg px-2 py-1 bg-white"><option value="1080x1080">1080x1080</option><option value="1200x627">1200x627</option><option value="1080x1350">1080x1350</option><option value="1080x1920">1080x1920</option></select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-indigo-200 bg-indigo-50/30 hover:bg-indigo-50 transition" onclick="document.getElementById('facebook-images').click()">
+                                                    <input type="file" id="facebook-images" class="hidden" accept="image/*" multiple onchange="uploadPlatformImages('facebook', this)">
+                                                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-indigo-400 mb-1"></i>
+                                                    <p class="text-xs text-gray-600 font-medium">Upload Images (up to 10)</p>
+                                                </div>
+                                                <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-indigo-200 bg-indigo-50/30 hover:bg-indigo-50 transition" onclick="document.getElementById('facebook-video').click()">
+                                                    <input type="file" id="facebook-video" class="hidden" accept="video/*" onchange="uploadPlatformVideo('facebook', this)">
+                                                    <i class="fa-solid fa-film text-2xl text-indigo-400 mb-1"></i>
+                                                    <p class="text-xs text-gray-600 font-medium">Upload Video</p>
+                                                </div>
+                                            </div>
+                                            <div id="facebook-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+                                            <div id="facebook-video-preview" class="mt-2"></div>
+                                        </div>
+                                        <textarea id="caption-facebook" class="w-full border-0 bg-white/60 rounded-xl px-4 py-3 h-28 text-sm resize-none focus:ring-2 focus:ring-indigo-300 transition" placeholder="Write Facebook caption..." oninput="updateLivePreview()"></textarea>
+                                        <div class="flex items-center gap-3 mt-3">
+                                            <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-facebook" value="now" checked class="w-4 h-4"> Publish Now</label>
+                                            <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-facebook" value="later" class="w-4 h-4"> Schedule</label>
+                                        </div>
+                                        <input type="datetime-local" id="schedule-facebook-time" class="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm mt-2 hidden">
+                                    </div>
+                                </div>
+                                <button id="submit-post-btn" onclick="submitPost()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:from-indigo-700 hover:to-purple-700 transition flex items-center justify-center gap-2 shadow-lg mt-6"><i class="fa-solid fa-paper-plane"></i> Publish Post</button>
+                            </div>
+                        </div>
+                        <!-- Preview Column -->
+                        <div class="space-y-4 lg:space-y-6">
+                            <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6 lg:sticky lg:top-6">
+                                <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-eye text-green-600"></i></span> Post Preview</h3>
+                                <div class="post-preview">
+                                    <div class="post-preview-header">
+                                        <div class="post-preview-avatar"><span id="preview-avatar"><i class="fa-solid fa-building"></i></span></div>
+                                        <div><p class="font-semibold text-sm" id="preview-name">Client Name</p><p class="text-xs text-gray-400">Just now</p></div>
+                                    </div>
+                                    <div class="carousel-preview" id="carousel-preview">
+                                        <div class="flex items-center justify-center h-full text-gray-400">
+                                            <div class="text-center"><i class="fa-regular fa-image text-4xl"></i><p class="text-sm mt-2">Add images to preview</p></div>
+                                        </div>
+                                    </div>
+                                    <div class="p-4"><p class="text-sm text-gray-600 leading-relaxed" id="preview-caption">Caption will appear here...</p></div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-3 mt-4">
+                                    <div class="bg-pink-50 rounded-xl p-3 text-center"><p class="text-2xl" id="preview-images-count">0</p><p class="text-xs text-gray-500">Images</p></div>
+                                    <div class="bg-blue-50 rounded-xl p-3 text-center"><p class="text-2xl" id="preview-platforms-count">3</p><p class="text-xs text-gray-500">Platforms</p></div>
+                                    <div class="bg-green-50 rounded-xl p-3 text-center"><p class="text-2xl" id="preview-type"><i class="fa-solid fa-image"></i></p><p class="text-xs text-gray-500" id="preview-type-text">Image</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="post-result" class="mt-6"></div>
+                </section>
+
+                <!-- Calendar -->
+                <section id="section-calendar" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-calendar-days text-indigo-600 mr-2"></i>Calendar</h2>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="changeMonth(-1)" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="calendar-month" class="flex-1 sm:flex-none bg-white px-6 py-2 rounded-lg font-semibold text-center text-sm"></span>
+                            <button onclick="changeMonth(1)" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-3 sm:p-6 overflow-x-auto">
+                        <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-2 min-w-[300px]">
+                            <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Sun</div>
+                            <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Mon</div>
+                            <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Tue</div>
+                            <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Wed</div>
+                            <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Thu</div>
+                            <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Fri</div>
+                            <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Sat</div>
+                        </div>
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-2 min-w-[300px]"></div>
+                    </div>
+                </section>
+
+                <!-- Scheduled Posts -->
+                <section id="section-scheduled" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-clock text-indigo-600 mr-2"></i>Scheduled Posts</h2>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <button onclick="forcePublishAll(event)" class="flex-1 sm:flex-none bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm"><i class="fa-solid fa-bolt"></i> Force Publish All</button>
+                            <button onclick="runSchedulerNow()" class="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm"><i class="fa-solid fa-rocket"></i> Publish Due</button>
+                            <select id="filter-platform" onchange="loadScheduledPosts()" class="flex-1 sm:flex-none border rounded-lg px-4 py-2 text-sm">
+                                <option value="">All Platforms</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="facebook">Facebook</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                        <table class="w-full min-w-[500px]">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Client</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Topic</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Platform</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Scheduled At</th>
+                                    <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduled-table"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Tasks -->
+                <section id="section-tasks" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-clipboard-list text-indigo-600 mr-2"></i>Tasks</h2>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <button onclick="showAddTaskModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm"><i class="fa-solid fa-plus mr-1"></i> New Task</button>
+                            <button onclick="taskViewMode='board'; loadTasks()" id="btn-board-view" class="bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold"><i class="fa-solid fa-columns mr-1"></i> Board</button>
+                            <button onclick="taskViewMode='list'; loadTasks()" id="btn-list-view" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm"><i class="fa-solid fa-list mr-1"></i> List</button>
+                            <select id="task-filter-assignee" onchange="loadTasks()" class="border rounded-lg px-3 py-2 text-sm"><option value="">All Members</option></select>
+                            <select id="task-filter-client" onchange="loadTasks()" class="border rounded-lg px-3 py-2 text-sm"><option value="">All Clients</option></select>
+                            <select id="task-filter-priority" onchange="loadTasks()" class="border rounded-lg px-3 py-2 text-sm">
+                                <option value="">All Priorities</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="high">High</option>
+                                <option value="normal">Normal</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="tasks-board-view">
+                        <div class="kanban-board" id="kanban-board">
+                            <div class="kanban-column">
+                                <div class="kanban-column-header"><span><i class="fa-solid fa-circle-dot text-gray-400 mr-2"></i>To Do</span><span class="text-xs bg-gray-200 px-2 py-1 rounded-full" id="count-todo">0</span></div>
+                                <div class="kanban-cards" id="col-todo" data-status="todo"></div>
+                            </div>
+                            <div class="kanban-column">
+                                <div class="kanban-column-header"><span><i class="fa-solid fa-spinner text-blue-500 mr-2"></i>In Progress</span><span class="text-xs bg-blue-200 px-2 py-1 rounded-full" id="count-in_progress">0</span></div>
+                                <div class="kanban-cards" id="col-in_progress" data-status="in_progress"></div>
+                            </div>
+                            <div class="kanban-column">
+                                <div class="kanban-column-header"><span><i class="fa-solid fa-magnifying-glass text-yellow-500 mr-2"></i>In Review</span><span class="text-xs bg-yellow-200 px-2 py-1 rounded-full" id="count-in_review">0</span></div>
+                                <div class="kanban-cards" id="col-in_review" data-status="in_review"></div>
+                            </div>
+                            <div class="kanban-column">
+                                <div class="kanban-column-header"><span><i class="fa-solid fa-circle-check text-green-500 mr-2"></i>Done</span><span class="text-xs bg-green-200 px-2 py-1 rounded-full" id="count-done">0</span></div>
+                                <div class="kanban-cards" id="col-done" data-status="done"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tasks-list-view" class="hidden">
+                        <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                            <table class="w-full min-w-[700px]">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Task</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Client</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Assignee</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Priority</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Due Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tasks-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Notifications -->
+                <section id="section-notifications-page" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-bell text-indigo-600 mr-2"></i>Notifications</h2>
+                        <button onclick="markAllNotificationsRead()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm"><i class="fa-solid fa-check-double mr-1"></i> Mark All Read</button>
+                    </div>
+                    <div id="notifications-list" class="space-y-3"><p class="text-gray-500 text-center py-8">Loading notifications...</p></div>
+                </section>
+
+                <!-- Pipeline -->
+                <section id="section-pipeline" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-arrows-spin text-indigo-600 mr-2"></i>Content Pipeline</h2>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <select id="pipeline-filter-client" onchange="loadPipeline()" class="border rounded-lg px-3 py-2 text-sm"><option value="">All Clients</option></select>
+                            <select id="pipeline-filter-assignee" onchange="loadPipeline()" class="border rounded-lg px-3 py-2 text-sm"><option value="">All Members</option></select>
+                        </div>
+                    </div>
+                    <div class="kanban-board" id="pipeline-board">
+                        <div class="kanban-column">
+                            <div class="kanban-column-header"><span><i class="fa-solid fa-file-pen text-gray-400 mr-2"></i>Draft</span><span class="text-xs bg-gray-200 px-2 py-1 rounded-full" id="pcount-draft">0</span></div>
+                            <div class="kanban-cards" id="pcol-draft" data-status="draft"></div>
+                        </div>
+                        <div class="kanban-column">
+                            <div class="kanban-column-header"><span><i class="fa-solid fa-palette text-pink-500 mr-2"></i>In Design</span><span class="text-xs bg-pink-200 px-2 py-1 rounded-full" id="pcount-in_design">0</span></div>
+                            <div class="kanban-cards" id="pcol-in_design" data-status="in_design"></div>
+                        </div>
+                        <div class="kanban-column">
+                            <div class="kanban-column-header"><span><i class="fa-solid fa-magnifying-glass text-yellow-500 mr-2"></i>Design Review</span><span class="text-xs bg-yellow-200 px-2 py-1 rounded-full" id="pcount-design_review">0</span></div>
+                            <div class="kanban-cards" id="pcol-design_review" data-status="design_review"></div>
+                        </div>
+                        <div class="kanban-column">
+                            <div class="kanban-column-header"><span><i class="fa-solid fa-circle-check text-green-500 mr-2"></i>Approved</span><span class="text-xs bg-green-200 px-2 py-1 rounded-full" id="pcount-approved">0</span></div>
+                            <div class="kanban-cards" id="pcol-approved" data-status="approved"></div>
+                        </div>
+                        <div class="kanban-column">
+                            <div class="kanban-column-header"><span><i class="fa-solid fa-clock text-blue-500 mr-2"></i>Scheduled</span><span class="text-xs bg-blue-200 px-2 py-1 rounded-full" id="pcount-scheduled">0</span></div>
+                            <div class="kanban-cards" id="pcol-scheduled" data-status="scheduled"></div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="add-user-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideAddUserModal()">
+        <div class="bg-white rounded-xl p-6 w-[90%] sm:w-96 max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">New User</h3>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Username *</label><input type="text" id="new-username" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Email *</label><input type="email" id="new-email" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Password *</label><input type="password" id="new-password" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Role</label>
+                <select id="new-role" class="w-full border rounded-lg px-4 py-2">
+                    <option value="user">User</option><option value="admin">Admin</option><option value="manager">Manager</option><option value="sm_specialist">SM Specialist</option><option value="designer">Designer</option><option value="motion_editor">Motion Editor</option>
+                </select>
+            </div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Job Title</label><input type="text" id="new-job-title" class="w-full border rounded-lg px-4 py-2" placeholder="e.g. Senior Designer"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Phone</label><input type="text" id="new-phone" class="w-full border rounded-lg px-4 py-2" placeholder="e.g. +1234567890"></div>
+            <div class="flex gap-4">
+                <button onclick="addUser()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Add User</button>
+                <button onclick="hideAddUserModal()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <!-- Edit User Modal -->
+    <div id="edit-user-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideEditUserModal()">
+        <div class="bg-white rounded-xl p-6 w-[90%] sm:w-96 max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">Edit User</h3>
+            <input type="hidden" id="edit-user-id">
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Username</label><input type="text" id="edit-username" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Email</label><input type="email" id="edit-email" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Role</label>
+                <select id="edit-role" class="w-full border rounded-lg px-4 py-2">
+                    <option value="user">User</option><option value="admin">Admin</option><option value="manager">Manager</option><option value="sm_specialist">SM Specialist</option><option value="designer">Designer</option><option value="motion_editor">Motion Editor</option>
+                </select>
+            </div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Job Title</label><input type="text" id="edit-job-title" class="w-full border rounded-lg px-4 py-2" placeholder="e.g. Senior Designer"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Phone</label><input type="text" id="edit-phone" class="w-full border rounded-lg px-4 py-2" placeholder="e.g. +1234567890"></div>
+            <div class="flex gap-4">
+                <button onclick="updateUser()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Save Changes</button>
+                <button onclick="hideEditUserModal()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <!-- Add Client Modal -->
+    <div id="add-client-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideAddClientModal()">
+        <div class="bg-white rounded-xl p-6 w-[90%] sm:w-96 max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">New Client</h3>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Client Name *</label><input type="text" id="client-name" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Email</label><input type="email" id="client-email" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Company</label><input type="text" id="client-company" class="w-full border rounded-lg px-4 py-2"></div>
+            <div class="flex gap-4">
+                <button onclick="addClient()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg">Add Client</button>
+                <button onclick="hideAddClientModal()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <!-- View Client Modal -->
+    <div id="view-client-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideViewClientModal()">
+        <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[600px] max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Client Profile</h3>
+                <button onclick="hideViewClientModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="client-details"></div>
+        </div>
+    </div>
+    <!-- Day Posts Modal -->
+    <div id="day-posts-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideDayPostsModal()">
+        <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[600px] max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="day-posts-title">Posts for Day 26</h3>
+                <button onclick="hideDayPostsModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="day-posts-list" class="space-y-3"></div>
+        </div>
+    </div>
+    <!-- Add Account Modal -->
+    <div id="add-account-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hideAddAccountModal()">
+        <div class="bg-white rounded-xl p-6 w-full sm:w-[450px] max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <h3 class="text-lg font-bold mb-4">Link New Account</h3>
+            <input type="hidden" id="account-client-id">
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Platform *</label>
+                <select id="account-platform" class="w-full border rounded-lg px-4 py-3 text-sm" onchange="updateAccountFields()">
+                    <option value="">Select Platform</option><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option>
+                </select>
+            </div>
+            <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Account Name</label><input type="text" id="account-name" class="w-full border rounded-lg px-4 py-3 text-sm"></div>
+            <div class="mb-4" id="account-token-field"><label class="block text-gray-700 mb-2 text-sm">Access Token *</label><textarea id="account-token" class="w-full border rounded-lg px-4 py-3 h-20 text-xs"></textarea></div>
+            <div class="mb-4" id="account-id-field"><label class="block text-gray-700 mb-2 text-sm">Account ID / Page ID</label><input type="text" id="account-id" class="w-full border rounded-lg px-4 py-3"></div>
+            <div class="bg-blue-50 p-3 rounded-lg mb-4 text-sm" id="platform-help">Select a platform first</div>
+            <div class="flex gap-4">
+                <button onclick="saveAccount()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg">Link Account</button>
+                <button onclick="hideAddAccountModal()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <!-- Add Task Modal -->
+    <div id="add-task-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hideAddTaskModal()">
+        <div class="bg-white rounded-xl p-6 w-full sm:w-[550px] max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">New Task</h3>
+                <button onclick="hideAddTaskModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div><label class="block text-gray-700 font-medium mb-1 text-sm">Task Title *</label><input type="text" id="task-title" class="w-full border rounded-lg px-4 py-2" placeholder="e.g. Design Q1 campaign ad"></div>
+                <div><label class="block text-gray-700 font-medium mb-1 text-sm">Description</label><textarea id="task-description" class="w-full border rounded-lg px-4 py-2 h-24 resize-none" placeholder="Task details..."></textarea></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-gray-700 font-medium mb-1 text-sm">Client</label><select id="task-client" class="w-full border rounded-lg px-4 py-2"><option value="">No client</option></select></div>
+                    <div><label class="block text-gray-700 font-medium mb-1 text-sm">Assign To</label><select id="task-assignee" class="w-full border rounded-lg px-4 py-2"><option value="">Unassigned</option></select></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label class="block text-gray-700 font-medium mb-1 text-sm">Priority</label>
+                        <select id="task-priority" class="w-full border rounded-lg px-4 py-2"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="high">High</option><option value="low">Low</option></select>
+                    </div>
+                    <div><label class="block text-gray-700 font-medium mb-1 text-sm">Category</label>
+                        <select id="task-category" class="w-full border rounded-lg px-4 py-2"><option value="general">General</option><option value="design">Design</option><option value="content">Content</option><option value="development">Development</option><option value="admin">Admin</option></select>
+                    </div>
+                    <div><label class="block text-gray-700 font-medium mb-1 text-sm">Due Date</label><input type="date" id="task-due-date" class="w-full border rounded-lg px-4 py-2"></div>
+                </div>
+                <div class="flex gap-4 pt-2">
+                    <button onclick="submitTask()" class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 font-semibold">Create Task</button>
+                    <button onclick="hideAddTaskModal()" class="flex-1 bg-gray-200 px-4 py-3 rounded-lg hover:bg-gray-300">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Task Detail Modal -->
+    <div id="task-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hideTaskDetailModal()">
+        <div class="bg-white rounded-xl p-6 w-full sm:w-[650px] max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="task-detail-title">Task Details</h3>
+                <button onclick="hideTaskDetailModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="task-detail-content"></div>
+        </div>
+    </div>
+    <!-- Posting Rules Modal -->
+    <div id="posting-rules-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hidePostingRulesModal()">
+        <div class="bg-white rounded-xl p-6 w-full sm:w-[600px] max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Posting Rules</h3>
+                <button onclick="hidePostingRulesModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="posting-rules-content"></div>
+        </div>
+    </div>
+
+    <!-- Post Detail Modal -->
+    <div id="post-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hidePostDetailModal()">
+        <div class="bg-white rounded-xl p-6 w-full sm:w-[750px] max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="post-detail-title">Post Details</h3>
+                <button onclick="hidePostDetailModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="post-detail-content"></div>
+        </div>
+    </div>
+
+    <script>
+const API_URL = '/api';
+
+function esc(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+let currentUser = null;
+let currentMonth = new Date();
+let scheduledPostsData = [];
+let postsChart, platformChart, hourlyChart;
+
+let platformImages = { instagram: [], linkedin: [], facebook: [] };
+let platformVideos = { instagram: null, linkedin: null, facebook: null };
+let carouselPreviewIndex = 0;
+let sortableInstance = null;
+let currentPostType = 'post';
+
+function onPostTypeChange() {
+    const select = document.getElementById('post-type-select');
+    currentPostType = select.value;
+    const storyFeatures = document.getElementById('instagram-story-features');
+    if (currentPostType === 'story') {
+        document.getElementById('size-instagram').value = '1080x1920';
+        document.getElementById('size-facebook').value = '1080x1920';
+        document.getElementById('platform-linkedin').checked = false;
+        document.getElementById('platform-linkedin').disabled = true;
+        if (storyFeatures) storyFeatures.classList.remove('hidden');
+    } else {
+        document.getElementById('size-instagram').value = '1080x1080';
+        document.getElementById('size-facebook').value = '1080x1080';
+        document.getElementById('size-linkedin').value = '1200x627';
+        document.getElementById('platform-linkedin').disabled = false;
+        if (storyFeatures) storyFeatures.classList.add('hidden');
+    }
+    updatePreview();
+}
+
+function getPlatformSize(platform) {
+    const select = document.getElementById('size-' + platform);
+    return select ? select.value : '1080x1080';
+}
+
+function updatePreview() {
+    const platforms = ['instagram', 'linkedin', 'facebook'];
+    let activePlatforms = 0;
+    platforms.forEach(p => { if (document.getElementById('platform-' + p).checked) activePlatforms++; });
+    const countEl = document.getElementById('preview-platforms-count');
+    if (countEl) countEl.textContent = activePlatforms;
+    const typeEl = document.getElementById('preview-type');
+    const typeTextEl = document.getElementById('preview-type-text');
+    if (currentPostType === 'story') {
+        if (typeEl) typeEl.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
+        if (typeTextEl) typeTextEl.textContent = 'Story';
+    } else {
+        if (typeEl) typeEl.innerHTML = '<i class="fa-solid fa-image"></i>';
+        if (typeTextEl) typeTextEl.textContent = 'Image';
+    }
+}
+
+function updateLivePreview() {
+    const clientSelect = document.getElementById('post-client');
+    const clientName = clientSelect ? clientSelect.options[clientSelect.selectedIndex]?.text : 'Client Name';
+    document.getElementById('preview-name').textContent = clientName || 'Client Name';
+    const initials = (clientName || 'C').charAt(0).toUpperCase();
+    document.getElementById('preview-avatar').textContent = initials;
+    const caption = document.getElementById('caption-instagram')?.value || document.getElementById('caption-linkedin')?.value || document.getElementById('caption-facebook')?.value || '';
+    document.getElementById('preview-caption').textContent = caption || 'Caption will appear here...';
+    const imgCount = platformImages.instagram.length + platformImages.linkedin.length + platformImages.facebook.length;
+    document.getElementById('preview-images-count').textContent = imgCount;
+}
+
+function showRegister() { document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); }
+function showLogin() { document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); }
+
+function login() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { document.getElementById('login-error').textContent = 'Enter email and password'; document.getElementById('login-error').classList.remove('hidden'); return; }
+    fetch(API_URL + '/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { currentUser = data.user; localStorage.setItem('user', JSON.stringify(currentUser)); showApp(); }
+        else { document.getElementById('login-error').textContent = data.error || 'Invalid credentials'; document.getElementById('login-error').classList.remove('hidden'); }
+    });
+}
+
+async function register() {
+    const name = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const confirm = document.getElementById('register-confirm').value;
+    const errorEl = document.getElementById('register-error');
+    const successEl = document.getElementById('register-success');
+    errorEl.classList.add('hidden'); successEl.classList.add('hidden');
+    if (!name || !email || !password || !confirm) { errorEl.textContent = 'All fields are required'; errorEl.classList.remove('hidden'); return; }
+    if (!email.includes('@')) { errorEl.textContent = 'Invalid email address'; errorEl.classList.remove('hidden'); return; }
+    if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters'; errorEl.classList.remove('hidden'); return; }
+    if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; errorEl.classList.remove('hidden'); return; }
+    try {
+        const res = await fetch(API_URL + '/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) }).then(r => r.json());
+        if (res.success) { successEl.textContent = 'Account created successfully!'; successEl.classList.remove('hidden'); document.getElementById('register-name').value = ''; document.getElementById('register-email').value = ''; document.getElementById('register-password').value = ''; document.getElementById('register-confirm').value = ''; setTimeout(() => { document.getElementById('login-email').value = email; showLogin(); }, 3000); }
+        else { errorEl.textContent = res.error || 'Could not create account'; errorEl.classList.remove('hidden'); }
+    } catch (e) { errorEl.textContent = 'Connection error'; errorEl.classList.remove('hidden'); }
+}
+
+function logout() { currentUser = null; localStorage.removeItem('user'); document.getElementById('main-app').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); }
+
+function showApp() {
+    document.getElementById('login-screen')?.classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    document.getElementById('user-name').textContent = currentUser.name || currentUser.username || currentUser.email;
+    const jobTitleEl = document.getElementById('user-job-title');
+    if (currentUser.job_title) { jobTitleEl.textContent = currentUser.job_title; jobTitleEl.classList.remove('hidden'); } else { jobTitleEl.classList.add('hidden'); }
+    if (currentUser.role !== 'admin') { const usersNav = document.getElementById('users-nav'); if (usersNav) usersNav.classList.add('hidden'); }
+    if (currentUser.dark_mode) document.body.classList.add('dark');
+    showSection('dashboard');
+    loadNotificationCount();
+}
+
+function checkAuth() {
+    const saved = localStorage.getItem('user');
+    if (saved) {
+        try {
+            currentUser = JSON.parse(saved);
+            showApp();
+        } catch (e) {
+            localStorage.removeItem('user');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('main-app').classList.add('hidden');
+        }
+    } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('main-app').classList.add('hidden');
+    }
+}
+
+function toggleMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('hidden');
+    document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+}
+
+function closeMobileMenu() {
+    if (window.innerWidth < 1024) {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('mobile-overlay').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark');
+    const isDark = document.body.classList.contains('dark') ? 1 : 0;
+    if (currentUser) {
+        fetch(API_URL + '/users/' + currentUser.id + '/dark-mode', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dark_mode: isDark }) });
+        currentUser.dark_mode = isDark;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+    }
+}
+
+function updateTime() { document.getElementById('current-time').textContent = new Date().toLocaleString('en-US'); }
+setInterval(updateTime, 1000);
+
+function showSection(section) {
+    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+    document.getElementById('section-' + section)?.classList.remove('hidden');
+    // Update active sidebar nav
+    document.querySelectorAll('#sidebar nav a').forEach(a => {
+        a.classList.remove('bg-slate-800', 'text-white');
+        a.classList.add('text-slate-300');
+    });
+    const navMap = { dashboard: 0, clients: 1, newpost: 2, bulk: 3, tasks: 4, pipeline: 5, calendar: 6, analytics: 7, scheduled: 8, users: 9, settings: 10, 'notifications-page': 11 };
+    const navLinks = document.querySelectorAll('#sidebar nav a');
+    if (navMap[section] !== undefined && navLinks[navMap[section]]) {
+        navLinks[navMap[section]].classList.add('bg-slate-800', 'text-white');
+        navLinks[navMap[section]].classList.remove('text-slate-300');
+    }
+    if (section === 'dashboard') loadDashboard();
+    if (section === 'clients') loadClients();
+    if (section === 'newpost') { loadClientsDropdown(); loadBriefDropdowns(); initPlatformGalleries(); }
+    if (section === 'bulk') { loadClientsDropdown('bulk-client'); initBulkPosts(); }
+    if (section === 'calendar') loadCalendar();
+    if (section === 'analytics') loadAnalytics();
+    if (section === 'scheduled') loadScheduledPosts();
+    if (section === 'users') loadUsers();
+    if (section === 'tasks') loadTasks();
+    if (section === 'pipeline') loadPipeline();
+    if (section === 'notifications-page') loadNotifications();
+}
+
+async function loadDashboard() {
+    let stats;
+    try { stats = await fetch(API_URL + '/stats').then(r => r.json()); } catch (e) { console.error('Failed to load dashboard:', e); return; }
+    document.getElementById('stat-clients').textContent = stats.total_clients;
+    document.getElementById('stat-accounts').textContent = stats.total_accounts;
+    document.getElementById('stat-pending').textContent = stats.pending_posts;
+    document.getElementById('stat-posted').textContent = stats.posted_posts;
+    document.getElementById('stat-failed').textContent = stats.failed_posts;
+    const recentDiv = document.getElementById('recent-activity');
+    recentDiv.innerHTML = stats.recent_posts.map(p => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div><p class="font-semibold">${esc(p.topic?.substring(0, 20) || '')}...</p><p class="text-sm text-gray-500">${getPlatformIcon(p.platforms)} ${esc(p.platforms)}</p></div>
+            <span class="px-2 py-1 rounded text-xs ${p.status === 'posted' ? 'bg-green-100 text-green-800' : p.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">${p.status === 'posted' ? 'Published' : p.status === 'pending' ? 'Pending' : 'Failed'}</span>
+        </div>
+    `).join('') || '<p class="text-gray-500 text-center">No recent activity</p>';
+}
+
+function getPlatformIcon(platform) {
+    if (platform === 'instagram') return '<i class="fa-brands fa-instagram text-pink-500"></i>';
+    if (platform === 'linkedin') return '<i class="fa-brands fa-linkedin text-blue-600"></i>';
+    if (platform === 'facebook') return '<i class="fa-brands fa-facebook text-blue-500"></i>';
+    return '<i class="fa-solid fa-share-nodes"></i>';
+}
+
+function getPlatformBgClass(platform) {
+    if (platform === 'instagram') return 'bg-pink-100 text-pink-800';
+    if (platform === 'linkedin') return 'bg-blue-100 text-blue-800';
+    if (platform === 'facebook') return 'bg-indigo-100 text-indigo-800';
+    return 'bg-gray-100';
+}
+
+async function loadAnalytics() {
+    let data;
+    try { data = await fetch(API_URL + '/analytics').then(r => r.json()); } catch (e) { console.error('Failed to load analytics:', e); return; }
+    document.getElementById('analytics-total').textContent = data.total_posts;
+    document.getElementById('analytics-rate').textContent = data.success_rate + '%';
+    document.getElementById('analytics-posted').textContent = data.posted;
+    document.getElementById('analytics-failed').textContent = data.failed;
+    if (postsChart) postsChart.destroy();
+    postsChart = new Chart(document.getElementById('postsChart'), { type: 'line', data: { labels: data.posts_per_day.map(d => d.date), datasets: [{ label: 'Posts', data: data.posts_per_day.map(d => d.count), borderColor: '#6366f1', tension: 0.4, fill: true, backgroundColor: 'rgba(99,102,241,0.1)' }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
+    if (platformChart) platformChart.destroy();
+    platformChart = new Chart(document.getElementById('platformChart'), { type: 'doughnut', data: { labels: data.platform_distribution.map(p => p.platform), datasets: [{ data: data.platform_distribution.map(p => p.count), backgroundColor: ['#ec4899', '#3b82f6', '#6366f1'] }] } });
+    if (hourlyChart) hourlyChart.destroy();
+    hourlyChart = new Chart(document.getElementById('hourlyChart'), { type: 'bar', data: { labels: data.hourly_distribution.map(h => h.hour + ':00'), datasets: [{ label: 'Posts', data: data.hourly_distribution.map(h => h.count), backgroundColor: '#6366f1' }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
+    document.getElementById('top-clients').innerHTML = data.top_clients.map((c, i) => `<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"><span>${i + 1}. ${c.name}</span><span class="font-bold text-indigo-600">${c.posts} posts</span></div>`).join('') || '<p class="text-gray-500">No data yet</p>';
+}
+
+async function loadUsers() {
+    const users = await fetch(API_URL + '/users').then(r => r.json());
+    document.getElementById('users-table').innerHTML = users.map(u => `
+        <tr class="border-t hover:bg-gray-50">
+            <td class="px-6 py-4 font-semibold">${esc(u.username)}</td>
+            <td class="px-6 py-4">${esc(u.email)}</td>
+            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-sm ${u.role === 'admin' ? 'bg-purple-100 text-purple-800' : u.role === 'manager' ? 'bg-blue-100 text-blue-800' : u.role === 'sm_specialist' ? 'bg-green-100 text-green-800' : u.role === 'designer' ? 'bg-pink-100 text-pink-800' : u.role === 'motion_editor' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100'}">${({admin:'Admin',manager:'Manager',sm_specialist:'SM Specialist',designer:'Designer',motion_editor:'Motion Editor',user:'User'})[u.role] || u.role}</span></td>
+            <td class="px-6 py-4 text-sm text-gray-600">${u.job_title ? esc(u.job_title) : '—'}</td>
+            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-sm ${u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td class="px-6 py-4 flex gap-2">${`<button onclick="showEditUserModal(${u.id})" class="text-indigo-600 hover:underline" title="Edit"><i class="fa-solid fa-pen"></i></button>`}${u.id !== currentUser?.id ? ` <button onclick="deleteUser(${u.id})" class="text-red-600 hover:underline" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
+        </tr>
+    `).join('');
+}
+
+function showAddUserModal() { document.getElementById('add-user-modal').classList.remove('hidden'); }
+function hideAddUserModal() { document.getElementById('add-user-modal').classList.add('hidden'); }
+
+async function addUser() {
+    const data = { username: document.getElementById('new-username').value, email: document.getElementById('new-email').value, password: document.getElementById('new-password').value, role: document.getElementById('new-role').value, job_title: document.getElementById('new-job-title').value.trim(), phone: document.getElementById('new-phone').value.trim() };
+    if (!data.username || !data.email || !data.password) { alert('All fields are required'); return; }
+    const res = await fetch(API_URL + '/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+    if (res.success) { hideAddUserModal(); loadUsers(); alert('User added successfully'); } else { alert('Error: ' + res.error); }
+}
+
+async function deleteUser(id) { if (confirm('Are you sure you want to delete this user?')) { await fetch(API_URL + '/users/' + id, { method: 'DELETE' }); loadUsers(); } }
+
+async function showEditUserModal(id) {
+    const users = await fetch(API_URL + '/users').then(r => r.json());
+    const user = users.find(u => u.id === id);
+    if (!user) { alert('User not found'); return; }
+    document.getElementById('edit-user-id').value = user.id;
+    document.getElementById('edit-username').value = user.username || '';
+    document.getElementById('edit-email').value = user.email || '';
+    document.getElementById('edit-role').value = user.role || 'user';
+    document.getElementById('edit-job-title').value = user.job_title || '';
+    document.getElementById('edit-phone').value = user.phone || '';
+    document.getElementById('edit-user-modal').classList.remove('hidden');
+}
+function hideEditUserModal() { document.getElementById('edit-user-modal').classList.add('hidden'); }
+
+async function updateUser() {
+    const id = document.getElementById('edit-user-id').value;
+    const data = { username: document.getElementById('edit-username').value.trim(), email: document.getElementById('edit-email').value.trim(), role: document.getElementById('edit-role').value, job_title: document.getElementById('edit-job-title').value.trim(), phone: document.getElementById('edit-phone').value.trim() };
+    if (!data.username || !data.email) { alert('Username and email are required'); return; }
+    const res = await fetch(API_URL + '/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+    if (res.success) { hideEditUserModal(); loadUsers(); alert('User updated successfully'); } else { alert('Error: ' + (res.error || 'Update failed')); }
+}
+
+function filterUsersTable() {
+    const q = (document.getElementById('user-search')?.value || '').toLowerCase();
+    document.querySelectorAll('#users-table tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+function filterClientsTable() {
+    const q = (document.getElementById('client-search')?.value || '').toLowerCase();
+    document.querySelectorAll('#clients-table tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+let bulkPostCount = 0;
+function initBulkPosts() { bulkPostCount = 0; document.getElementById('bulk-posts').innerHTML = ''; addBulkPost(); }
+
+function addBulkPost() {
+    bulkPostCount++;
+    document.getElementById('bulk-posts').insertAdjacentHTML('beforeend', `
+        <div class="border rounded-lg p-4 bg-gray-50" id="bulk-post-${bulkPostCount}">
+            <div class="flex justify-between items-center mb-3"><span class="font-semibold">Post #${bulkPostCount}</span><button onclick="removeBulkPost(${bulkPostCount})" class="text-red-500"><i class="fa-solid fa-trash"></i></button></div>
+            <div class="grid grid-cols-2 gap-4">
+                <input type="text" class="bulk-topic w-full border rounded px-3 py-2" placeholder="Topic">
+                <select class="bulk-platform w-full border rounded px-3 py-2"><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option></select>
+                <input type="text" class="bulk-image w-full border rounded px-3 py-2" placeholder="Image URL (optional)">
+                <input type="datetime-local" class="bulk-schedule w-full border rounded px-3 py-2">
+            </div>
+        </div>
+    `);
+}
+
+function removeBulkPost(id) { document.getElementById('bulk-post-' + id)?.remove(); }
+
+async function submitBulkPosts() {
+    const clientId = document.getElementById('bulk-client').value;
+    const posts = [];
+    document.querySelectorAll('#bulk-posts > div').forEach(el => {
+        const topic = el.querySelector('.bulk-topic').value;
+        const platform = el.querySelector('.bulk-platform').value;
+        const image = el.querySelector('.bulk-image').value;
+        const schedule = el.querySelector('.bulk-schedule').value;
+        if (topic && schedule) posts.push({ client_id: parseInt(clientId), topic, platforms: platform, image_url: image, scheduled_at: schedule, caption: '' });
+    });
+    if (posts.length === 0) { alert('Add posts first'); return; }
+    const res = await fetch(API_URL + '/bulk-schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ posts }) }).then(r => r.json());
+    document.getElementById('bulk-result').innerHTML = `<div class="bg-green-100 p-4 rounded-lg">Successfully scheduled ${res.success_count} of ${res.total} posts</div>`;
+    initBulkPosts();
+}
+
+async function loadClients() {
+    try {
+        const clients = await fetch(API_URL + '/clients').then(r => r.json());
+        document.getElementById('clients-table').innerHTML = clients.map(c => `
+            <tr class="border-t hover:bg-gray-50">
+                <td class="px-6 py-4 font-semibold">${esc(c.name)}</td>
+                <td class="px-6 py-4">${esc(c.company) || '-'}</td>
+                <td class="px-6 py-4">${esc(c.email) || '-'}</td>
+                <td class="px-6 py-4">${c.accounts ? `<span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-semibold">${c.accounts.length}</span>` : '<span class="text-gray-400">0</span>'}</td>
+                <td class="px-6 py-4">
+                    <button onclick="viewClient(${c.id})" class="text-indigo-600 mr-2"><i class="fa-solid fa-eye"></i></button>
+                    <button onclick="deleteClient(${c.id})" class="text-red-600"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('') || '<tr><td colspan="5" class="text-center py-8 text-gray-500">No clients registered yet</td></tr>';
+    } catch (e) { console.error('Error loading clients:', e); }
+}
+
+async function viewClient(id) {
+    try {
+        const client = await fetch(API_URL + '/clients/' + id).then(r => r.json());
+        document.getElementById('client-details').innerHTML = `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-sm">Name</p><p class="font-semibold">${client.name}</p></div>
+                <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-sm">Company</p><p class="font-semibold">${client.company || '-'}</p></div>
+            </div>
+            <div class="flex gap-2 mb-4">
+                <button onclick="hideViewClientModal(); showPostingRules(${client.id})" class="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-sm hover:bg-purple-200 transition font-semibold"><i class="fa-solid fa-calendar-check mr-1"></i> Posting Rules</button>
+            </div>
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="font-bold">Linked Accounts</h4>
+                <button onclick="hideViewClientModal(); showAddAccountModal(${client.id})" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm"><i class="fa-solid fa-plus mr-1"></i> Add</button>
+            </div>
+            <div class="space-y-2">
+                ${client.accounts.map(a => `
+                    <div class="flex justify-between items-center p-3 rounded-lg ${getPlatformBgClass(a.platform)}">
+                        <span>${getPlatformIcon(a.platform)} ${a.platform} ${a.account_name ? '- ' + a.account_name : ''}</span>
+                        <button onclick="deleteAccount(${a.id}, ${client.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `).join('') || '<p class="text-gray-500">No linked accounts yet</p>'}
+            </div>
+        `;
+        document.getElementById('view-client-modal').classList.remove('hidden');
+    } catch (e) { console.error('Error viewing client:', e); alert('Could not load client data'); }
+}
+
+function hideViewClientModal() { document.getElementById('view-client-modal').classList.add('hidden'); }
+function showAddClientModal() { document.getElementById('client-name').value = ''; document.getElementById('client-email').value = ''; document.getElementById('client-company').value = ''; document.getElementById('add-client-modal').classList.remove('hidden'); }
+function hideAddClientModal() { document.getElementById('add-client-modal').classList.add('hidden'); }
+
+async function addClient() {
+    const data = { name: document.getElementById('client-name').value.trim(), email: document.getElementById('client-email').value.trim(), company: document.getElementById('client-company').value.trim() };
+    if (!data.name) { alert('Enter client name'); return; }
+    try {
+        const res = await fetch(API_URL + '/clients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (res.ok) { hideAddClientModal(); loadClients(); alert('Client added successfully'); } else { const error = await res.text(); alert('Could not add client: ' + error); }
+    } catch (e) { alert('Connection error: ' + e.message); }
+}
+
+async function deleteClient(id) { if (confirm('Are you sure you want to delete this client?')) { await fetch(API_URL + '/clients/' + id, { method: 'DELETE' }); loadClients(); } }
+
+function showAddAccountModal(clientId) {
+    document.getElementById('account-client-id').value = clientId;
+    document.getElementById('account-platform').value = '';
+    document.getElementById('account-name').value = '';
+    document.getElementById('account-token').value = '';
+    document.getElementById('account-id').value = '';
+    document.getElementById('platform-help').textContent = 'Select a platform first';
+    document.getElementById('account-token-field').style.display = 'block';
+    document.getElementById('account-id-field').style.display = 'block';
+    document.getElementById('add-account-modal').classList.remove('hidden');
+}
+function hideAddAccountModal() { document.getElementById('add-account-modal').classList.add('hidden'); }
+
+function updateAccountFields() {
+    const p = document.getElementById('account-platform').value;
+    const helpText = { 'instagram': 'Instagram: Access Token + Account ID from Graph API', 'linkedin': 'LinkedIn: Access Token only', 'facebook': 'Facebook: Page Access Token + Page ID from Graph API' };
+    document.getElementById('platform-help').textContent = helpText[p] || 'Select a platform first';
+    document.getElementById('account-id-field').style.display = p === 'linkedin' ? 'none' : 'block';
+}
+
+async function saveAccount() {
+    const data = { platform: document.getElementById('account-platform').value, account_name: document.getElementById('account-name').value, access_token: document.getElementById('account-token').value, account_id: document.getElementById('account-id').value };
+    if (!data.platform) { alert('Select a platform first'); return; }
+    if (!data.access_token) { alert('Enter the Access Token'); return; }
+    const clientId = document.getElementById('account-client-id').value;
+    await fetch(API_URL + '/clients/' + clientId + '/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    hideAddAccountModal(); viewClient(clientId);
+}
+
+async function deleteAccount(accountId, clientId) { if (confirm('Are you sure you want to unlink this account?')) { await fetch(API_URL + '/accounts/' + accountId, { method: 'DELETE' }); viewClient(clientId); } }
+
+async function loadClientsDropdown(id = 'post-client') {
+    const clients = await fetch(API_URL + '/clients').then(r => r.json());
+    document.getElementById(id).innerHTML = clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+async function loadCalendar() { scheduledPostsData = await fetch(API_URL + '/all-posts').then(r => r.json()); renderCalendar(); }
+
+function renderCalendar() {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    document.getElementById('calendar-month').textContent = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let html = '';
+    for (let i = 0; i < firstDay; i++) html += '<div class="bg-gray-50 rounded p-2 min-h-[80px]"></div>';
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const posts = scheduledPostsData.filter(p => p.scheduled_at?.startsWith(dateStr) || p.created_at?.startsWith(dateStr));
+        const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+        const hasPosts = posts.length > 0;
+        html += `<div class="bg-white border rounded-lg p-2 min-h-[80px] ${isToday ? 'ring-2 ring-indigo-500' : ''} ${hasPosts ? 'cursor-pointer hover:bg-gray-50 transition' : ''}" ${hasPosts ? `onclick="showDayPosts('${dateStr}', ${day})"` : ''}>
+            <div class="font-semibold text-sm ${isToday ? 'text-indigo-600' : ''}">${day}</div>
+            ${posts.slice(0, 2).map(p => `<div class="text-xs mt-1 px-2 py-1 rounded ${getPlatformBgClass(p.platforms)} truncate">${getPlatformIcon(p.platforms)} ${p.topic?.substring(0, 10) || ''}...</div>`).join('')}
+            ${posts.length > 2 ? `<div class="text-xs text-indigo-600 font-semibold mt-1 text-center">+${posts.length - 2} more</div>` : ''}
+        </div>`;
+    }
+    document.getElementById('calendar-grid').innerHTML = html;
+}
+
+function showDayPosts(dateStr, day) {
+    const posts = scheduledPostsData.filter(p => p.scheduled_at?.startsWith(dateStr) || p.created_at?.startsWith(dateStr));
+    document.getElementById('day-posts-title').textContent = `Posts for Day ${day}`;
+    if (posts.length === 0) { document.getElementById('day-posts-list').innerHTML = '<p class="text-gray-500 text-center py-8">No posts on this day</p>'; }
+    else {
+        document.getElementById('day-posts-list').innerHTML = posts.map(p => `
+            <div class="border rounded-xl p-4 hover:shadow-md transition ${p.status === 'posted' ? 'border-green-200 bg-green-50' : p.status === 'failed' ? 'border-red-200 bg-red-50' : 'border-yellow-200 bg-yellow-50'}">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center gap-2"><span class="text-2xl">${getPlatformIcon(p.platforms)}</span><div><p class="font-semibold">${p.topic || 'Untitled'}</p><p class="text-xs text-gray-500">${p.platforms}</p></div></div>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${p.status === 'posted' ? 'bg-green-200 text-green-800' : p.status === 'failed' ? 'bg-red-200 text-red-800' : 'bg-yellow-200 text-yellow-800'}">${p.status === 'posted' ? 'Published' : p.status === 'failed' ? 'Failed' : 'Pending'}</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-2 line-clamp-2">${p.caption || ''}</p>
+                <div class="flex justify-between items-center text-xs text-gray-400">
+                    <span><i class="fa-regular fa-clock mr-1"></i>${p.scheduled_at?.replace('T', ' ') || p.created_at?.replace('T', ' ') || ''}</span>
+                    <span>${p.client_name || ''}</span>
+                </div>
+                ${p.image_url ? `<div class="mt-2"><img src="${p.image_url.split(',')[0]}" class="h-16 w-16 object-cover rounded-lg"></div>` : ''}
+            </div>
+        `).join('');
+    }
+    document.getElementById('day-posts-modal').classList.remove('hidden');
+}
+
+function hideDayPostsModal() { document.getElementById('day-posts-modal').classList.add('hidden'); }
+function changeMonth(delta) { currentMonth.setMonth(currentMonth.getMonth() + delta); renderCalendar(); }
+
+async function loadScheduledPosts() {
+    const platform = document.getElementById('filter-platform')?.value || '';
+    const posts = await fetch(API_URL + '/all-posts?status=pending' + (platform ? '&platform=' + platform : '')).then(r => r.json());
+    document.getElementById('scheduled-table').innerHTML = posts.map(p => `
+        <tr class="border-t hover:bg-gray-50">
+            <td class="px-6 py-4">${p.client_name || '-'}</td>
+            <td class="px-6 py-4">${p.topic?.substring(0, 20) || ''}...</td>
+            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-sm ${getPlatformBgClass(p.platforms)}">${getPlatformIcon(p.platforms)} ${p.platforms}</span></td>
+            <td class="px-6 py-4">${p.scheduled_at?.replace('T', ' ') || '-'}</td>
+            <td class="px-6 py-4"><button onclick="deletePost(${p.id})" class="text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>
+    `).join('') || '<tr><td colspan="5" class="text-center py-8 text-gray-500">No scheduled posts</td></tr>';
+}
+
+async function deletePost(id) { if (confirm('Are you sure you want to delete this post?')) { await fetch(API_URL + '/posts/' + id, { method: 'DELETE' }); loadScheduledPosts(); } }
+
+async function runSchedulerNow() {
+    if (!confirm('Publish all due posts now?')) return;
+    try {
+        const data = await fetch(API_URL + '/run-scheduler', { method: 'POST' }).then(r => r.json());
+        if (data.success) { alert('Scheduler executed successfully!'); loadScheduledPosts(); loadDashboard(); } else { alert('Error: ' + (data.error || 'Could not run scheduler')); }
+    } catch (e) { alert('Connection error'); }
+}
+
+async function forcePublishAll(e) {
+    if (!confirm('Force publish ALL pending posts regardless of schedule?')) return;
+    try {
+        const btn = e ? e.target.closest('button') : document.querySelector('#section-scheduled button');
+        const originalText = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '<div class="loading-spinner inline-block"></div> Publishing...';
+        const data = await fetch(API_URL + '/force-publish-all', { method: 'POST' }).then(r => r.json());
+        btn.disabled = false; btn.innerHTML = originalText;
+        if (data.success) { alert(data.message); loadScheduledPosts(); loadDashboard(); } else { alert('Error: ' + (data.error || 'Publishing failed')); }
+    } catch (e) { alert('Connection error'); }
+}
+// ============ PLATFORM IMAGE HANDLING ==========
+
+function initPlatformGalleries() {
+    platformImages = { instagram: [], linkedin: [], facebook: [] };
+    platformVideos = { instagram: null, linkedin: null, facebook: null };
+    renderPlatformGallery('instagram'); renderPlatformGallery('linkedin'); renderPlatformGallery('facebook');
+    renderPlatformVideoPreview('instagram'); renderPlatformVideoPreview('linkedin'); renderPlatformVideoPreview('facebook');
+    initUploadDragDrop();
+}
+
+function initUploadDragDrop() {
+    document.querySelectorAll('.upload-zone').forEach(zone => {
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault(); zone.classList.remove('dragover');
+            const input = zone.querySelector('input[type="file"]');
+            if (input && e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                input.dispatchEvent(new Event('change'));
+            }
+        });
+    });
+}
+
+async function uploadPlatformImages(platform, input) {
+    if (!input.files || !input.files.length) return;
+    const maxImages = platform === 'linkedin' ? 9 : 10;
+    const remaining = maxImages - platformImages[platform].length;
+    if (remaining <= 0) { alert(`Maximum ${maxImages} images for ${platform}`); return; }
+    const filesToUpload = Array.from(input.files).slice(0, remaining);
+    const formData = new FormData();
+    filesToUpload.forEach(file => formData.append('images', file));
+    const gallery = document.getElementById(`${platform}-gallery`);
+    const originalContent = gallery.innerHTML;
+    gallery.innerHTML = '<div class="text-sm text-gray-500">Uploading images...</div>';
+    try {
+        const res = await fetch(API_URL + '/upload-multiple', { method: 'POST', body: formData }).then(r => r.json());
+        if (res.urls && res.urls.length > 0) {
+            res.urls.forEach(img => platformImages[platform].push({ url: img.url, filename: img.filename }));
+            platformVideos[platform] = null;
+            renderPlatformVideoPreview(platform);
+            renderPlatformGallery(platform);
+        } else { gallery.innerHTML = originalContent; alert('Could not upload images'); }
+    } catch (e) { gallery.innerHTML = originalContent; alert('Error uploading images'); }
+}
+
+function removePlatformImage(platform, index) { platformImages[platform].splice(index, 1); renderPlatformGallery(platform); }
+
+function renderPlatformGallery(platform) {
+    const gallery = document.getElementById(`${platform}-gallery`);
+    if (!gallery) return;
+    if (platformImages[platform].length === 0) { gallery.innerHTML = ''; return; }
+    gallery.innerHTML = platformImages[platform].map((img, i) => `
+        <div style="position:relative;width:60px;height:60px;border-radius:8px;overflow:hidden;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+            <img src="${img.url}" style="width:100%;height:100%;object-fit:cover;">
+            <span style="position:absolute;top:3px;right:3px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">${i + 1}</span>
+            <span onclick="removePlatformImage('${platform}', ${i})" style="position:absolute;top:3px;left:3px;background:rgba(239,68,68,0.95);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;font-weight:bold;">&#10005;</span>
+        </div>
+    `).join('');
+}
+
+async function uploadPlatformVideo(platform, input) {
+    if (!input.files || !input.files.length) return;
+    const file = input.files[0];
+    if (file.size > 100 * 1024 * 1024) { alert('Video must be under 100MB'); return; }
+    const preview = document.getElementById(`${platform}-video-preview`);
+    preview.innerHTML = '<div class="text-sm text-gray-500 flex items-center gap-2"><div class="loading-spinner"></div> Uploading video...</div>';
+    const formData = new FormData();
+    formData.append('video', file);
+    try {
+        const res = await fetch(API_URL + '/upload-video', { method: 'POST', body: formData }).then(r => r.json());
+        if (res.url) {
+            platformVideos[platform] = { url: res.url, filename: res.filename, duration: res.duration, format: res.format };
+            platformImages[platform] = [];
+            renderPlatformGallery(platform);
+            renderPlatformVideoPreview(platform);
+        } else { preview.innerHTML = ''; alert('Could not upload video: ' + (res.error || 'Unknown error')); }
+    } catch (e) { preview.innerHTML = ''; alert('Error uploading video'); }
+}
+
+function removePlatformVideo(platform) { platformVideos[platform] = null; renderPlatformVideoPreview(platform); }
+
+function renderPlatformVideoPreview(platform) {
+    const preview = document.getElementById(`${platform}-video-preview`);
+    if (!preview) return;
+    if (!platformVideos[platform]) { preview.innerHTML = ''; return; }
+    const video = platformVideos[platform];
+    const colors = { instagram: { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-200' }, linkedin: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' }, facebook: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' } };
+    const c = colors[platform] || colors.instagram;
+    preview.innerHTML = `
+        <div class="flex items-center gap-3 ${c.bg} rounded-lg p-2 border ${c.border}">
+            <div class="w-16 h-16 rounded-lg overflow-hidden bg-black flex-shrink-0"><video src="${video.url}" class="w-full h-full object-cover" muted></video></div>
+            <div class="flex-1 min-w-0"><p class="text-xs font-semibold ${c.text} truncate"><i class="fa-solid fa-film mr-1"></i>Video ready</p><p class="text-xs text-gray-500">${video.duration ? Math.round(video.duration) + 's' : video.format || 'video'}</p></div>
+            <button onclick="removePlatformVideo('${platform}')" class="w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600 transition flex-shrink-0">&#10005;</button>
+        </div>
+    `;
+}
+
+function getStoryFeatures() {
+    const features = {};
+    const getVal = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const locationName = getVal('story-location'); const locationId = getVal('story-location-id');
+    if (locationName || locationId) features.location = { name: locationName, id: locationId };
+    const pollQuestion = getVal('story-poll-question'); const pollOpt1 = getVal('story-poll-option1'); const pollOpt2 = getVal('story-poll-option2');
+    if (pollQuestion && pollOpt1 && pollOpt2) features.poll = { question: pollQuestion, options: [pollOpt1, pollOpt2] };
+    const hashtags = getVal('story-hashtags');
+    if (hashtags) features.hashtags = hashtags.split(',').map(h => h.trim()).filter(h => h);
+    const mentions = getVal('story-mentions');
+    if (mentions) features.mentions = mentions.split(',').map(m => m.trim().replace(/^@/, '')).filter(m => m);
+    const question = getVal('story-question');
+    if (question) features.question = question;
+    const link = getVal('story-link');
+    if (link) features.link = link;
+    return Object.keys(features).length > 0 ? features : null;
+}
+
+async function submitPost() {
+    const clientId = document.getElementById('post-client').value;
+    const topic = document.getElementById('post-topic').value;
+    if (!topic) { alert('Enter the post topic'); return; }
+    const submitBtn = document.getElementById('submit-post-btn');
+    const originalBtnContent = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<div class="loading-spinner"></div><span>Publishing...</span>';
+    document.getElementById('post-result').innerHTML = '';
+    let results = {};
+    const platforms = ['instagram', 'linkedin', 'facebook'];
+    const storyFeatures = currentPostType === 'story' ? getStoryFeatures() : null;
+    for (const platform of platforms) {
+        if (!document.getElementById('platform-' + platform).checked) continue;
+        let caption = document.getElementById('caption-' + platform).value;
+        if (!caption) caption = topic;
+        const scheduleType = document.querySelector(`input[name="schedule-${platform}"]:checked`).value;
+        const imageUrls = platformImages[platform].map(img => img.url);
+        const videoUrl = platformVideos[platform] ? platformVideos[platform].url : null;
+        if (currentPostType === 'story' && platform === 'linkedin') continue;
+        const postData = { client_id: parseInt(clientId), topic, caption, image_urls: imageUrls, platform, post_type: currentPostType, image_size: getPlatformSize(platform) };
+        if (videoUrl) postData.video_url = videoUrl;
+        if (storyFeatures && platform === 'instagram') postData.story_features = storyFeatures;
+        if (scheduleType === 'now') {
+            const res = await fetch(API_URL + '/post-now-single', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(postData) }).then(r => r.json());
+            results[platform] = res;
+        } else {
+            const time = document.getElementById(`schedule-${platform}-time`).value;
+            if (!time) { alert('Set schedule time for ' + platform); submitBtn.disabled = false; submitBtn.innerHTML = originalBtnContent; return; }
+            await fetch(API_URL + '/clients/' + clientId + '/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic, caption, image_url: videoUrl || imageUrls.join(','), platforms: platform, scheduled_at: time, post_type: currentPostType, image_size: getPlatformSize(platform), video_url: videoUrl || '', story_features: storyFeatures && platform === 'instagram' ? JSON.stringify(storyFeatures) : '' }) });
+            results[platform] = { scheduled: true, time };
+        }
+    }
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnContent;
+    document.getElementById('post-result').innerHTML = `
+        <div class="bg-white rounded-2xl shadow-sm p-6">
+            <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"><i class="fa-solid fa-chart-simple text-green-600"></i></span> Publishing Results</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                ${Object.entries(results).map(([p, r]) => `
+                    <div class="result-card ${p} ${!r.success && !r.scheduled ? 'error' : ''}">
+                        <div class="icon">${getOfficialPlatformIcon(p)}</div>
+                        <div class="platform-name">${getPlatformName(p)}</div>
+                        <div class="status">${r.scheduled ? 'Scheduled successfully' : r.success ? 'Published successfully' + (r.type === 'carousel' ? ' (Carousel)' : r.type === 'video' ? ' (Video)' : r.type === 'story' ? ' (Story)' : '') : 'Failed: ' + (r.error || 'Publishing failed')}</div>
+                        <div class="text-xs mt-2 opacity-80">${platformVideos[p] ? 'Video' : platformImages[p] ? platformImages[p].length + ' images' : '0 images'}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    document.getElementById('post-result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function getOfficialPlatformIcon(platform) {
+    const icons = {
+        instagram: `<svg viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>`,
+        linkedin: `<svg viewBox="0 0 24 24" fill="white"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`,
+        facebook: `<svg viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`
+    };
+    return icons[platform] || '';
+}
+
+function getPlatformName(platform) { return ({ instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook' })[platform] || platform; }
+
+// Schedule radio listeners
+document.querySelectorAll('input[name="schedule-instagram"]').forEach(r => r.addEventListener('change', function() { document.getElementById('schedule-instagram-time').classList.toggle('hidden', this.value !== 'later'); }));
+document.querySelectorAll('input[name="schedule-linkedin"]').forEach(r => r.addEventListener('change', function() { document.getElementById('schedule-linkedin-time').classList.toggle('hidden', this.value !== 'later'); }));
+document.querySelectorAll('input[name="schedule-facebook"]').forEach(r => r.addEventListener('change', function() { document.getElementById('schedule-facebook-time').classList.toggle('hidden', this.value !== 'later'); }));
+
+// ============ TASKS MANAGEMENT ============
+let taskViewMode = 'board';
+let kanbanSortables = [];
+
+async function loadTasks() {
+    document.getElementById('btn-board-view').className = taskViewMode === 'board' ? 'bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold' : 'bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm';
+    document.getElementById('btn-list-view').className = taskViewMode === 'list' ? 'bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold' : 'bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm';
+    document.getElementById('tasks-board-view').classList.toggle('hidden', taskViewMode !== 'board');
+    document.getElementById('tasks-list-view').classList.toggle('hidden', taskViewMode !== 'list');
+    await loadTaskFilterDropdowns();
+    const assignee = document.getElementById('task-filter-assignee').value;
+    const clientId = document.getElementById('task-filter-client').value;
+    const priority = document.getElementById('task-filter-priority').value;
+    let params = new URLSearchParams();
+    if (assignee) params.append('assigned_to_id', assignee);
+    if (clientId) params.append('client_id', clientId);
+    if (priority) params.append('priority', priority);
+    if (taskViewMode === 'board') { const board = await fetch(API_URL + '/tasks/board?' + params).then(r => r.json()); renderKanbanBoard(board); }
+    else { const tasks = await fetch(API_URL + '/tasks?' + params).then(r => r.json()); renderTasksList(tasks); }
+}
+
+let taskFilterDropdownsLoaded = false;
+async function loadTaskFilterDropdowns() {
+    if (taskFilterDropdownsLoaded) return;
+    try {
+        const [users, clients] = await Promise.all([fetch(API_URL + '/users').then(r => r.json()), fetch(API_URL + '/clients').then(r => r.json())]);
+        const assigneeSelect = document.getElementById('task-filter-assignee');
+        const savedAssignee = assigneeSelect.value;
+        assigneeSelect.innerHTML = '<option value="">All Members</option>' + users.map(u => `<option value="${u.id}">${esc(u.username)}${u.job_title ? ' — ' + esc(u.job_title) : ''}</option>`).join('');
+        assigneeSelect.value = savedAssignee;
+        const clientSelect = document.getElementById('task-filter-client');
+        const savedClient = clientSelect.value;
+        clientSelect.innerHTML = '<option value="">All Clients</option>' + clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+        clientSelect.value = savedClient;
+        taskFilterDropdownsLoaded = true;
+    } catch(e) { console.error(e); }
+}
+
+function renderKanbanBoard(board) {
+    ['todo', 'in_progress', 'in_review', 'done'].forEach(status => {
+        const col = document.getElementById('col-' + status);
+        const countEl = document.getElementById('count-' + status);
+        const tasks = board[status] || [];
+        countEl.textContent = tasks.length;
+        col.innerHTML = tasks.map(t => renderKanbanCard(t)).join('') || '<div class="text-center text-gray-400 text-sm py-8">No tasks</div>';
+    });
+    initKanbanDragDrop();
+}
+
+function renderKanbanCard(task) {
+    const priorityLabels = { urgent: 'Urgent', high: 'High', normal: 'Normal', low: 'Low' };
+    const categoryIcons = { general: '<i class="fa-solid fa-folder"></i>', design: '<i class="fa-solid fa-palette"></i>', content: '<i class="fa-solid fa-pen"></i>', development: '<i class="fa-solid fa-code"></i>', admin: '<i class="fa-solid fa-briefcase"></i>' };
+    const dueDateStr = task.due_date ? `<span class="text-xs text-gray-400"><i class="fa-regular fa-calendar mr-1"></i>${task.due_date}</span>` : '';
+    return `
+        <div class="kanban-card priority-${task.priority}" data-task-id="${task.id}" onclick="viewTaskDetail(${task.id})">
+            <div class="flex items-start justify-between gap-2 mb-2">
+                <p class="font-semibold text-sm leading-snug">${esc(task.title)}</p>
+                <span class="text-xs px-2 py-0.5 rounded-full badge-${task.priority} whitespace-nowrap">${priorityLabels[task.priority] || task.priority}</span>
+            </div>
+            <div class="flex flex-wrap gap-1 mb-2">
+                ${task.client_name ? `<span class="text-xs bg-gray-100 px-2 py-0.5 rounded">${esc(task.client_name)}</span>` : ''}
+                <span class="text-xs bg-gray-100 px-2 py-0.5 rounded">${categoryIcons[task.category] || '<i class="fa-solid fa-folder"></i>'} ${task.category}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-gray-500">${task.assigned_to_name ? '<i class="fa-solid fa-user mr-1"></i>' + esc(task.assigned_to_name) : '<span class="text-gray-400">Unassigned</span>'}</span>
+                ${dueDateStr}
+            </div>
+        </div>
+    `;
+}
+
+function initKanbanDragDrop() {
+    kanbanSortables.forEach(s => s.destroy());
+    kanbanSortables = [];
+    ['col-todo', 'col-in_progress', 'col-in_review', 'col-done'].forEach(colId => {
+        const el = document.getElementById(colId);
+        if (!el) return;
+        const sortable = new Sortable(el, {
+            group: 'tasks', animation: 150, ghostClass: 'sortable-ghost',
+            onEnd: async function(evt) {
+                const taskId = evt.item.dataset.taskId;
+                const newStatus = evt.to.dataset.status;
+                if (taskId && newStatus) {
+                    await fetch(API_URL + '/tasks/' + taskId + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
+                    ['todo', 'in_progress', 'in_review', 'done'].forEach(s => {
+                        document.getElementById('count-' + s).textContent = document.getElementById('col-' + s).querySelectorAll('.kanban-card').length;
+                    });
+                }
+            }
+        });
+        kanbanSortables.push(sortable);
+    });
+}
+
+function renderTasksList(tasks) {
+    const statusLabels = { todo: 'To Do', in_progress: 'In Progress', in_review: 'In Review', done: 'Done', cancelled: 'Cancelled' };
+    const statusColors = { todo: 'bg-gray-100 text-gray-800', in_progress: 'bg-blue-100 text-blue-800', in_review: 'bg-yellow-100 text-yellow-800', done: 'bg-green-100 text-green-800', cancelled: 'bg-red-100 text-red-800' };
+    const priorityLabels = { urgent: 'Urgent', high: 'High', normal: 'Normal', low: 'Low' };
+    document.getElementById('tasks-table-body').innerHTML = tasks.map(t => `
+        <tr class="border-t hover:bg-gray-50 cursor-pointer" onclick="viewTaskDetail(${t.id})">
+            <td class="px-4 py-3"><p class="font-semibold text-sm">${esc(t.title)}</p><p class="text-xs text-gray-500 truncate max-w-[200px]">${esc(t.description || '')}</p></td>
+            <td class="px-4 py-3 text-sm">${esc(t.client_name || '-')}</td>
+            <td class="px-4 py-3 text-sm">${esc(t.assigned_to_name || '-')}</td>
+            <td class="px-4 py-3"><span class="text-xs px-2 py-1 rounded-full badge-${t.priority}">${priorityLabels[t.priority] || t.priority}</span></td>
+            <td class="px-4 py-3 text-sm">${t.due_date || '-'}</td>
+            <td class="px-4 py-3"><span class="text-xs px-2 py-1 rounded ${statusColors[t.status] || 'bg-gray-100'}">${statusLabels[t.status] || t.status}</span></td>
+            <td class="px-4 py-3"><button onclick="event.stopPropagation(); deleteTask(${t.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>
+    `).join('') || '<tr><td colspan="7" class="text-center py-8 text-gray-500">No tasks</td></tr>';
+}
+
+function showAddTaskModal() {
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-description').value = '';
+    document.getElementById('task-priority').value = 'normal';
+    document.getElementById('task-category').value = 'general';
+    document.getElementById('task-due-date').value = '';
+    Promise.all([fetch(API_URL + '/users').then(r => r.json()), fetch(API_URL + '/clients').then(r => r.json())]).then(([users, clients]) => {
+        document.getElementById('task-assignee').innerHTML = '<option value="">Unassigned</option>' + users.map(u => `<option value="${u.id}">${esc(u.username)}${u.job_title ? ' — ' + esc(u.job_title) : ''}</option>`).join('');
+        document.getElementById('task-client').innerHTML = '<option value="">No client</option>' + clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    });
+    document.getElementById('add-task-modal').classList.remove('hidden');
+}
+function hideAddTaskModal() { document.getElementById('add-task-modal').classList.add('hidden'); }
+
+async function submitTask() {
+    const title = document.getElementById('task-title').value.trim();
+    if (!title) { alert('Enter task title'); return; }
+    const data = { title, description: document.getElementById('task-description').value, client_id: document.getElementById('task-client').value || null, assigned_to_id: document.getElementById('task-assignee').value || null, priority: document.getElementById('task-priority').value, category: document.getElementById('task-category').value, due_date: document.getElementById('task-due-date').value || null, created_by_id: currentUser?.id || 1 };
+    const res = await fetch(API_URL + '/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+    if (res.success) { hideAddTaskModal(); loadTasks(); alert('Task created successfully'); } else { alert('Error: ' + (res.error || 'Could not create task')); }
+}
+
+async function viewTaskDetail(taskId) {
+    const task = await fetch(API_URL + '/tasks/' + taskId).then(r => r.json());
+    if (task.error) { alert(task.error); return; }
+    const statusLabels = { todo: 'To Do', in_progress: 'In Progress', in_review: 'In Review', done: 'Done' };
+    const priorityLabels = { urgent: 'Urgent', high: 'High', normal: 'Normal', low: 'Low' };
+    const categoryLabels = { general: 'General', design: 'Design', content: 'Content', development: 'Development', admin: 'Admin' };
+    document.getElementById('task-detail-title').textContent = task.title;
+    document.getElementById('task-detail-content').innerHTML = `
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Status</p><p class="font-semibold text-sm">${statusLabels[task.status] || task.status}</p></div>
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Priority</p><p class="font-semibold text-sm badge-${task.priority} inline-block px-2 py-0.5 rounded-full">${priorityLabels[task.priority] || task.priority}</p></div>
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Category</p><p class="font-semibold text-sm">${categoryLabels[task.category] || task.category}</p></div>
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Due Date</p><p class="font-semibold text-sm">${task.due_date || '-'}</p></div>
+            </div>
+            ${task.description ? `<div class="bg-gray-50 p-4 rounded-lg"><p class="text-sm">${esc(task.description)}</p></div>` : ''}
+            <div class="flex flex-wrap gap-3 text-sm text-gray-600">
+                <span><i class="fa-solid fa-user mr-1"></i>Assignee: ${esc(task.assigned_to_name || 'Unassigned')}</span>
+                <span><i class="fa-solid fa-building mr-1"></i>Client: ${esc(task.client_name || 'None')}</span>
+                <span><i class="fa-solid fa-pen mr-1"></i>Created by: ${esc(task.created_by_name || '-')}</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                ${['todo','in_progress','in_review','done'].filter(s => s !== task.status).map(s =>
+                    `<button onclick="changeTaskStatus(${task.id}, '${s}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${s === 'done' ? 'bg-green-100 text-green-700 hover:bg-green-200' : s === 'in_progress' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : s === 'in_review' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">${statusLabels[s]}</button>`
+                ).join('')}
+                <button onclick="deleteTask(${task.id}); hideTaskDetailModal();" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 ml-auto"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
+            </div>
+            <div>
+                <h4 class="font-bold text-sm mb-3"><i class="fa-solid fa-comments mr-1"></i>Comments</h4>
+                <div id="task-comments-list" class="space-y-3 max-h-48 overflow-y-auto mb-3">
+                    ${(task.comments || []).map(c => `
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <div class="flex justify-between items-center mb-1"><span class="font-semibold text-xs">${esc(c.user_name || 'User')}</span><span class="text-xs text-gray-400">${c.created_at || ''}</span></div>
+                            <p class="text-sm">${esc(c.content)}</p>
+                        </div>
+                    `).join('') || '<p class="text-gray-400 text-sm">No comments yet</p>'}
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="task-comment-input" class="flex-1 border rounded-lg px-3 py-2 text-sm" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') addTaskCommentFromDetail(${task.id})">
+                    <button onclick="addTaskCommentFromDetail(${task.id})" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">Send</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('task-detail-modal').classList.remove('hidden');
+}
+
+function hideTaskDetailModal() { document.getElementById('task-detail-modal').classList.add('hidden'); }
+
+async function changeTaskStatus(taskId, newStatus) {
+    await fetch(API_URL + '/tasks/' + taskId + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
+    hideTaskDetailModal(); loadTasks();
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    await fetch(API_URL + '/tasks/' + taskId, { method: 'DELETE' }); loadTasks();
+}
+
+async function addTaskCommentFromDetail(taskId) {
+    const input = document.getElementById('task-comment-input');
+    const content = input.value.trim();
+    if (!content) return;
+    await fetch(API_URL + '/tasks/' + taskId + '/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, user_id: currentUser?.id || 1 }) });
+    input.value = ''; viewTaskDetail(taskId);
+}
+
+// ============ POSTING RULES ============
+let currentPostingRulesClientId = null;
+
+async function showPostingRules(clientId) {
+    currentPostingRulesClientId = clientId;
+    const rules = await fetch(API_URL + '/clients/' + clientId + '/posting-rules').then(r => r.json());
+    const dayLabels = { sat: 'Sat', sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri' };
+    const platformIcons = { instagram: '<i class="fa-brands fa-instagram"></i>', linkedin: '<i class="fa-brands fa-linkedin"></i>', facebook: '<i class="fa-brands fa-facebook"></i>' };
+    let html = `<div class="space-y-4">
+        ${rules.map(r => `
+            <div class="border rounded-xl p-4 hover:shadow-sm transition">
+                <div class="flex justify-between items-center mb-3"><span class="font-semibold">${platformIcons[r.platform] || ''} ${r.platform}</span><button onclick="deletePostingRule(${r.id})" class="text-red-500 hover:text-red-700 text-sm"><i class="fa-solid fa-trash"></i></button></div>
+                <div class="mb-2"><span class="text-xs text-gray-500 block mb-1">Posting Days:</span><div class="flex flex-wrap gap-1">${['sat','sun','mon','tue','wed','thu','fri'].map(d => `<span class="day-badge ${(r.posting_days || []).includes(d) ? 'active' : 'inactive'}">${dayLabels[d]}</span>`).join('')}</div></div>
+                <div class="mb-2"><span class="text-xs text-gray-500 block mb-1">Posting Hours:</span><div class="flex flex-wrap gap-1">${(r.posting_hours || []).map(h => `<span class="day-badge active"><i class="fa-regular fa-clock mr-1"></i>${h}</span>`).join('')}</div></div>
+                <div class="text-xs text-gray-500">Posts per day: ${r.posts_per_day}</div>
+            </div>
+        `).join('') || '<p class="text-gray-500 text-center py-4">No posting rules for this client</p>'}
+        <div class="border-t pt-4">
+            <h4 class="font-bold text-sm mb-3"><i class="fa-solid fa-plus mr-1"></i>Add Posting Rule</h4>
+            <div class="space-y-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Platform</label><select id="rule-platform" class="w-full border rounded-lg px-3 py-2"><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option></select></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Posting Days</label><div class="flex flex-wrap gap-2">${['sat','sun','mon','tue','wed','thu','fri'].map(d => `<label class="flex items-center gap-1 text-sm cursor-pointer"><input type="checkbox" class="rule-day-cb" value="${d}"> ${dayLabels[d]}</label>`).join('')}</div></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Posting Hours</label><div id="rule-hours-container" class="flex flex-wrap gap-2 mb-2"><input type="time" class="rule-hour-input border rounded-lg px-3 py-1 text-sm" value="09:00"></div><button onclick="addRuleHourInput()" class="text-indigo-600 text-sm hover:underline">+ Add time</button></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Posts per day</label><input type="number" id="rule-posts-per-day" class="border rounded-lg px-3 py-2 w-20" value="1" min="1" max="10"></div>
+                <button onclick="submitPostingRule()" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold text-sm">Save Rule</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('posting-rules-content').innerHTML = html;
+    document.getElementById('posting-rules-modal').classList.remove('hidden');
+}
+function hidePostingRulesModal() { document.getElementById('posting-rules-modal').classList.add('hidden'); }
+
+function addRuleHourInput() {
+    const container = document.getElementById('rule-hours-container');
+    const input = document.createElement('input');
+    input.type = 'time'; input.className = 'rule-hour-input border rounded-lg px-3 py-1 text-sm'; input.value = '18:00';
+    container.appendChild(input);
+}
+
+async function submitPostingRule() {
+    const platform = document.getElementById('rule-platform').value;
+    const days = Array.from(document.querySelectorAll('.rule-day-cb:checked')).map(cb => cb.value);
+    const hours = Array.from(document.querySelectorAll('.rule-hour-input')).map(inp => inp.value).filter(v => v);
+    const postsPerDay = parseInt(document.getElementById('rule-posts-per-day').value) || 1;
+    if (days.length === 0) { alert('Select at least one day'); return; }
+    if (hours.length === 0) { alert('Add at least one posting time'); return; }
+    const res = await fetch(API_URL + '/clients/' + currentPostingRulesClientId + '/posting-rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ platform, posting_days: days, posting_hours: hours, posts_per_day: postsPerDay }) }).then(r => r.json());
+    if (res.success) showPostingRules(currentPostingRulesClientId); else alert('Error: ' + (res.error || 'Could not save rule'));
+}
+
+async function deletePostingRule(ruleId) {
+    if (!confirm('Are you sure you want to delete this posting rule?')) return;
+    await fetch(API_URL + '/posting-rules/' + ruleId, { method: 'DELETE' });
+    showPostingRules(currentPostingRulesClientId);
+}
+
+// ============ SCHEDULE SUGGESTIONS ============
+async function loadScheduleSuggestions(clientId) {
+    if (!clientId) return;
+    try {
+        const data = await fetch(API_URL + '/clients/' + clientId + '/suggest-schedule').then(r => r.json());
+        const slots = data.suggested_slots || [];
+        if (slots.length === 0) return;
+        let container = document.getElementById('schedule-suggestions');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'schedule-suggestions';
+            container.className = 'bg-indigo-50 rounded-xl p-4 mt-4';
+            const submitBtn = document.getElementById('submit-post-btn');
+            if (submitBtn) submitBtn.parentNode.insertBefore(container, submitBtn);
+        }
+        container.innerHTML = `<h4 class="font-semibold text-sm mb-2 text-indigo-700"><i class="fa-solid fa-lightbulb mr-1"></i>Suggested times based on posting rules</h4>
+            <div class="flex flex-wrap gap-2">${slots.slice(0, 8).map(s => `<button onclick="applySuggestedTime('${s.datetime}', '${s.platform}')" class="bg-white text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-100 transition">${s.day_name} ${s.time} <span class="opacity-60">(${s.platform})</span></button>`).join('')}</div>`;
+    } catch(e) { console.error('Error loading suggestions:', e); }
+}
+
+function applySuggestedTime(datetime, platform) {
+    const timeInput = document.getElementById('schedule-' + platform + '-time');
+    if (timeInput) { timeInput.value = datetime; timeInput.classList.remove('hidden'); const laterRadio = document.querySelector(`input[name="schedule-${platform}"][value="later"]`); if (laterRadio) laterRadio.checked = true; }
+}
+
+// ============ NOTIFICATIONS ============
+async function loadNotifications() {
+    const userId = currentUser?.id || 1;
+    try {
+        const notifs = await fetch(API_URL + '/notifications?user_id=' + userId).then(r => r.json());
+        const list = document.getElementById('notifications-list');
+        if (!list) return;
+        list.innerHTML = notifs.map(n => `
+            <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 ${n.is_read ? 'border-gray-200' : 'border-indigo-500'} hover:shadow-md transition cursor-pointer" onclick="markNotificationRead(${n.id}, '${n.reference_type}', ${n.reference_id})">
+                <div class="flex justify-between items-start">
+                    <div><p class="font-semibold text-sm ${n.is_read ? 'text-gray-500' : ''}">${esc(n.title)}</p><p class="text-xs text-gray-500 mt-1">${esc(n.message || '')}</p></div>
+                    <span class="text-xs text-gray-400 whitespace-nowrap">${n.created_at || ''}</span>
+                </div>
+            </div>
+        `).join('') || '<p class="text-gray-500 text-center py-8">No notifications</p>';
+    } catch(e) { console.error(e); }
+}
+
+async function loadNotificationCount() {
+    const userId = currentUser?.id || 1;
+    try {
+        const data = await fetch(API_URL + '/notifications/count?user_id=' + userId).then(r => r.json());
+        const badge = document.getElementById('sidebar-notif-badge');
+        if (badge) { if (data.count > 0) { badge.textContent = data.count; badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); } }
+    } catch(e) {}
+}
+
+async function markNotificationRead(notifId, refType, refId) {
+    await fetch(API_URL + '/notifications/' + notifId + '/read', { method: 'PUT' });
+    loadNotificationCount();
+    if (refType === 'task' && refId) viewTaskDetail(refId);
+    else if (refType === 'post' && refId) { showSection('pipeline'); setTimeout(() => viewPostDetail(refId), 500); }
+    loadNotifications();
+}
+
+async function markAllNotificationsRead() {
+    const userId = currentUser?.id || 1;
+    await fetch(API_URL + '/notifications/read-all', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId }) });
+    loadNotificationCount(); loadNotifications();
+}
+
+setInterval(loadNotificationCount, 30000);
+
+// ============ CONTENT PIPELINE ============
+let pipelineSortables = [];
+let pipelineFilterDropdownsLoaded = false;
+let briefReferenceUrls = [];
+
+async function loadPipeline() {
+    await loadPipelineFilterDropdowns();
+    const clientId = document.getElementById('pipeline-filter-client').value;
+    const assignee = document.getElementById('pipeline-filter-assignee').value;
+    let params = new URLSearchParams();
+    if (clientId) params.append('client_id', clientId);
+    if (assignee) params.append('assigned_to', assignee);
+    try {
+        const board = await fetch(API_URL + '/pipeline?' + params).then(r => r.json());
+        renderPipelineBoard(board);
+    } catch(e) { console.error('Error loading pipeline:', e); }
+}
+
+async function loadPipelineFilterDropdowns() {
+    if (pipelineFilterDropdownsLoaded) return;
+    try {
+        const [users, clients] = await Promise.all([fetch(API_URL + '/users').then(r => r.json()), fetch(API_URL + '/clients').then(r => r.json())]);
+        const assigneeSelect = document.getElementById('pipeline-filter-assignee');
+        assigneeSelect.innerHTML = '<option value="">All Members</option>' + users.map(u => `<option value="${u.id}">${esc(u.username)}${u.job_title ? ' — ' + esc(u.job_title) : ''}</option>`).join('');
+        const clientSelect = document.getElementById('pipeline-filter-client');
+        clientSelect.innerHTML = '<option value="">All Clients</option>' + clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+        pipelineFilterDropdownsLoaded = true;
+    } catch(e) { console.error(e); }
+}
+
+function renderPipelineBoard(board) {
+    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
+    statuses.forEach(status => {
+        const col = document.getElementById('pcol-' + status);
+        const countEl = document.getElementById('pcount-' + status);
+        const posts = board[status] || [];
+        countEl.textContent = posts.length;
+        col.innerHTML = posts.map(p => renderPipelineCard(p)).join('') || '<div class="text-center text-gray-400 text-sm py-8">No posts</div>';
+    });
+    initPipelineDragDrop();
+}
+
+function renderPipelineCard(post) {
+    const priorityLabels = { urgent: 'Urgent', high: 'High', normal: 'Normal' };
+    const platformIcons = (post.platforms || '').split(',').map(p => {
+        p = p.trim();
+        if (p === 'instagram') return '<i class="fa-brands fa-instagram text-pink-500"></i>';
+        if (p === 'linkedin') return '<i class="fa-brands fa-linkedin text-blue-600"></i>';
+        if (p === 'facebook') return '<i class="fa-brands fa-facebook text-blue-500"></i>';
+        return '';
+    }).filter(Boolean).join(' ');
+    const hasDesigns = post.design_output_urls && post.design_output_urls.trim();
+    return `
+        <div class="kanban-card priority-${post.priority || 'normal'}" data-post-id="${post.id}" onclick="viewPostDetail(${post.id})">
+            <div class="flex items-start justify-between gap-2 mb-2">
+                <p class="font-semibold text-sm leading-snug">${esc(post.topic || 'Untitled')}</p>
+                ${post.priority && post.priority !== 'normal' ? `<span class="text-xs px-2 py-0.5 rounded-full badge-${post.priority} whitespace-nowrap">${priorityLabels[post.priority] || ''}</span>` : ''}
+            </div>
+            <div class="flex flex-wrap gap-1 mb-2">
+                ${post.client_name ? `<span class="text-xs bg-gray-100 px-2 py-0.5 rounded">${esc(post.client_name)}</span>` : ''}
+                ${platformIcons ? `<span class="text-xs bg-gray-100 px-2 py-0.5 rounded">${platformIcons}</span>` : ''}
+                ${hasDesigns ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded"><i class="fa-solid fa-image mr-1"></i>Design</span>' : ''}
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-gray-500">${post.assigned_designer_name ? '<i class="fa-solid fa-palette mr-1"></i>' + esc(post.assigned_designer_name) : post.created_by_name ? '<i class="fa-solid fa-user mr-1"></i>' + esc(post.created_by_name) : '<span class="text-gray-400">Unassigned</span>'}</span>
+                ${post.scheduled_at ? `<span class="text-xs text-gray-400"><i class="fa-regular fa-calendar mr-1"></i>${post.scheduled_at.substring(0, 10)}</span>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function initPipelineDragDrop() {
+    pipelineSortables.forEach(s => s.destroy());
+    pipelineSortables = [];
+    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
+    statuses.forEach(status => {
+        const el = document.getElementById('pcol-' + status);
+        if (!el) return;
+        const sortable = new Sortable(el, {
+            group: 'pipeline', animation: 150, ghostClass: 'sortable-ghost',
+            onEnd: async function(evt) {
+                const postId = evt.item.dataset.postId;
+                const newStatus = evt.to.dataset.status;
+                if (postId && newStatus) {
+                    await changePostWorkflow(postId, newStatus);
+                    statuses.forEach(s => {
+                        const countEl = document.getElementById('pcount-' + s);
+                        if (countEl) countEl.textContent = document.getElementById('pcol-' + s).querySelectorAll('.kanban-card').length;
+                    });
+                }
+            }
+        });
+        pipelineSortables.push(sortable);
+    });
+}
+
+async function changePostWorkflow(postId, newStatus) {
+    try {
+        await fetch(API_URL + '/posts/' + postId + '/workflow', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus, user_id: currentUser?.id || 1 })
+        });
+    } catch(e) { console.error('Error changing workflow:', e); }
+}
+
+async function viewPostDetail(postId) {
+    let post;
+    try {
+        post = await fetch(API_URL + '/posts/' + postId).then(r => r.json());
+    } catch(e) { alert('Could not load post'); return; }
+    if (post.error) { alert(post.error); return; }
+
+    const comments = await fetch(API_URL + '/posts/' + postId + '/comments').then(r => r.json()).catch(() => []);
+
+    const statusLabels = { draft: 'Draft', in_design: 'In Design', design_review: 'Design Review', approved: 'Approved', scheduled: 'Scheduled', posted: 'Posted' };
+    const statusColors = { draft: 'bg-gray-100 text-gray-800', in_design: 'bg-pink-100 text-pink-800', design_review: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-indigo-100 text-indigo-800' };
+    const priorityLabels = { urgent: 'Urgent', high: 'High', normal: 'Normal' };
+    const currentWf = post.workflow_status || 'draft';
+
+    // Parse design reference URLs
+    const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
+    const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
+
+    document.getElementById('post-detail-title').textContent = post.topic || 'Untitled Post';
+    document.getElementById('post-detail-content').innerHTML = `
+        <div class="space-y-4">
+            <!-- Status & Meta -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Status</p><p class="font-semibold text-sm"><span class="px-2 py-0.5 rounded ${statusColors[currentWf] || 'bg-gray-100'}">${statusLabels[currentWf] || currentWf}</span></p></div>
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Priority</p><p class="font-semibold text-sm badge-${post.priority || 'normal'} inline-block px-2 py-0.5 rounded-full">${priorityLabels[post.priority] || 'Normal'}</p></div>
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Client</p><p class="font-semibold text-sm">${esc(post.client_name || '-')}</p></div>
+                <div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">Platforms</p><p class="font-semibold text-sm">${esc(post.platforms || '-')}</p></div>
+            </div>
+
+            <!-- Brief Details -->
+            ${post.tov || post.brief_notes || post.caption ? `
+            <div class="bg-gray-50 p-4 rounded-lg space-y-2">
+                ${post.caption ? `<div><span class="text-xs font-semibold text-gray-500">Caption:</span><p class="text-sm mt-1">${esc(post.caption)}</p></div>` : ''}
+                ${post.tov ? `<div><span class="text-xs font-semibold text-gray-500">Tone of Voice:</span><p class="text-sm mt-1">${esc(post.tov)}</p></div>` : ''}
+                ${post.brief_notes ? `<div><span class="text-xs font-semibold text-gray-500">Brief Notes:</span><p class="text-sm mt-1">${esc(post.brief_notes)}</p></div>` : ''}
+            </div>` : ''}
+
+            <!-- Assignments -->
+            <div class="flex flex-wrap gap-3 text-sm text-gray-600">
+                <span><i class="fa-solid fa-palette mr-1"></i>Designer: ${esc(post.assigned_designer_name || 'Unassigned')}</span>
+                <span><i class="fa-solid fa-user mr-1"></i>SM: ${esc(post.assigned_sm_name || 'Unassigned')}</span>
+                <span><i class="fa-solid fa-pen mr-1"></i>Created by: ${esc(post.created_by_name || '-')}</span>
+            </div>
+
+            <!-- Reference Images -->
+            ${refUrls.length > 0 ? `
+            <div>
+                <h4 class="font-bold text-sm mb-2"><i class="fa-solid fa-image mr-1"></i>Reference Images</h4>
+                <div class="flex gap-2 flex-wrap">
+                    ${refUrls.map(url => `<a href="${url}" target="_blank"><img src="${url}" class="w-20 h-20 object-cover rounded-lg border hover:opacity-80 transition"></a>`).join('')}
+                </div>
+            </div>` : ''}
+
+            <!-- Design Output -->
+            <div>
+                <h4 class="font-bold text-sm mb-2"><i class="fa-solid fa-paintbrush mr-1"></i>Design Output</h4>
+                ${designUrls.length > 0 ? `
+                <div class="flex gap-2 flex-wrap mb-3">
+                    ${designUrls.map(url => `<a href="${url}" target="_blank"><img src="${url}" class="w-24 h-24 object-cover rounded-lg border hover:opacity-80 transition"></a>`).join('')}
+                </div>` : '<p class="text-gray-400 text-sm mb-3">No designs uploaded yet</p>'}
+
+                <!-- Upload Zone -->
+                <div class="upload-zone rounded-lg p-4 text-center cursor-pointer" onclick="document.getElementById('design-upload-input').click()">
+                    <input type="file" id="design-upload-input" class="hidden" accept="image/*" multiple onchange="uploadDesignToPost(${post.id}, this)">
+                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-gray-400 mb-1"></i>
+                    <p class="text-xs text-gray-600 font-medium">Upload design files</p>
+                </div>
+                <div id="design-upload-progress" class="mt-2"></div>
+            </div>
+
+            <!-- Workflow Actions -->
+            <div class="flex flex-wrap gap-2">
+                ${['draft','in_design','design_review','approved','scheduled'].filter(s => s !== currentWf).map(s =>
+                    `<button onclick="changePostWorkflowAndRefresh(${post.id}, '${s}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${s === 'approved' ? 'bg-green-100 text-green-700 hover:bg-green-200' : s === 'in_design' ? 'bg-pink-100 text-pink-700 hover:bg-pink-200' : s === 'design_review' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : s === 'scheduled' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">${statusLabels[s]}</button>`
+                ).join('')}
+                <button onclick="deletePost(${post.id}); hidePostDetailModal(); loadPipeline();" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 ml-auto"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
+            </div>
+
+            <!-- Comments -->
+            <div>
+                <h4 class="font-bold text-sm mb-3"><i class="fa-solid fa-comments mr-1"></i>Comments</h4>
+                <div id="post-comments-list" class="space-y-3 max-h-48 overflow-y-auto mb-3">
+                    ${comments.map(c => `
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <div class="flex justify-between items-center mb-1"><span class="font-semibold text-xs">${esc(c.user_name || 'User')}</span><span class="text-xs text-gray-400">${c.created_at || ''}</span></div>
+                            <p class="text-sm">${esc(c.content)}</p>
+                        </div>
+                    `).join('') || '<p class="text-gray-400 text-sm">No comments yet</p>'}
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="post-comment-input" class="flex-1 border rounded-lg px-3 py-2 text-sm" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') addPostComment(${post.id})">
+                    <button onclick="addPostComment(${post.id})" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">Send</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('post-detail-modal').classList.remove('hidden');
+}
+
+function hidePostDetailModal() { document.getElementById('post-detail-modal').classList.add('hidden'); }
+
+async function changePostWorkflowAndRefresh(postId, newStatus) {
+    await changePostWorkflow(postId, newStatus);
+    hidePostDetailModal();
+    loadPipeline();
+}
+
+async function uploadDesignToPost(postId, input) {
+    if (!input.files || !input.files.length) return;
+    const progressEl = document.getElementById('design-upload-progress');
+    progressEl.innerHTML = '<div class="text-sm text-gray-500 flex items-center gap-2"><div class="loading-spinner"></div> Uploading designs...</div>';
+
+    const formData = new FormData();
+    Array.from(input.files).forEach(f => formData.append('images', f));
+    formData.append('user_id', currentUser?.id || 1);
+
+    try {
+        const res = await fetch(API_URL + '/posts/' + postId + '/upload-design', { method: 'POST', body: formData }).then(r => r.json());
+        if (res.success) {
+            progressEl.innerHTML = '<div class="text-sm text-green-600"><i class="fa-solid fa-check mr-1"></i>Designs uploaded successfully!</div>';
+            setTimeout(() => { viewPostDetail(postId); loadPipeline(); }, 1000);
+        } else {
+            progressEl.innerHTML = '<div class="text-sm text-red-600">Upload failed: ' + (res.error || 'Unknown error') + '</div>';
+        }
+    } catch(e) {
+        progressEl.innerHTML = '<div class="text-sm text-red-600">Upload error</div>';
+    }
+}
+
+async function addPostComment(postId) {
+    const input = document.getElementById('post-comment-input');
+    const content = input.value.trim();
+    if (!content) return;
+    await fetch(API_URL + '/posts/' + postId + '/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, user_id: currentUser?.id || 1 })
+    });
+    input.value = '';
+    viewPostDetail(postId);
+}
+
+// ============ BRIEF CREATION ============
+
+async function loadBriefDropdowns() {
+    briefReferenceUrls = [];
+    const gallery = document.getElementById('brief-references-gallery');
+    if (gallery) gallery.innerHTML = '';
+    try {
+        const users = await fetch(API_URL + '/users').then(r => r.json());
+        const designerSelect = document.getElementById('post-designer');
+        const smSelect = document.getElementById('post-sm');
+        if (designerSelect) designerSelect.innerHTML = '<option value="">None</option>' + users.map(u => `<option value="${u.id}">${esc(u.username)}${u.job_title ? ' — ' + esc(u.job_title) : ' (' + (u.role || 'user') + ')'}</option>`).join('');
+        if (smSelect) smSelect.innerHTML = '<option value="">None</option>' + users.map(u => `<option value="${u.id}">${esc(u.username)}${u.job_title ? ' — ' + esc(u.job_title) : ' (' + (u.role || 'user') + ')'}</option>`).join('');
+    } catch(e) { console.error(e); }
+}
+
+async function uploadBriefReferences(input) {
+    if (!input.files || !input.files.length) return;
+    const gallery = document.getElementById('brief-references-gallery');
+    gallery.innerHTML = '<div class="text-sm text-gray-500">Uploading...</div>';
+    const formData = new FormData();
+    Array.from(input.files).forEach(f => formData.append('images', f));
+    try {
+        const res = await fetch(API_URL + '/upload-design-reference', { method: 'POST', body: formData }).then(r => r.json());
+        if (res.urls && res.urls.length > 0) {
+            res.urls.forEach(img => briefReferenceUrls.push(img.url));
+            renderBriefReferencesGallery();
+        } else { gallery.innerHTML = ''; alert('Could not upload references'); }
+    } catch(e) { gallery.innerHTML = ''; alert('Upload error'); }
+}
+
+function removeBriefReference(index) { briefReferenceUrls.splice(index, 1); renderBriefReferencesGallery(); }
+
+function renderBriefReferencesGallery() {
+    const gallery = document.getElementById('brief-references-gallery');
+    if (!gallery) return;
+    if (briefReferenceUrls.length === 0) { gallery.innerHTML = ''; return; }
+    gallery.innerHTML = briefReferenceUrls.map((url, i) => `
+        <div style="position:relative;width:60px;height:60px;border-radius:8px;overflow:hidden;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+            <img src="${url}" style="width:100%;height:100%;object-fit:cover;">
+            <span onclick="removeBriefReference(${i})" style="position:absolute;top:3px;left:3px;background:rgba(239,68,68,0.95);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;font-weight:bold;">&#10005;</span>
+        </div>
+    `).join('');
+}
+
+async function saveBrief(workflowStatus) {
+    const clientId = document.getElementById('post-client').value;
+    const topic = document.getElementById('post-topic').value;
+    if (!clientId) { alert('Select a client'); return; }
+    if (!topic) { alert('Enter the post topic'); return; }
+
+    const data = {
+        topic,
+        caption: '',
+        tov: document.getElementById('post-tov')?.value || '',
+        brief_notes: document.getElementById('post-brief-notes')?.value || '',
+        assigned_designer_id: document.getElementById('post-designer')?.value || null,
+        assigned_sm_id: document.getElementById('post-sm')?.value || null,
+        priority: document.getElementById('post-priority')?.value || 'normal',
+        design_reference_urls: briefReferenceUrls.join(','),
+        workflow_status: workflowStatus,
+        created_by_id: currentUser?.id || 1,
+        platforms: '',
+        image_url: '',
+        scheduled_at: ''
+    };
+
+    try {
+        const res = await fetch(API_URL + '/clients/' + clientId + '/posts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(r => r.json());
+
+        if (res.success) {
+            alert(workflowStatus === 'in_design' ? 'Brief sent to designer!' : 'Brief saved as draft!');
+            // Clear brief fields
+            document.getElementById('post-topic').value = '';
+            document.getElementById('post-tov').value = '';
+            document.getElementById('post-brief-notes').value = '';
+            document.getElementById('post-designer').value = '';
+            document.getElementById('post-sm').value = '';
+            document.getElementById('post-priority').value = 'normal';
+            briefReferenceUrls = [];
+            renderBriefReferencesGallery();
+            showSection('pipeline');
+        } else { alert('Error: ' + (res.error || 'Could not save brief')); }
+    } catch(e) { alert('Connection error'); }
+}
+
+// ============ INIT ============
+checkAuth();
+updateTime();
+
+(function handleStoryDesignerReturn() {
+    const storyImageUrl = localStorage.getItem('story_image_url');
+    if (!storyImageUrl) return;
+    localStorage.removeItem('story_image_url');
+    showSection('newpost');
+    const postTypeSelect = document.getElementById('post-type-select');
+    if (postTypeSelect) { postTypeSelect.value = 'story'; onPostTypeChange(); }
+    const igCheckbox = document.getElementById('platform-instagram');
+    if (igCheckbox) igCheckbox.checked = true;
+    platformImages.instagram = [{ url: storyImageUrl, filename: 'story-design.png' }];
+    renderPlatformGallery('instagram');
+    const carouselPreview = document.getElementById('carousel-preview');
+    if (carouselPreview) {
+        carouselPreview.innerHTML = `<img src="${storyImageUrl}" style="width:100%;height:100%;object-fit:contain;border-radius:12px;background:#0f172a;">
+            <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6366f1,#a855f7);color:white;padding:5px 16px;border-radius:20px;font-size:12px;font-weight:bold;">Story ready to publish</div>`;
+    }
+    const imgCount = document.getElementById('preview-images-count');
+    if (imgCount) imgCount.textContent = '1';
+    const previewType = document.getElementById('preview-type');
+    if (previewType) previewType.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
+    const previewTypeText = document.getElementById('preview-type-text');
+    if (previewTypeText) previewTypeText.textContent = 'Story';
+})();
+    </script>
+</body>
+</html>
