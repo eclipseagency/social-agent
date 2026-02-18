@@ -31,8 +31,78 @@ def table_exists(db, table):
     return row is not None
 
 
+def _create_base_tables(db):
+    """Create core tables if they don't exist (originally created by the exe)."""
+    db.execute("""CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        is_active INTEGER DEFAULT 1,
+        dark_mode INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE,
+        company TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER,
+        platform TEXT NOT NULL,
+        account_name TEXT,
+        access_token TEXT,
+        refresh_token TEXT,
+        account_id TEXT,
+        token_expires_at TIMESTAMP,
+        is_active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS scheduled_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER,
+        topic TEXT,
+        caption TEXT,
+        image_url TEXT,
+        platforms TEXT,
+        scheduled_at TIMESTAMP,
+        status TEXT DEFAULT 'pending',
+        image_size TEXT DEFAULT '1080x1080',
+        post_type TEXT DEFAULT 'post',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS post_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id INTEGER,
+        platform TEXT,
+        status TEXT,
+        response TEXT,
+        posted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (post_id) REFERENCES scheduled_posts (id)
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS notification_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        email_on_post INTEGER DEFAULT 1,
+        email_on_fail INTEGER DEFAULT 1,
+        email_daily_report INTEGER DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )""")
+    db.commit()
+    print("Base tables verified.")
+
+
 def run_migrations():
     db = get_db()
+
+    # Create base tables if they don't exist
+    _create_base_tables(db)
 
     # Create schema_version table
     db.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)")
