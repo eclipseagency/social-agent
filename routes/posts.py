@@ -134,6 +134,7 @@ def update_post(post_id):
 # ============ WORKFLOW STATUS ============
 
 @posts_bp.route('/api/posts/<int:post_id>/workflow', methods=['PUT'])
+@require_login
 def change_workflow(post_id):
     data = request.json or {}
     new_status = data.get('status', '')
@@ -897,6 +898,7 @@ def calendar_posts():
 # ============ RESCHEDULE (drag-and-drop) ============
 
 @posts_bp.route('/api/posts/<int:post_id>/reschedule', methods=['PUT'])
+@require_role('manager', 'sm_specialist')
 def reschedule_post(post_id):
     """Reschedule a post to a new date/time (for calendar drag-and-drop)."""
     data = request.json or {}
@@ -978,6 +980,7 @@ def post_now_single():
 
 
 @posts_bp.route('/api/posts/<int:post_id>', methods=['DELETE'])
+@require_role('manager')
 def delete_post(post_id):
     db = get_db()
     db.execute("DELETE FROM post_comments WHERE post_id=?", (post_id,))

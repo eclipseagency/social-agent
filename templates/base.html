@@ -54,7 +54,7 @@
                    class="sidebar-link {% if active_page == 'calendar' %}active{% endif %}">
                     <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar
                 </a>
-                <a href="/clients" data-nav-perm="manageClients"
+                <a href="/clients" data-nav-perm="viewClients"
                    class="sidebar-link {% if active_page == 'clients' %}active{% endif %}">
                     <i class="fa-solid fa-users w-5 text-center"></i> Clients
                 </a>
@@ -143,7 +143,7 @@
         <a href="/new-post" class="bottom-nav-create" data-nav-perm="createPost">
             <i class="fa-solid fa-plus"></i>
         </a>
-        <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}" data-nav-perm="manageClients">
+        <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}" data-nav-perm="viewClients">
             <div class="bottom-nav-icon">
                 <i class="fa-solid fa-users"></i>
             </div>

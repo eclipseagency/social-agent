@@ -71,12 +71,12 @@ function getOfficialPlatformIcon(platform) {
 
 // === Role Permissions ===
 const ROLE_PERMISSIONS = {
-    admin:         { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, manageRules: true },
-    manager:       { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: true, manageRules: true },
-    sm_specialist: { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: false, manageRules: false },
-    copywriter:    { createPost: false, editCaption: true, uploadDesign: false, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, manageRules: false },
-    designer:      { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, manageRules: false },
-    motion_editor: { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, manageRules: false },
+    admin:         { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, manageRules: true },
+    manager:       { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: true, viewClients: true, manageRules: true },
+    sm_specialist: { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
+    copywriter:    { createPost: false, editCaption: true, uploadDesign: false, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
+    designer:      { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
+    motion_editor: { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
 };
 
 function canDo(action) {
@@ -328,8 +328,8 @@ function renderCalendarMiniCard(post) {
     const platform = post.platforms || '';
     const contentType = post.post_type || 'post';
 
-    return `<div class="cal-mini-card ${borderClass}" data-post-id="${post.id}" draggable="true"
-                 ondragstart="onCardDragStart(event, ${post.id})"
+    const canDrag = canDo('schedule') || canDo('approve');
+    return `<div class="cal-mini-card ${borderClass}" data-post-id="${post.id}" ${canDrag ? `draggable="true" ondragstart="onCardDragStart(event, ${post.id})"` : ''}
                  onclick="openPostDetail(${post.id}); event.stopPropagation();">
         <div class="cal-card-top">
             ${time ? `<span class="cal-card-time">${esc(time)}</span>` : ''}

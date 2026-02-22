@@ -6,8 +6,8 @@
     <p class="text-gray-500 text-sm" id="current-time"></p>
 </div>
 
-<!-- Role-specific Stats Cards -->
-<div id="stats-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+<!-- Role-specific Stats Cards — hidden for designer/copywriter -->
+<div id="stats-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8" data-nav-perm="viewAll">
     <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
         <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Clients</h3>
         <p class="text-xl sm:text-3xl font-bold text-indigo-600" id="stat-clients">0</p>
@@ -47,9 +47,9 @@
         <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-bolt text-indigo-500 mr-2"></i>Quick Actions</h3>
         <div class="grid grid-cols-2 gap-3 quick-actions-grid">
             <a href="/calendar" class="bg-yellow-50 text-yellow-700 p-3 rounded-lg hover:bg-yellow-100 transition text-sm font-medium text-center"><i class="fa-solid fa-calendar-days mr-1"></i> Calendar</a>
-            <a href="/new-post" class="bg-indigo-50 text-indigo-700 p-3 rounded-lg hover:bg-indigo-100 transition text-sm font-medium text-center"><i class="fa-solid fa-pen-to-square mr-1"></i> New Post</a>
-            <a href="/pipeline" class="bg-green-50 text-green-700 p-3 rounded-lg hover:bg-green-100 transition text-sm font-medium text-center"><i class="fa-solid fa-arrows-spin mr-1"></i> Pipeline</a>
-            <a href="/tasks" class="bg-purple-50 text-purple-700 p-3 rounded-lg hover:bg-purple-100 transition text-sm font-medium text-center"><i class="fa-solid fa-clipboard-list mr-1"></i> Tasks</a>
+            <a href="/new-post" data-nav-perm="createPost" class="bg-indigo-50 text-indigo-700 p-3 rounded-lg hover:bg-indigo-100 transition text-sm font-medium text-center"><i class="fa-solid fa-pen-to-square mr-1"></i> New Post</a>
+            <a href="/pipeline" data-nav-perm="viewAll" class="bg-green-50 text-green-700 p-3 rounded-lg hover:bg-green-100 transition text-sm font-medium text-center"><i class="fa-solid fa-arrows-spin mr-1"></i> Pipeline</a>
+            <a href="/tasks" data-nav-perm="createPost" class="bg-purple-50 text-purple-700 p-3 rounded-lg hover:bg-purple-100 transition text-sm font-medium text-center"><i class="fa-solid fa-clipboard-list mr-1"></i> Tasks</a>
         </div>
     </div>
     <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
@@ -85,6 +85,7 @@ function setRoleGreeting() {
 }
 
 async function loadDashboard() {
+    if (!canDo('viewAll')) return;
     let stats;
     try { stats = await fetch(API_URL + '/stats').then(r => r.json()); } catch (e) { return; }
     document.getElementById('stat-clients').textContent = stats.total_clients;

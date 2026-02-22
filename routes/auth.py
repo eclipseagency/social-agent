@@ -145,7 +145,7 @@ def toggle_dark_mode(user_id):
 
 
 @auth_bp.route('/api/users', methods=['GET'])
-@require_admin
+@require_login
 def list_users():
     db = get_db()
     role_filter = request.args.get('role')

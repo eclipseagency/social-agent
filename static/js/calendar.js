@@ -278,6 +278,12 @@ async function openPostDetail(postId) {
         }
     }
 
+    // Design Outputs — only show when designer has uploaded, or when in design stages
+    const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
+    const designsSection = document.getElementById('detail-designs-section');
+    const designsTitle = document.getElementById('detail-designs-title');
+    const needsDesign = ['draft', 'needs_caption', 'in_design'].includes(wf);
+
     // Design References
     const refsSection = document.getElementById('detail-references-section');
     const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
@@ -296,12 +302,6 @@ async function openPostDetail(postId) {
     if (refUploadZone) {
         refUploadZone.style.display = (needsDesign && canDo('uploadRef')) ? '' : 'none';
     }
-
-    // Design Outputs — only show when designer has uploaded, or when in design stages
-    const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
-    const designsSection = document.getElementById('detail-designs-section');
-    const designsTitle = document.getElementById('detail-designs-title');
-    const needsDesign = ['draft', 'needs_caption', 'in_design'].includes(wf);
 
     if (designUrls.length) {
         // Designer has uploaded designs
