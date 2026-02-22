@@ -236,6 +236,91 @@ function updateTime() {
     if (el) el.textContent = new Date().toLocaleString('en-US');
 }
 
+// === Calendar Shared Helpers ===
+
+function getPostStatus(post) {
+    const wf = post.workflow_status || 'draft';
+    if (wf === 'posted') return 'Posted';
+    if (wf === 'scheduled') return 'Scheduled';
+    if (wf === 'approved') return 'Ready';
+    if (wf === 'design_review') return 'Design Review';
+    if (wf === 'in_design') {
+        const hasDesign = (post.design_output_urls || '').trim();
+        return hasDesign ? 'Design Review' : 'Needs Design';
+    }
+    if (wf === 'draft') {
+        const hasCaption = (post.caption || '').trim();
+        const hasDesign = (post.design_output_urls || '').trim();
+        if (!hasDesign) return 'Needs Design';
+        if (!hasCaption) return 'Needs Caption';
+        return 'Draft';
+    }
+    return wf.replace('_', ' ');
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'Draft': '#94a3b8',
+        'Needs Design': '#f97316',
+        'Needs Caption': '#eab308',
+        'Design Review': '#8b5cf6',
+        'Ready': '#22c55e',
+        'Scheduled': '#3b82f6',
+        'Posted': '#10b981'
+    };
+    return colors[status] || '#94a3b8';
+}
+
+function getStatusBorderClass(post) {
+    const status = getPostStatus(post);
+    const map = {
+        'Draft': 'cal-border-draft',
+        'Needs Design': 'cal-border-needs-design',
+        'Needs Caption': 'cal-border-needs-caption',
+        'Design Review': 'cal-border-design-review',
+        'Ready': 'cal-border-ready',
+        'Scheduled': 'cal-border-scheduled',
+        'Posted': 'cal-border-posted'
+    };
+    return map[status] || 'cal-border-draft';
+}
+
+function getContentTypeIcon(type) {
+    const icons = {
+        'post': '<i class="fa-solid fa-image text-blue-500" title="Post"></i>',
+        'story': '<i class="fa-solid fa-mobile-screen text-pink-500" title="Story"></i>',
+        'reel': '<i class="fa-solid fa-film text-purple-500" title="Reel"></i>',
+        'video': '<i class="fa-solid fa-video text-red-500" title="Video"></i>'
+    };
+    return icons[(type || 'post').toLowerCase()] || icons['post'];
+}
+
+function renderCalendarMiniCard(post) {
+    const status = getPostStatus(post);
+    const borderClass = getStatusBorderClass(post);
+    const time = (post.scheduled_at || '').substring(11, 16) || '';
+    const caption = post.caption || '';
+    const captionPreview = caption.length > 40 ? caption.substring(0, 40) + '...' : caption;
+    const thumbnail = (post.design_output_urls || '').split(',')[0].trim();
+    const platform = post.platforms || '';
+    const contentType = post.post_type || 'post';
+
+    return `<div class="cal-mini-card ${borderClass}" data-post-id="${post.id}" draggable="true"
+                 ondragstart="onCardDragStart(event, ${post.id})"
+                 onclick="openPostDetail(${post.id}); event.stopPropagation();">
+        <div class="cal-card-top">
+            ${time ? `<span class="cal-card-time">${esc(time)}</span>` : ''}
+            <span class="cal-card-icons">${getPlatformIcon(platform)} ${getContentTypeIcon(contentType)}</span>
+            <span class="cal-status-dot" style="background:${getStatusColor(status)}" title="${status}"></span>
+        </div>
+        ${thumbnail ? `<div class="cal-card-thumb"><img src="${thumbnail}" alt="" loading="lazy"></div>` : ''}
+        ${captionPreview ? `<div class="cal-card-caption">${esc(captionPreview)}</div>` : ''}
+        <div class="cal-card-meta">
+            <span class="cal-card-client">${esc(post.client_name || '')}</span>
+        </div>
+    </div>`;
+}
+
 // === Init ===
 document.addEventListener('DOMContentLoaded', function() {
     checkAuth();

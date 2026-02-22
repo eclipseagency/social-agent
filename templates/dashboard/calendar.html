@@ -1,14 +1,34 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
     <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-calendar-days text-indigo-600 mr-2"></i>Calendar</h2>
-    <div class="flex items-center gap-2 w-full sm:w-auto">
+    <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap">
         <select id="calendar-client-filter" onchange="loadCalendar()" class="border rounded-lg px-3 py-2 text-sm"><option value="">All Clients</option></select>
+        <select id="calendar-status-filter" onchange="applyStatusFilter()" class="border rounded-lg px-3 py-2 text-sm">
+            <option value="">All Statuses</option>
+            <option value="Needs Design">Needs Design</option>
+            <option value="Needs Caption">Needs Caption</option>
+            <option value="Design Review">Design Review</option>
+            <option value="Ready">Ready</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Posted">Posted</option>
+        </select>
         <button onclick="changeMonth(-1)" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"><i class="fa-solid fa-chevron-left"></i></button>
         <span id="calendar-month" class="flex-1 sm:flex-none bg-white px-6 py-2 rounded-lg font-semibold text-center text-sm"></span>
         <button onclick="changeMonth(1)" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
 </div>
+
+<!-- Status Color Legend -->
+<div class="cal-status-legend mb-4 bg-white rounded-lg px-4 py-2 shadow-sm">
+    <span class="legend-item"><span class="legend-dot" style="background:#f97316"></span> Needs Design</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#eab308"></span> Needs Caption</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span> Design Review</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> Ready</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> Scheduled</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span> Posted</span>
+</div>
+
 <div class="bg-white rounded-xl shadow-sm p-3 sm:p-6 overflow-x-auto">
     <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-2 min-w-[300px]">
         <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Sun</div>
@@ -21,6 +41,9 @@
     </div>
     <div id="calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-2 min-w-[300px]"></div>
 </div>
+
+<!-- Hidden file input for drag-drop uploads -->
+<input type="file" id="cal-file-input" multiple accept="image/*,video/*" class="hidden">
 {% endblock %}
 
 {% block modals %}
@@ -32,6 +55,76 @@
             <button onclick="hideDayPostsModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
         </div>
         <div id="day-posts-list" class="space-y-3"></div>
+    </div>
+</div>
+
+<!-- Post Detail Modal -->
+<div id="post-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) closePostDetail()">
+    <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[700px] max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold" id="detail-title">Post Brief</h3>
+            <button onclick="closePostDetail()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+
+        <!-- Status & Meta Row -->
+        <div class="flex flex-wrap gap-2 mb-4" id="detail-meta"></div>
+
+        <!-- Text on Design -->
+        <div class="brief-section" id="detail-topic-section">
+            <div class="brief-section-title"><i class="fa-solid fa-pen-fancy mr-1"></i> Text on Design</div>
+            <div class="brief-section-content" id="detail-topic"></div>
+        </div>
+
+        <!-- Notes for Designer -->
+        <div class="brief-section" id="detail-notes-section">
+            <div class="brief-section-title"><i class="fa-solid fa-paintbrush mr-1"></i> Notes for Designer</div>
+            <div class="brief-section-content" id="detail-notes"></div>
+        </div>
+
+        <!-- Design References -->
+        <div class="brief-section" id="detail-references-section">
+            <div class="brief-section-title"><i class="fa-solid fa-images mr-1"></i> Design References</div>
+            <div class="design-gallery" id="detail-references"></div>
+        </div>
+
+        <!-- Design Outputs + Upload Zone -->
+        <div class="brief-section" id="detail-designs-section">
+            <div class="brief-section-title"><i class="fa-solid fa-palette mr-1"></i> Design Output</div>
+            <div class="design-gallery mb-2" id="detail-designs"></div>
+            <div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500" id="detail-upload-zone"
+                 onclick="document.getElementById('detail-design-input').click()"
+                 ondragover="event.preventDefault(); this.classList.add('dragover')"
+                 ondragleave="this.classList.remove('dragover')"
+                 ondrop="handleDetailDesignDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-2xl mb-1 block text-indigo-400"></i>
+                Drop designs here or click to upload
+            </div>
+            <input type="file" id="detail-design-input" multiple accept="image/*" class="hidden" onchange="uploadDetailDesign(this.files)">
+        </div>
+
+        <!-- Caption -->
+        <div class="brief-section">
+            <div class="brief-section-title"><i class="fa-solid fa-message mr-1"></i> Caption</div>
+            <textarea id="detail-caption" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="Write caption..."></textarea>
+            <button onclick="saveCaption()" class="mt-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+                <i class="fa-solid fa-save mr-1"></i> Save Caption
+            </button>
+        </div>
+
+        <!-- Tone of Voice -->
+        <div class="brief-section" id="detail-tov-section">
+            <div class="brief-section-title"><i class="fa-solid fa-bullhorn mr-1"></i> Tone of Voice</div>
+            <div class="brief-section-content" id="detail-tov"></div>
+        </div>
+
+        <!-- Assignments -->
+        <div class="brief-section" id="detail-assignments-section">
+            <div class="brief-section-title"><i class="fa-solid fa-users mr-1"></i> Assignments</div>
+            <div class="brief-section-content text-sm" id="detail-assignments"></div>
+        </div>
+
+        <!-- Workflow Actions -->
+        <div class="flex flex-wrap gap-2 mt-4" id="detail-actions"></div>
     </div>
 </div>
 {% endblock %}

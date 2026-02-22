@@ -2,6 +2,10 @@
 let clientData = null;
 let clientMonth = new Date();
 let clientPostsData = [];
+let clientCalByDate = {};
+let clientDetailPost = null;
+let clientDraggedPostId = null;
+let clientStatusFilter = '';
 
 function pageInit() {
     loadClientDetail();
@@ -49,8 +53,34 @@ async function loadClientPipeline() {
     }).join('');
 }
 
+// ========== CLIENT CALENDAR (RICH) ==========
+
 async function loadClientCalendar() {
-    clientPostsData = await fetch(API_URL + '/all-posts?client_id=' + clientId).then(r => r.json());
+    const year = clientMonth.getFullYear();
+    const month = clientMonth.getMonth() + 1;
+    const data = await apiFetch(`${API_URL}/posts/calendar?year=${year}&month=${month}&client_id=${clientId}&include_unscheduled=1`);
+    if (!data) return;
+    clientPostsData = data.posts || [];
+    clientCalByDate = data.by_date || {};
+    renderClientCalendar();
+}
+
+function getClientDayPosts(dateStr) {
+    if (clientCalByDate[dateStr]) return clientCalByDate[dateStr];
+    return clientPostsData.filter(p => {
+        const sa = (p.scheduled_at || '').substring(0, 10);
+        const ca = (p.created_at || '').substring(0, 10);
+        return sa === dateStr || (!sa && ca === dateStr);
+    });
+}
+
+function filterClientByStatus(posts) {
+    if (!clientStatusFilter) return posts;
+    return posts.filter(p => getPostStatus(p) === clientStatusFilter);
+}
+
+function applyClientStatusFilter() {
+    clientStatusFilter = document.getElementById('client-cal-status-filter')?.value || '';
     renderClientCalendar();
 }
 
@@ -61,21 +91,281 @@ function renderClientCalendar() {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     let html = '';
-    for (let i = 0; i < firstDay; i++) html += '<div class="bg-gray-50 rounded p-1 min-h-[60px]"></div>';
+    for (let i = 0; i < firstDay; i++) html += '<div class="bg-gray-50 rounded p-1 min-h-[80px]"></div>';
     for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const posts = clientPostsData.filter(p => p.scheduled_at?.startsWith(dateStr) || p.created_at?.startsWith(dateStr));
+        const dayPosts = getClientDayPosts(dateStr);
+        const filtered = filterClientByStatus(dayPosts);
         const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
-        html += `<div class="bg-white border rounded p-1 min-h-[60px] ${isToday ? 'ring-2 ring-indigo-500' : ''}">
-            <div class="font-semibold text-xs ${isToday ? 'text-indigo-600' : ''}">${day}</div>
-            ${posts.slice(0, 2).map(p => `<div class="text-[10px] mt-0.5 px-1 py-0.5 rounded ${getPlatformBgClass(p.platforms)} truncate">${getPlatformIcon(p.platforms)}</div>`).join('')}
-            ${posts.length > 2 ? `<div class="text-[10px] text-indigo-600 font-semibold text-center">+${posts.length - 2}</div>` : ''}
+
+        html += `<div class="bg-white border rounded-lg p-1 cal-day-cell ${isToday ? 'ring-2 ring-indigo-500' : ''}"
+                      data-date="${dateStr}"
+                      ondragover="onClientDayDragOver(event)" ondragleave="onClientDayDragLeave(event)" ondrop="onClientDayDrop(event, '${dateStr}')">
+            <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-xs ${isToday ? 'text-indigo-600' : ''}">${day}</span>
+                ${dayPosts.length > 0 ? `<span class="text-[10px] text-gray-400">${dayPosts.length}</span>` : ''}
+            </div>
+            ${filtered.slice(0, 3).map(p => renderCalendarMiniCard(p)).join('')}
+            ${filtered.length > 3 ? `<div class="text-[10px] text-indigo-600 font-semibold text-center cursor-pointer" onclick="showClientDayPosts('${dateStr}', ${day})">+${filtered.length - 3} more</div>` : ''}
         </div>`;
     }
     document.getElementById('client-calendar-grid').innerHTML = html;
 }
 
-function changeClientMonth(delta) { clientMonth.setMonth(clientMonth.getMonth() + delta); renderClientCalendar(); }
+function changeClientMonth(delta) {
+    clientMonth.setMonth(clientMonth.getMonth() + delta);
+    loadClientCalendar();
+}
+
+// ========== CLIENT CALENDAR DRAG & DROP ==========
+
+function onClientDayDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = clientDraggedPostId ? 'move' : 'copy';
+    e.currentTarget.classList.add('drag-over');
+}
+
+function onClientDayDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+async function onClientDayDrop(e, dateStr) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleClientFileDrop(e.dataTransfer.files, dateStr);
+        return;
+    }
+
+    if (clientDraggedPostId) {
+        const postId = clientDraggedPostId;
+        clientDraggedPostId = null;
+        const res = await apiFetch(`${API_URL}/posts/${postId}/reschedule`, {
+            method: 'PUT',
+            body: { scheduled_at: dateStr + 'T12:00:00' }
+        });
+        if (res && res.success) {
+            showToast('Post rescheduled', 'success');
+            loadClientCalendar();
+        }
+    }
+}
+
+async function handleClientFileDrop(files, dateStr) {
+    const dayPosts = getClientDayPosts(dateStr);
+    const designPosts = dayPosts.filter(p => (p.workflow_status || '') === 'in_design');
+    if (designPosts.length === 0) {
+        showToast('No posts in "In Design" status on this day', 'error');
+        return;
+    }
+    await uploadClientDesignFiles(designPosts[0].id, files);
+}
+
+async function uploadClientDesignFiles(postId, files) {
+    const formData = new FormData();
+    for (const file of files) formData.append('images', file);
+    if (currentUser) formData.append('user_id', currentUser.id);
+    showToast('Uploading designs...', 'info');
+    const res = await apiFetch(`${API_URL}/posts/${postId}/upload-design`, { method: 'POST', body: formData });
+    if (res && res.success) {
+        showToast(`${res.urls?.length || 0} design(s) uploaded`, 'success');
+        loadClientCalendar();
+        if (clientDetailPost && clientDetailPost.id === postId) openClientPostDetail(postId);
+    }
+}
+
+// Override onCardDragStart for client page context
+// The shared renderCalendarMiniCard uses onCardDragStart, so we need it defined here too
+if (typeof onCardDragStart === 'undefined') {
+    window.onCardDragStart = function(e, postId) {
+        clientDraggedPostId = postId;
+        e.dataTransfer.setData('text/plain', postId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+}
+
+// ========== CLIENT DAY POSTS MODAL ==========
+
+function showClientDayPosts(dateStr, day) {
+    const posts = filterClientByStatus(getClientDayPosts(dateStr));
+    document.getElementById('client-day-posts-title').textContent = `Posts for ${dateStr}`;
+    if (posts.length === 0) {
+        document.getElementById('client-day-posts-list').innerHTML = '<p class="text-gray-500 text-center py-8">No posts</p>';
+    } else {
+        document.getElementById('client-day-posts-list').innerHTML = posts.map(p => {
+            const status = getPostStatus(p);
+            const color = getStatusColor(status);
+            return `<div class="border-l-4 rounded-xl p-4 hover:shadow-md transition cursor-pointer bg-white" style="border-left-color:${color}" onclick="openClientPostDetail(${p.id}); hideClientDayPostsModal();">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center gap-2">
+                        ${getPlatformIcon(p.platforms)} ${getContentTypeIcon(p.post_type)}
+                        <div><p class="font-semibold text-sm">${esc(p.topic || 'Untitled')}</p></div>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold text-white" style="background:${color}">${status}</span>
+                </div>
+                <p class="text-sm text-gray-600 line-clamp-2">${esc(p.caption || 'No caption yet')}</p>
+                <div class="text-xs text-gray-400 mt-2"><i class="fa-regular fa-clock mr-1"></i>${(p.scheduled_at || p.created_at || '').replace('T', ' ')}</div>
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('client-day-posts-modal').classList.remove('hidden');
+}
+
+function hideClientDayPostsModal() { document.getElementById('client-day-posts-modal').classList.add('hidden'); }
+
+// ========== CLIENT POST DETAIL MODAL ==========
+
+async function openClientPostDetail(postId) {
+    const post = await apiFetch(`${API_URL}/posts/${postId}`);
+    if (!post || post.error) return;
+    clientDetailPost = post;
+
+    const status = getPostStatus(post);
+    const color = getStatusColor(status);
+    const wf = post.workflow_status || 'draft';
+
+    document.getElementById('client-detail-title').textContent = post.topic || 'Untitled Post';
+
+    document.getElementById('client-detail-meta').innerHTML = `
+        <span class="px-3 py-1 rounded-full text-xs font-semibold text-white" style="background:${color}">${status}</span>
+        <span class="px-3 py-1 rounded-full text-xs font-semibold ${getPlatformBgClass(post.platforms)}">${getPlatformIcon(post.platforms)} ${esc(post.platforms || '')}</span>
+        ${post.post_type ? `<span class="px-3 py-1 rounded-full text-xs bg-gray-100 font-semibold">${getContentTypeIcon(post.post_type)} ${esc(post.post_type)}</span>` : ''}
+        ${post.priority && post.priority !== 'normal' ? `<span class="px-3 py-1 rounded-full text-xs font-semibold badge-${post.priority}">${esc(post.priority)}</span>` : ''}
+    `;
+
+    // Topic
+    const topicSection = document.getElementById('client-detail-topic-section');
+    if (post.topic) { document.getElementById('client-detail-topic').textContent = post.topic; topicSection.style.display = ''; }
+    else topicSection.style.display = 'none';
+
+    // Notes
+    const notesSection = document.getElementById('client-detail-notes-section');
+    if (post.brief_notes) { document.getElementById('client-detail-notes').textContent = post.brief_notes; notesSection.style.display = ''; }
+    else notesSection.style.display = 'none';
+
+    // References
+    const refsSection = document.getElementById('client-detail-references-section');
+    const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
+    if (refUrls.length) {
+        document.getElementById('client-detail-references').innerHTML = refUrls.map(u => `<img src="${u.trim()}" alt="Reference" onclick="window.open('${u.trim()}','_blank')">`).join('');
+        refsSection.style.display = '';
+    } else refsSection.style.display = 'none';
+
+    // Design outputs
+    const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
+    document.getElementById('client-detail-designs').innerHTML = designUrls.length
+        ? designUrls.map(u => `<img src="${u.trim()}" alt="Design" onclick="window.open('${u.trim()}','_blank')">`).join('')
+        : '<p class="text-gray-400 text-sm">No designs uploaded yet</p>';
+
+    // Caption
+    document.getElementById('client-detail-caption').value = post.caption || '';
+
+    // Tone of Voice
+    const tovSection = document.getElementById('client-detail-tov-section');
+    if (post.tov) { document.getElementById('client-detail-tov').textContent = post.tov; tovSection.style.display = ''; }
+    else tovSection.style.display = 'none';
+
+    // Assignments
+    const assignments = [];
+    if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
+    if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
+    if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
+    const assignSection = document.getElementById('client-detail-assignments-section');
+    if (assignments.length) { document.getElementById('client-detail-assignments').innerHTML = assignments.join(''); assignSection.style.display = ''; }
+    else assignSection.style.display = 'none';
+
+    // Actions
+    const actions = [];
+    if (wf === 'draft') actions.push(`<button onclick="clientTransitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
+    if (wf === 'in_design') actions.push(`<button onclick="document.getElementById('client-detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
+    if (wf === 'design_review') {
+        actions.push(`<button onclick="clientTransitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
+        actions.push(`<button onclick="clientReturnToDesign(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>`);
+    }
+    if (wf === 'approved') actions.push(`<button onclick="clientSchedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
+    document.getElementById('client-detail-actions').innerHTML = actions.join('');
+
+    document.getElementById('client-post-detail-modal').classList.remove('hidden');
+}
+
+function closeClientPostDetail() {
+    document.getElementById('client-post-detail-modal').classList.add('hidden');
+    clientDetailPost = null;
+}
+
+// ========== CLIENT CAPTION SAVE ==========
+
+async function saveClientCaption() {
+    if (!clientDetailPost) return;
+    const caption = document.getElementById('client-detail-caption').value;
+    const res = await apiFetch(`${API_URL}/posts/${clientDetailPost.id}`, { method: 'PUT', body: { caption } });
+    if (res && res.success) {
+        showToast('Caption saved', 'success');
+        clientDetailPost.caption = caption;
+        loadClientCalendar();
+    }
+}
+
+// ========== CLIENT DESIGN UPLOAD FROM DETAIL ==========
+
+function handleClientDetailDesignDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('dragover');
+    if (clientDetailPost && e.dataTransfer.files.length > 0) {
+        uploadClientDesignFiles(clientDetailPost.id, e.dataTransfer.files);
+    }
+}
+
+function uploadClientDetailDesign(files) {
+    if (clientDetailPost && files.length > 0) {
+        uploadClientDesignFiles(clientDetailPost.id, files);
+    }
+}
+
+// ========== CLIENT WORKFLOW TRANSITIONS ==========
+
+async function clientTransitionPost(postId, newStatus) {
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: newStatus, user_id: currentUser?.id || 1 }
+    });
+    if (res && res.success) {
+        showToast(`Status changed to ${newStatus.replace('_', ' ')}`, 'success');
+        loadClientCalendar();
+        openClientPostDetail(postId);
+    }
+}
+
+async function clientReturnToDesign(postId) {
+    const comment = prompt('Feedback for designer (required):');
+    if (!comment) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'in_design', user_id: currentUser?.id || 1, comment }
+    });
+    if (res && res.success) {
+        showToast('Returned to design', 'success');
+        loadClientCalendar();
+        openClientPostDetail(postId);
+    }
+}
+
+async function clientSchedulePost(postId) {
+    const dt = prompt('Schedule date/time (YYYY-MM-DDTHH:MM):');
+    if (!dt) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'scheduled', user_id: currentUser?.id || 1, scheduled_at: dt }
+    });
+    if (res && res.success) {
+        showToast('Post scheduled', 'success');
+        loadClientCalendar();
+        openClientPostDetail(postId);
+    }
+}
+
+// ========== EXISTING FUNCTIONALITY (accounts, rules, etc.) ==========
 
 function loadClientAccounts() {
     const container = document.getElementById('client-accounts-list');
@@ -113,7 +403,6 @@ async function loadClientRules() {
             </div>
         `).join('');
     }
-    // Add rule form
     container.innerHTML += `
         <div class="bg-gray-50 rounded-lg p-4 mt-4">
             <h4 class="font-semibold text-sm mb-3">Add Posting Rule</h4>

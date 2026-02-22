@@ -673,21 +673,38 @@ def calendar_posts():
     else:
         end_date = f"{year}-{month + 1:02d}-01"
 
+    include_unscheduled = request.args.get('include_unscheduled', '')
+
     db = get_db()
     query = """
-        SELECT sp.*, c.name as client_name, c.color as client_color
+        SELECT sp.*, c.name as client_name, c.color as client_color,
+               u_designer.username as assigned_designer_name,
+               u_sm.username as assigned_sm_name,
+               u_motion.username as assigned_motion_name
         FROM scheduled_posts sp
         LEFT JOIN clients c ON sp.client_id = c.id
-        WHERE sp.scheduled_at >= ? AND sp.scheduled_at < ?
-          AND sp.scheduled_at IS NOT NULL AND sp.scheduled_at != ''
+        LEFT JOIN users u_designer ON sp.assigned_designer_id = u_designer.id
+        LEFT JOIN users u_sm ON sp.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_motion ON sp.assigned_motion_id = u_motion.id
+        WHERE (
+            (sp.scheduled_at >= ? AND sp.scheduled_at < ? AND sp.scheduled_at IS NOT NULL AND sp.scheduled_at != '')
     """
     params = [start_date, end_date]
+
+    if include_unscheduled == '1':
+        query += """
+            OR ((sp.scheduled_at IS NULL OR sp.scheduled_at = '')
+                AND sp.created_at >= ? AND sp.created_at < ?)
+        """
+        params.extend([start_date, end_date])
+
+    query += ")"
 
     if client_id:
         query += " AND sp.client_id=?"
         params.append(client_id)
 
-    query += " ORDER BY sp.scheduled_at ASC"
+    query += " ORDER BY COALESCE(sp.scheduled_at, sp.created_at) ASC"
 
     posts = dicts_from_rows(db.execute(query, params).fetchall())
     db.close()
