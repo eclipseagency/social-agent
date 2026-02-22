@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="text-xl sm:text-2xl font-bold mb-6"><i class="fa-solid fa-file-export text-indigo-600 mr-2"></i>Client Reports</h2>
+<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+    <h3 class="font-bold mb-4">Generate Report</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div><label class="block text-sm font-medium mb-1">Client</label><select id="report-client" class="w-full border rounded-lg px-4 py-2"></select></div>
+        <div><label class="block text-sm font-medium mb-1">From</label><input type="date" id="report-from" class="w-full border rounded-lg px-4 py-2"></div>
+        <div><label class="block text-sm font-medium mb-1">To</label><input type="date" id="report-to" class="w-full border rounded-lg px-4 py-2"></div>
+    </div>
+    <div class="flex gap-3">
+        <button onclick="generateReport()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium"><i class="fa-solid fa-chart-pie mr-1"></i> Generate</button>
+        <button onclick="exportCSV()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 text-sm font-medium"><i class="fa-solid fa-file-csv mr-1"></i> Export CSV</button>
+    </div>
+</div>
+<div id="report-content"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+function pageInit() { loadClientsDropdown('report-client'); setDefaultDates(); }
+
+function setDefaultDates() {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    document.getElementById('report-from').value = from.toISOString().split('T')[0];
+    document.getElementById('report-to').value = now.toISOString().split('T')[0];
+}
+
+async function generateReport() {
+    const clientId = document.getElementById('report-client').value;
+    const from = document.getElementById('report-from').value;
+    const to = document.getElementById('report-to').value;
+    if (!clientId) { alert('Select a client'); return; }
+    try {
+        const data = await fetch(API_URL + '/reports/generate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, from_date: from, to_date: to })
+        }).then(r => r.json());
+        const container = document.getElementById('report-content');
+        container.innerHTML = `
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm text-center"><p class="text-gray-500 text-xs">Total Posts</p><p class="text-2xl font-bold text-indigo-600">${data.total_posts || 0}</p></div>
+                <div class="bg-white p-4 rounded-xl shadow-sm text-center"><p class="text-gray-500 text-xs">Published</p><p class="text-2xl font-bold text-green-600">${data.published || 0}</p></div>
+                <div class="bg-white p-4 rounded-xl shadow-sm text-center"><p class="text-gray-500 text-xs">Pending</p><p class="text-2xl font-bold text-yellow-600">${data.pending || 0}</p></div>
+                <div class="bg-white p-4 rounded-xl shadow-sm text-center"><p class="text-gray-500 text-xs">Failed</p><p class="text-2xl font-bold text-red-600">${data.failed || 0}</p></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-4 overflow-x-auto">
+                <h3 class="font-bold mb-3">Post Details</h3>
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left">Date</th><th class="px-4 py-2 text-left">Platform</th><th class="px-4 py-2 text-left">Topic</th><th class="px-4 py-2 text-left">Status</th></tr></thead>
+                    <tbody>${(data.posts || []).map(p => `<tr class="border-t"><td class="px-4 py-2">${p.scheduled_at?.split('T')[0] || p.created_at?.split(' ')[0] || '-'}</td><td class="px-4 py-2">${getPlatformIcon(p.platforms)} ${esc(p.platforms)}</td><td class="px-4 py-2">${esc(p.topic || '')}</td><td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-xs ${p.status === 'posted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${p.status}</span></td></tr>`).join('') || '<tr><td colspan="4" class="text-center py-4 text-gray-500">No posts in this period</td></tr>'}</tbody>
+                </table>
+            </div>
+        `;
+    } catch (e) {
+        document.getElementById('report-content').innerHTML = '<p class="text-gray-500 text-center py-8">Reports system coming soon</p>';
+    }
+}
+
+async function exportCSV() {
+    const clientId = document.getElementById('report-client').value;
+    const from = document.getElementById('report-from').value;
+    const to = document.getElementById('report-to').value;
+    if (!clientId) { alert('Select a client'); return; }
+    try {
+        const res = await fetch(API_URL + '/reports/export/csv', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, from_date: from, to_date: to })
+        });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'report.csv'; a.click();
+        URL.revokeObjectURL(url);
+    } catch (e) { showToast('Export failed', 'error'); }
+}
+</script>
+{% endblock %}

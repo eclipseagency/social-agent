@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-bell text-indigo-600 mr-2"></i>Notifications</h2>
+    <button onclick="markAllRead()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm"><i class="fa-solid fa-check-double mr-1"></i> Mark All Read</button>
+</div>
+<div id="notifications-list" class="space-y-3"><p class="text-gray-500 text-center py-8">Loading notifications...</p></div>
+{% endblock %}
+{% block scripts %}
+<script>
+function pageInit() { loadNotifications(); }
+
+async function loadNotifications() {
+    if (!currentUser) return;
+    const notifs = await fetch(API_URL + '/notifications?user_id=' + currentUser.id).then(r => r.json());
+    const container = document.getElementById('notifications-list');
+    if (!notifs || notifs.length === 0) { container.innerHTML = '<p class="text-gray-500 text-center py-8">No notifications</p>'; return; }
+    container.innerHTML = notifs.map(n => `
+        <div class="bg-white rounded-xl shadow-sm p-4 flex items-start gap-3 ${n.is_read ? 'opacity-60' : 'border-l-4 border-indigo-500'} cursor-pointer hover:shadow-md transition" onclick="handleNotifClick(${n.id}, '${n.reference_type || ''}', ${n.reference_id || 0})">
+            <div class="w-10 h-10 rounded-full ${n.type === 'task_assigned' ? 'bg-purple-100 text-purple-600' : n.type === 'design_assigned' ? 'bg-pink-100 text-pink-600' : 'bg-indigo-100 text-indigo-600'} flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid ${n.type === 'task_assigned' ? 'fa-clipboard-list' : n.type === 'design_assigned' ? 'fa-palette' : 'fa-bell'}"></i>
+            </div>
+            <div class="flex-1">
+                <p class="font-semibold text-sm">${esc(n.title)}</p>
+                <p class="text-gray-500 text-xs mt-1">${esc(n.message)}</p>
+                <p class="text-gray-400 text-xs mt-2">${n.created_at || ''}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function handleNotifClick(notifId, refType, refId) {
+    await fetch(API_URL + '/notifications/' + notifId + '/read', { method: 'PUT' });
+    if (refType === 'task') window.location.href = '/tasks';
+    else if (refType === 'post') window.location.href = '/pipeline';
+    else loadNotifications();
+}
+
+async function markAllRead() {
+    if (!currentUser) return;
+    await fetch(API_URL + '/notifications/read-all', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.id }) });
+    loadNotifications();
+    loadNotificationCount();
+    showToast('All marked as read', 'success');
+}
+</script>
+{% endblock %}

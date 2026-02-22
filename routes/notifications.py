@@ -4,6 +4,17 @@ from models import get_db, dicts_from_rows
 notifications_bp = Blueprint('notifications', __name__)
 
 
+def create_notification(db, user_id, notif_type, title, message, ref_type=None, ref_id=None):
+    """Helper to create a notification. Caller must commit."""
+    if not user_id:
+        return
+    db.execute(
+        """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+           VALUES (?,?,?,?,?,?)""",
+        (user_id, notif_type, title, message, ref_type, ref_id)
+    )
+
+
 @notifications_bp.route('/api/notifications', methods=['GET'])
 def list_notifications():
     user_id = request.args.get('user_id', 1)

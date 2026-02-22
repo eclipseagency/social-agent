@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Eclipse Agency{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Mobile Header -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 bg-[#0f172a] z-40 px-4 py-3 flex items-center justify-between">
+        <button onclick="toggleMobileMenu()" class="text-white text-xl"><i class="fa-solid fa-bars"></i></button>
+        <h1 class="text-white font-bold text-sm">Eclipse Agency</h1>
+        <button onclick="toggleDarkMode()" class="text-white"><i class="fa-solid fa-moon"></i></button>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div id="mobile-overlay" class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleMobileMenu()"></div>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-[#0f172a] min-h-screen p-6 fixed left-0 z-50 transition-transform duration-300 transform lg:translate-x-0 -translate-x-full">
+            <!-- Mobile close button -->
+            <div class="lg:hidden flex justify-between items-center mb-4">
+                <h1 class="text-white text-lg font-bold">Eclipse Agency</h1>
+                <button onclick="toggleMobileMenu()" class="text-white text-2xl">&times;</button>
+            </div>
+
+            <!-- Desktop logo -->
+            <div class="hidden lg:block mb-6">
+                <h1 class="text-white text-xl font-bold tracking-tight">Eclipse Agency</h1>
+                <p class="text-slate-500 text-xs mt-1">Marketing Team Platform</p>
+            </div>
+
+            <!-- User greeting -->
+            <p class="text-slate-400 text-sm">Hello, <span id="user-name" class="text-white font-medium">User</span></p>
+            <p id="user-job-title" class="text-slate-500 text-xs mb-6 hidden"></p>
+
+            <!-- Navigation -->
+            <nav class="space-y-1">
+                <a href="/"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'overview' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i> Dashboard
+                </a>
+                <a href="/clients"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'clients' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-users w-5 text-center"></i> Clients
+                </a>
+                <a href="/new-post"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'new-post' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-pen-to-square w-5 text-center"></i> New Post
+                </a>
+                <a href="/tasks"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'tasks' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Tasks
+                </a>
+                <a href="/pipeline"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'pipeline' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-arrows-spin w-5 text-center"></i> Pipeline
+                </a>
+                <a href="/calendar"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'calendar' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar
+                </a>
+                <a href="/analytics"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'analytics' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-chart-bar w-5 text-center"></i> Analytics
+                </a>
+                <a href="/scheduled"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'scheduled' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-clock w-5 text-center"></i> Scheduled
+                </a>
+                <a href="/team" id="users-nav"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'team' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-user-gear w-5 text-center"></i> Team
+                </a>
+                <a href="/briefs"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'briefs' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-file-lines w-5 text-center"></i> Briefs
+                </a>
+                <a href="/reports"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'reports' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-chart-bar w-5 text-center"></i> Reports
+                </a>
+                <a href="/settings"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'settings' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-gear w-5 text-center"></i> Settings
+                </a>
+                <a href="/notifications"
+                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm relative {% if active_page == 'notifications' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i class="fa-solid fa-bell w-5 text-center"></i> Notifications <span id="sidebar-notif-badge" class="notif-badge hidden">0</span>
+                </a>
+            </nav>
+
+            <!-- Bottom buttons -->
+            <div class="mt-6 space-y-2 lg:absolute lg:bottom-6 lg:left-6 lg:right-6">
+                <button onclick="toggleDarkMode()" class="w-full bg-slate-800 text-slate-300 py-2 rounded-lg hover:bg-slate-700 text-sm transition"><i class="fa-solid fa-moon mr-2"></i>Dark Mode</button>
+                <button onclick="logout()" class="w-full bg-red-900/30 text-red-400 py-2 rounded-lg hover:bg-red-900/50 text-sm transition"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sign Out</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 lg:p-8 lg:ml-64 mt-14 lg:mt-0">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Modals -->
+    {% block modals %}{% endblock %}
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Scripts -->
+    <script src="/static/js/common.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-calendar-days text-indigo-600 mr-2"></i>Calendar</h2>
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+        <select id="calendar-client-filter" onchange="loadCalendar()" class="border rounded-lg px-3 py-2 text-sm"><option value="">All Clients</option></select>
+        <button onclick="changeMonth(-1)" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"><i class="fa-solid fa-chevron-left"></i></button>
+        <span id="calendar-month" class="flex-1 sm:flex-none bg-white px-6 py-2 rounded-lg font-semibold text-center text-sm"></span>
+        <button onclick="changeMonth(1)" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+</div>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-6 overflow-x-auto">
+    <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-2 min-w-[300px]">
+        <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Sun</div>
+        <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Mon</div>
+        <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Tue</div>
+        <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Wed</div>
+        <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Thu</div>
+        <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Fri</div>
+        <div class="text-center font-semibold text-gray-600 py-2 text-xs sm:text-sm">Sat</div>
+    </div>
+    <div id="calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-2 min-w-[300px]"></div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Day Posts Modal -->
+<div id="day-posts-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideDayPostsModal()">
+    <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[600px] max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold" id="day-posts-title">Posts</h3>
+            <button onclick="hideDayPostsModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+        <div id="day-posts-list" class="space-y-3"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/calendar.js"></script>
+{% endblock %}

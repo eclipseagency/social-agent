@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-chart-line text-indigo-600 mr-2"></i>Dashboard</h2>
+    <p class="text-gray-500 text-sm" id="current-time"></p>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
+        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Clients</h3>
+        <p class="text-xl sm:text-3xl font-bold text-indigo-600" id="stat-clients">0</p>
+    </div>
+    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Linked Accounts</h3>
+        <p class="text-xl sm:text-3xl font-bold text-green-600" id="stat-accounts">0</p>
+    </div>
+    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-yellow-500">
+        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Pending</h3>
+        <p class="text-xl sm:text-3xl font-bold text-yellow-600" id="stat-pending">0</p>
+    </div>
+    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Published</h3>
+        <p class="text-xl sm:text-3xl font-bold text-blue-600" id="stat-posted">0</p>
+    </div>
+    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-red-500 col-span-2 sm:col-span-1">
+        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Failed</h3>
+        <p class="text-xl sm:text-3xl font-bold text-red-600" id="stat-failed">0</p>
+    </div>
+</div>
+
+<!-- My Work Section (Phase 2) -->
+<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+    <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-user-check text-indigo-500 mr-2"></i>My Action Items</h3>
+    <div id="my-work-items" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <p class="text-gray-400 text-sm col-span-full text-center py-4">Loading...</p>
+    </div>
+</div>
+
+<!-- Coverage Alerts (Phase 4) -->
+<div id="coverage-alerts" class="mb-6 space-y-2"></div>
+
+<!-- Quick Actions + Recent Activity -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-bolt text-indigo-500 mr-2"></i>Quick Actions</h3>
+        <div class="grid grid-cols-2 gap-3 quick-actions-grid">
+            <a href="/new-post" class="bg-indigo-50 text-indigo-700 p-3 rounded-lg hover:bg-indigo-100 transition text-sm font-medium text-center"><i class="fa-solid fa-pen-to-square mr-1"></i> New Post</a>
+            <a href="/pipeline" class="bg-green-50 text-green-700 p-3 rounded-lg hover:bg-green-100 transition text-sm font-medium text-center"><i class="fa-solid fa-arrows-spin mr-1"></i> Pipeline</a>
+            <a href="/tasks" class="bg-purple-50 text-purple-700 p-3 rounded-lg hover:bg-purple-100 transition text-sm font-medium text-center"><i class="fa-solid fa-clipboard-list mr-1"></i> Tasks</a>
+            <a href="/calendar" class="bg-yellow-50 text-yellow-700 p-3 rounded-lg hover:bg-yellow-100 transition text-sm font-medium text-center"><i class="fa-solid fa-calendar-days mr-1"></i> Calendar</a>
+        </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i>Recent Activity</h3>
+        <div id="recent-activity" class="space-y-3 text-sm"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function pageInit() {
+    loadDashboard();
+    loadMyWork();
+    loadCoverageAlerts();
+}
+
+async function loadDashboard() {
+    let stats;
+    try { stats = await fetch(API_URL + '/stats').then(r => r.json()); } catch (e) { return; }
+    document.getElementById('stat-clients').textContent = stats.total_clients;
+    document.getElementById('stat-accounts').textContent = stats.total_accounts;
+    document.getElementById('stat-pending').textContent = stats.pending_posts;
+    document.getElementById('stat-posted').textContent = stats.posted_posts;
+    document.getElementById('stat-failed').textContent = stats.failed_posts;
+    const recentDiv = document.getElementById('recent-activity');
+    recentDiv.innerHTML = stats.recent_posts.map(p => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div><p class="font-semibold">${esc(p.topic?.substring(0, 20) || '')}...</p><p class="text-sm text-gray-500">${getPlatformIcon(p.platforms)} ${esc(p.platforms)}</p></div>
+            <span class="px-2 py-1 rounded text-xs ${p.status === 'posted' ? 'bg-green-100 text-green-800' : p.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">${p.status === 'posted' ? 'Published' : p.status === 'pending' ? 'Pending' : 'Failed'}</span>
+        </div>
+    `).join('') || '<p class="text-gray-500 text-center">No recent activity</p>';
+}
+
+async function loadMyWork() {
+    if (!currentUser) return;
+    try {
+        const data = await fetch(API_URL + '/posts/my-work?user_id=' + currentUser.id).then(r => r.json());
+        const container = document.getElementById('my-work-items');
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm col-span-full text-center py-4">No pending action items</p>';
+            return;
+        }
+        container.innerHTML = data.map(item => `
+            <div class="action-item-card">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold badge-${item.priority || 'normal'}">${item.priority || 'normal'}</span>
+                    <span class="text-xs text-gray-400">${item.client_name || ''}</span>
+                </div>
+                <p class="font-semibold text-sm mb-1">${esc(item.topic || 'Untitled')}</p>
+                <p class="text-xs text-gray-500 mb-2">Status: ${item.workflow_status || 'draft'}</p>
+                <a href="/pipeline" class="text-indigo-600 text-xs font-medium hover:underline">View in Pipeline &rarr;</a>
+            </div>
+        `).join('');
+    } catch (e) {
+        document.getElementById('my-work-items').innerHTML = '<p class="text-gray-400 text-sm col-span-full text-center py-4">No pending action items</p>';
+    }
+}
+
+async function loadCoverageAlerts() {
+    try {
+        const data = await fetch(API_URL + '/clients/overview').then(r => r.json());
+        const container = document.getElementById('coverage-alerts');
+        if (!data || !data.alerts || data.alerts.length === 0) { container.innerHTML = ''; return; }
+        container.innerHTML = data.alerts.map(a => `
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-center gap-3">
+                <i class="fa-solid fa-triangle-exclamation text-yellow-500"></i>
+                <span class="text-sm text-yellow-800">${esc(a)}</span>
+            </div>
+        `).join('');
+    } catch (e) { /* silent - new endpoint may not exist yet */ }
+}
+</script>
+{% endblock %}

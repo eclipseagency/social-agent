@@ -20,10 +20,16 @@ from migrations import run_migrations
 run_migrations()
 
 # Create Flask app
-app = Flask(__name__, static_folder=None)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, 'templates'),
+    static_folder=os.path.join(BASE_DIR, 'static')
+)
+app.secret_key = os.getenv('SECRET_KEY', 'social-agent-secret-key-change-in-production')
 CORS(app)
 
-# Register blueprints
+# Register API blueprints
 from routes.auth import auth_bp
 from routes.clients import clients_bp
 from routes.posts import posts_bp
@@ -32,6 +38,8 @@ from routes.analytics import analytics_bp
 from routes.tasks import tasks_bp
 from routes.posting_rules import posting_rules_bp
 from routes.notifications import notifications_bp
+from routes.briefs import briefs_bp
+from routes.reports import reports_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(clients_bp)
@@ -41,20 +49,16 @@ app.register_blueprint(analytics_bp)
 app.register_blueprint(tasks_bp)
 app.register_blueprint(posting_rules_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(briefs_bp)
+app.register_blueprint(reports_bp)
 
-# Serve dashboard static files
-DASHBOARD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dashboard')
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+# Register page-rendering blueprint
+from routes.dashboard import dashboard_bp
+app.register_blueprint(dashboard_bp)
 
-
-@app.route('/')
-def serve_index():
-    return send_from_directory(DASHBOARD_DIR, 'index.html')
-
-
-@app.route('/story-designer')
-def serve_story_designer():
-    return send_from_directory(DASHBOARD_DIR, 'story-designer.html')
+# Serve legacy dashboard files and uploads
+DASHBOARD_DIR = os.path.join(BASE_DIR, 'dashboard')
+UPLOADS_DIR = os.path.join(BASE_DIR, 'uploads')
 
 
 @app.route('/dashboard/<path:filename>')

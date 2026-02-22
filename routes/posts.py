@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from models import get_db, dict_from_row, dicts_from_rows
 from services.scheduler import publish_post, run_scheduler, force_publish_all
@@ -6,6 +7,15 @@ from services.cloudinary_service import upload_image
 posts_bp = Blueprint('posts', __name__)
 
 VALID_WORKFLOW_STATUSES = ['draft', 'in_design', 'design_review', 'approved', 'scheduled', 'posted']
+
+# Valid workflow transitions: from_status -> list of allowed to_statuses
+VALID_TRANSITIONS = {
+    'draft': ['in_design'],
+    'in_design': ['design_review'],
+    'design_review': ['approved', 'in_design'],
+    'approved': ['scheduled'],
+    'scheduled': ['posted', 'approved'],
+}
 
 
 @posts_bp.route('/api/all-posts', methods=['GET'])
@@ -375,6 +385,364 @@ def create_post(client_id):
 
     db.close()
     return jsonify({'success': True, 'id': post_id})
+
+
+# ============ EXISTING ENDPOINTS ============
+
+# ============ MY WORK (role-aware action items) ============
+
+@posts_bp.route('/api/posts/my-work', methods=['GET'])
+def my_work():
+    """Return posts that need the current user's attention, based on their role."""
+    user_id = request.args.get('user_id', 1, type=int)
+    role = request.args.get('role', 'user')
+
+    db = get_db()
+    items = []
+
+    if role in ('designer', 'motion_editor'):
+        # Posts assigned to this designer that are in_design
+        rows = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.assigned_designer_id=? AND sp.workflow_status='in_design'
+            ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
+        """, (user_id,)).fetchall())
+        for r in rows:
+            r['action'] = 'needs_design'
+            r['action_label'] = 'يحتاج تصميم'
+        items.extend(rows)
+
+        # Posts returned from review back to in_design
+        returned = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.assigned_designer_id=? AND sp.workflow_status='in_design' AND sp.revision_count > 0
+            ORDER BY sp.updated_at DESC
+        """, (user_id,)).fetchall())
+        for r in returned:
+            r['action'] = 'returned_for_edits'
+            r['action_label'] = 'مرتجع للتعديل'
+        # Don't duplicate - only add ones not already in items
+        existing_ids = {i['id'] for i in items}
+        items.extend([r for r in returned if r['id'] not in existing_ids])
+
+    elif role in ('sm_specialist', 'manager'):
+        # Posts awaiting review
+        rows = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE (sp.assigned_sm_id=? OR sp.assigned_sm_id IS NULL) AND sp.workflow_status='design_review'
+            ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
+        """, (user_id,)).fetchall())
+        for r in rows:
+            r['action'] = 'needs_review'
+            r['action_label'] = 'يحتاج مراجعة'
+        items.extend(rows)
+
+        # Approved posts ready to schedule
+        approved = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.workflow_status='approved' AND (sp.scheduled_at IS NULL OR sp.scheduled_at='')
+            ORDER BY sp.updated_at DESC
+        """).fetchall())
+        for r in approved:
+            r['action'] = 'ready_to_schedule'
+            r['action_label'] = 'جاهز للجدولة'
+        items.extend(approved)
+
+    elif role == 'admin':
+        # All posts needing attention: unassigned drafts, overdue, etc.
+        unassigned = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.workflow_status='draft' AND sp.assigned_designer_id IS NULL
+            ORDER BY sp.created_at DESC LIMIT 20
+        """).fetchall())
+        for r in unassigned:
+            r['action'] = 'unassigned'
+            r['action_label'] = 'غير معين'
+        items.extend(unassigned)
+
+        # Overdue scheduled posts
+        overdue = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.status='pending' AND sp.scheduled_at < datetime('now') AND sp.scheduled_at != ''
+            ORDER BY sp.scheduled_at ASC LIMIT 20
+        """).fetchall())
+        for r in overdue:
+            r['action'] = 'overdue'
+            r['action_label'] = 'متأخر'
+        items.extend(overdue)
+
+        # Posts in review
+        in_review = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.workflow_status='design_review'
+            ORDER BY sp.updated_at DESC LIMIT 20
+        """).fetchall())
+        for r in in_review:
+            r['action'] = 'needs_review'
+            r['action_label'] = 'يحتاج مراجعة'
+        existing_ids = {i['id'] for i in items}
+        items.extend([r for r in in_review if r['id'] not in existing_ids])
+
+    db.close()
+    return jsonify(items)
+
+
+# ============ WORKFLOW TRANSITION (enforced) ============
+
+@posts_bp.route('/api/posts/<int:post_id>/transition', methods=['POST'])
+def transition_post(post_id):
+    """Transition a post through the workflow with validation."""
+    data = request.json or {}
+    new_status = data.get('status', '')
+    user_id = data.get('user_id', 1)
+    comment = data.get('comment', '')
+
+    if new_status not in VALID_WORKFLOW_STATUSES:
+        return jsonify({'error': f'Invalid status. Must be one of: {VALID_WORKFLOW_STATUSES}'}), 400
+
+    db = get_db()
+    post = dict_from_row(db.execute("""
+        SELECT sp.*, c.name as client_name
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        WHERE sp.id=?
+    """, (post_id,)).fetchone())
+
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    old_status = post.get('workflow_status', 'draft') or 'draft'
+
+    # Validate transition
+    allowed = VALID_TRANSITIONS.get(old_status, [])
+    if new_status not in allowed:
+        db.close()
+        return jsonify({'error': f'Cannot transition from {old_status} to {new_status}. Allowed: {allowed}'}), 400
+
+    # Validate requirements
+    if new_status == 'in_design' and not post.get('assigned_designer_id'):
+        db.close()
+        return jsonify({'error': 'Designer must be assigned before moving to design'}), 400
+
+    if new_status == 'design_review':
+        design_urls = post.get('design_output_urls', '') or ''
+        if not design_urls.strip():
+            db.close()
+            return jsonify({'error': 'Design must be uploaded before submitting for review'}), 400
+
+    if old_status == 'design_review' and new_status == 'in_design' and not comment:
+        db.close()
+        return jsonify({'error': 'Feedback comment is required when returning to design'}), 400
+
+    if new_status == 'scheduled':
+        scheduled_at = data.get('scheduled_at') or post.get('scheduled_at', '')
+        if not scheduled_at:
+            db.close()
+            return jsonify({'error': 'Schedule date/time required'}), 400
+
+    # Perform the transition
+    update_fields = ["workflow_status=?", "updated_at=datetime('now')"]
+    update_params = [new_status]
+
+    if new_status == 'approved':
+        update_fields.extend(["approved_by_id=?", "approved_at=datetime('now')"])
+        update_params.append(user_id)
+
+    if new_status == 'scheduled' and data.get('scheduled_at'):
+        update_fields.append("scheduled_at=?")
+        update_params.append(data['scheduled_at'])
+        update_fields.append("status=?")
+        update_params.append('pending')
+
+    if old_status == 'design_review' and new_status == 'in_design':
+        update_fields.append("revision_count=revision_count+1")
+
+    update_params.append(post_id)
+    db.execute(f"UPDATE scheduled_posts SET {', '.join(update_fields)} WHERE id=?", update_params)
+
+    # Log to workflow_history
+    db.execute(
+        """INSERT INTO workflow_history (post_id, user_id, from_status, to_status, comment)
+           VALUES (?,?,?,?,?)""",
+        (post_id, user_id, old_status, new_status, comment)
+    )
+
+    # Add feedback as a comment if returning to design
+    if old_status == 'design_review' and new_status == 'in_design' and comment:
+        db.execute(
+            """INSERT INTO post_comments (post_id, user_id, content, comment_type)
+               VALUES (?,?,?,?)""",
+            (post_id, user_id, comment, 'revision_feedback')
+        )
+
+    # Create notifications for the next person in the chain
+    topic = post.get('topic', 'Untitled')
+
+    if new_status == 'in_design' and post.get('assigned_designer_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_designer_id'], 'design_assigned',
+             'تصميم جديد', f'تم تعيينك لتصميم: {topic}', 'post', post_id)
+        )
+
+    if new_status == 'design_review' and post.get('assigned_sm_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_sm_id'], 'design_review_ready',
+             'تصميم جاهز للمراجعة', f'التصميم جاهز للمراجعة: {topic}', 'post', post_id)
+        )
+
+    if old_status == 'design_review' and new_status == 'in_design' and post.get('assigned_designer_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_designer_id'], 'design_returned',
+             'تصميم مرتجع', f'تم إرجاع التصميم للتعديل: {topic}', 'post', post_id)
+        )
+
+    if new_status == 'approved' and post.get('created_by_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['created_by_id'], 'post_approved',
+             'تمت الموافقة', f'تمت الموافقة على: {topic}', 'post', post_id)
+        )
+
+    # Auto-create task for designer when moving to in_design
+    if new_status == 'in_design' and post.get('assigned_designer_id'):
+        db.execute(
+            """INSERT INTO tasks (title, description, client_id, assigned_to_id, created_by_id,
+                                  status, priority, category, post_id)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (f'تصميم: {topic}', f'تصميم منشور: {topic}', post.get('client_id'),
+             post['assigned_designer_id'], user_id, 'todo', post.get('priority', 'normal'),
+             'design', post_id)
+        )
+
+    # Auto-create task for SM when moving to design_review
+    if new_status == 'design_review' and post.get('assigned_sm_id'):
+        db.execute(
+            """INSERT INTO tasks (title, description, client_id, assigned_to_id, created_by_id,
+                                  status, priority, category, post_id)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (f'مراجعة: {topic}', f'مراجعة تصميم: {topic}', post.get('client_id'),
+             post['assigned_sm_id'], user_id, 'todo', post.get('priority', 'normal'),
+             'review', post_id)
+        )
+
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+# ============ CALENDAR VIEW ============
+
+@posts_bp.route('/api/posts/calendar', methods=['GET'])
+def calendar_posts():
+    """Get posts organized for calendar display."""
+    month = request.args.get('month', type=int)
+    year = request.args.get('year', type=int)
+    client_id = request.args.get('client_id')
+
+    if not month or not year:
+        now = datetime.now()
+        month = month or now.month
+        year = year or now.year
+
+    # Get first and last day of the month
+    start_date = f"{year}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year + 1}-01-01"
+    else:
+        end_date = f"{year}-{month + 1:02d}-01"
+
+    db = get_db()
+    query = """
+        SELECT sp.*, c.name as client_name, c.color as client_color
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        WHERE sp.scheduled_at >= ? AND sp.scheduled_at < ?
+          AND sp.scheduled_at IS NOT NULL AND sp.scheduled_at != ''
+    """
+    params = [start_date, end_date]
+
+    if client_id:
+        query += " AND sp.client_id=?"
+        params.append(client_id)
+
+    query += " ORDER BY sp.scheduled_at ASC"
+
+    posts = dicts_from_rows(db.execute(query, params).fetchall())
+    db.close()
+
+    # Group by date
+    by_date = {}
+    for post in posts:
+        sa = post.get('scheduled_at', '') or ''
+        date_key = sa[:10] if len(sa) >= 10 else ''
+        if date_key:
+            if date_key not in by_date:
+                by_date[date_key] = []
+            by_date[date_key].append(post)
+
+    return jsonify({'posts': posts, 'by_date': by_date, 'month': month, 'year': year})
+
+
+# ============ RESCHEDULE (drag-and-drop) ============
+
+@posts_bp.route('/api/posts/<int:post_id>/reschedule', methods=['PUT'])
+def reschedule_post(post_id):
+    """Reschedule a post to a new date/time (for calendar drag-and-drop)."""
+    data = request.json or {}
+    new_datetime = data.get('scheduled_at', '')
+
+    if not new_datetime:
+        return jsonify({'error': 'New schedule datetime required'}), 400
+
+    db = get_db()
+    post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    # Only scheduled and approved posts can be rescheduled
+    wf_status = post.get('workflow_status', '') or ''
+    if wf_status not in ('scheduled', 'approved'):
+        db.close()
+        return jsonify({'error': 'Only scheduled or approved posts can be rescheduled'}), 400
+
+    db.execute(
+        "UPDATE scheduled_posts SET scheduled_at=?, updated_at=datetime('now') WHERE id=?",
+        (new_datetime, post_id)
+    )
+
+    # If approved post is being scheduled, also update workflow_status
+    if wf_status == 'approved':
+        db.execute(
+            "UPDATE scheduled_posts SET workflow_status='scheduled', status='pending' WHERE id=?",
+            (post_id,)
+        )
+
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
 
 
 # ============ EXISTING ENDPOINTS ============

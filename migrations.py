@@ -146,6 +146,31 @@ def run_migrations():
         _migration_7_migrate_statuses(db)
         set_schema_version(db, 7)
 
+    if version < 8:
+        print("Running migration 8: Add color to clients...")
+        _migration_8_client_color(db)
+        set_schema_version(db, 8)
+
+    if version < 9:
+        print("Running migration 9: Create content briefs table...")
+        _migration_9_content_briefs(db)
+        set_schema_version(db, 9)
+
+    if version < 10:
+        print("Running migration 10: Create brief_posts table...")
+        _migration_10_brief_posts(db)
+        set_schema_version(db, 10)
+
+    if version < 11:
+        print("Running migration 11: Add post_id to tasks...")
+        _migration_11_task_post_id(db)
+        set_schema_version(db, 11)
+
+    if version < 12:
+        print("Running migration 12: Add brief_id to tasks...")
+        _migration_12_task_brief_id(db)
+        set_schema_version(db, 12)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -289,6 +314,61 @@ def _migration_7_migrate_statuses(db):
     db.execute("UPDATE scheduled_posts SET workflow_status='posted' WHERE status='posted' AND (workflow_status IS NULL OR workflow_status='draft')")
     db.execute("UPDATE scheduled_posts SET workflow_status='scheduled' WHERE status='pending' AND (workflow_status IS NULL OR workflow_status='draft')")
     db.execute("UPDATE scheduled_posts SET workflow_status='failed' WHERE status='failed' AND (workflow_status IS NULL OR workflow_status='draft')")
+    db.commit()
+
+
+def _migration_8_client_color(db):
+    if not column_exists(db, 'clients', 'color'):
+        db.execute("ALTER TABLE clients ADD COLUMN color VARCHAR(7) DEFAULT '#6366f1'")
+    db.commit()
+
+
+def _migration_9_content_briefs(db):
+    if not table_exists(db, 'content_briefs'):
+        db.execute("""
+            CREATE TABLE content_briefs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_id INTEGER NOT NULL REFERENCES clients(id),
+                title VARCHAR(200) NOT NULL,
+                description TEXT DEFAULT '',
+                content_type VARCHAR(50) DEFAULT 'post',
+                platform VARCHAR(50) DEFAULT '',
+                target_date TEXT,
+                reference_urls TEXT DEFAULT '[]',
+                reference_files TEXT DEFAULT '[]',
+                brand_guidelines TEXT DEFAULT '',
+                status VARCHAR(30) DEFAULT 'new',
+                created_by_id INTEGER REFERENCES users(id),
+                assigned_writer_id INTEGER REFERENCES users(id),
+                assigned_designer_id INTEGER REFERENCES users(id),
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+    db.commit()
+
+
+def _migration_10_brief_posts(db):
+    if not table_exists(db, 'brief_posts'):
+        db.execute("""
+            CREATE TABLE brief_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                brief_id INTEGER NOT NULL REFERENCES content_briefs(id) ON DELETE CASCADE,
+                post_id INTEGER NOT NULL REFERENCES scheduled_posts(id) ON DELETE CASCADE
+            )
+        """)
+    db.commit()
+
+
+def _migration_11_task_post_id(db):
+    if not column_exists(db, 'tasks', 'post_id'):
+        db.execute("ALTER TABLE tasks ADD COLUMN post_id INTEGER REFERENCES scheduled_posts(id)")
+    db.commit()
+
+
+def _migration_12_task_brief_id(db):
+    if not column_exists(db, 'tasks', 'brief_id'):
+        db.execute("ALTER TABLE tasks ADD COLUMN brief_id INTEGER REFERENCES content_briefs(id)")
     db.commit()
 
 

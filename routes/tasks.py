@@ -12,16 +12,22 @@ def list_tasks():
     client_id = request.args.get('client_id')
     priority = request.args.get('priority')
     category = request.args.get('category')
+    post_id = request.args.get('post_id')
+    brief_id = request.args.get('brief_id')
 
     query = """
         SELECT t.*,
                u_assigned.username as assigned_to_name,
                u_created.username as created_by_name,
-               c.name as client_name
+               c.name as client_name,
+               sp.topic as post_topic,
+               cb.title as brief_title
         FROM tasks t
         LEFT JOIN users u_assigned ON t.assigned_to_id = u_assigned.id
         LEFT JOIN users u_created ON t.created_by_id = u_created.id
         LEFT JOIN clients c ON t.client_id = c.id
+        LEFT JOIN scheduled_posts sp ON t.post_id = sp.id
+        LEFT JOIN content_briefs cb ON t.brief_id = cb.id
         WHERE 1=1
     """
     params = []
@@ -41,6 +47,46 @@ def list_tasks():
     if category:
         query += " AND t.category=?"
         params.append(category)
+    if post_id:
+        query += " AND t.post_id=?"
+        params.append(post_id)
+    if brief_id:
+        query += " AND t.brief_id=?"
+        params.append(brief_id)
+
+    query += " ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END, t.created_at DESC"
+
+    tasks = dicts_from_rows(db.execute(query, params).fetchall())
+    db.close()
+    return jsonify(tasks)
+
+
+@tasks_bp.route('/api/tasks/my-tasks', methods=['GET'])
+def my_tasks():
+    """Get tasks assigned to a specific user."""
+    user_id = request.args.get('user_id', 1, type=int)
+    include_done = request.args.get('include_done', 'false').lower() == 'true'
+
+    db = get_db()
+    query = """
+        SELECT t.*,
+               u_assigned.username as assigned_to_name,
+               u_created.username as created_by_name,
+               c.name as client_name,
+               sp.topic as post_topic,
+               cb.title as brief_title
+        FROM tasks t
+        LEFT JOIN users u_assigned ON t.assigned_to_id = u_assigned.id
+        LEFT JOIN users u_created ON t.created_by_id = u_created.id
+        LEFT JOIN clients c ON t.client_id = c.id
+        LEFT JOIN scheduled_posts sp ON t.post_id = sp.id
+        LEFT JOIN content_briefs cb ON t.brief_id = cb.id
+        WHERE t.assigned_to_id=?
+    """
+    params = [user_id]
+
+    if not include_done:
+        query += " AND t.status != 'done'"
 
     query += " ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END, t.created_at DESC"
 
@@ -128,8 +174,8 @@ def create_task():
     db = get_db()
     cursor = db.execute(
         """INSERT INTO tasks (title, description, client_id, assigned_to_id, created_by_id,
-           status, priority, due_date, category, attachment_urls)
-           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+           status, priority, due_date, category, attachment_urls, post_id, brief_id)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             title,
             data.get('description', ''),
@@ -140,7 +186,9 @@ def create_task():
             data.get('priority', 'normal'),
             data.get('due_date'),
             data.get('category', 'general'),
-            data.get('attachment_urls', '')
+            data.get('attachment_urls', ''),
+            data.get('post_id'),
+            data.get('brief_id'),
         )
     )
     db.commit()

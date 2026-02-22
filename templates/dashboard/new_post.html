@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-pen-to-square text-indigo-600 mr-2"></i>New Post</h2>
+    <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">Carousel Supported</span>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+    <div class="lg:col-span-2 space-y-4 lg:space-y-6">
+        <!-- Basic Info -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+            <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-clipboard-list text-indigo-600"></i></span> Basic Info</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-600 text-sm font-medium mb-2">Select Client</label>
+                    <select id="post-client" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" onchange="loadScheduleSuggestions(this.value); updateLivePreview()"></select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-gray-600 text-sm font-medium mb-2">Post Topic</label>
+                <input type="text" id="post-topic" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="e.g. Exclusive offers on latest products">
+            </div>
+        </div>
+        <!-- Brief Info -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+            <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-file-lines text-purple-600"></i></span> Brief Info</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Tone of Voice</label><textarea id="post-tov" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="e.g. Professional, friendly, bold..."></textarea></div>
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Brief Notes</label><textarea id="post-brief-notes" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Design instructions, requirements..."></textarea></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Assign Designer</label><select id="post-designer" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="">None</option></select></div>
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Assign SM</label><select id="post-sm" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="">None</option></select></div>
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Priority</label><select id="post-priority" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-600 text-sm font-medium mb-2">Reference Images</label>
+                <div class="upload-zone rounded-lg p-3 text-center cursor-pointer" onclick="document.getElementById('brief-reference-images').click()">
+                    <input type="file" id="brief-reference-images" class="hidden" accept="image/*" multiple onchange="uploadBriefReferences(this)">
+                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-gray-400 mb-1"></i>
+                    <p class="text-xs text-gray-600 font-medium">Upload reference images for designer</p>
+                </div>
+                <div id="brief-references-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="saveBrief('draft')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-300 transition"><i class="fa-solid fa-bookmark mr-1"></i> Save as Brief</button>
+                <button onclick="saveBrief('in_design')" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-purple-700 transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
+            </div>
+        </div>
+        <!-- Post Type -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+            <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-shapes text-orange-600"></i></span> Post Type</h3>
+            <select id="post-type-select" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" onchange="onPostTypeChange()">
+                <option value="post">Regular Post</option>
+                <option value="story">Story (Instagram & Facebook)</option>
+            </select>
+        </div>
+        <!-- Platforms & Captions -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+            <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-share-nodes text-blue-600"></i></span> Platforms & Captions</h3>
+            <div class="grid grid-cols-1 gap-4">
+                <!-- Instagram -->
+                <div class="platform-card instagram">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="flex items-center gap-2 font-semibold text-pink-800 cursor-pointer text-sm"><input type="checkbox" id="platform-instagram" checked class="w-5 h-5 rounded"><i class="fa-brands fa-instagram"></i> Instagram</label>
+                        <select id="size-instagram" class="text-xs border border-pink-200 rounded-lg px-2 py-1 bg-white"><option value="1080x1080">1080x1080</option><option value="1080x1350">1080x1350</option><option value="1080x1920">1080x1920</option></select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-pink-200 bg-pink-50/30 hover:bg-pink-50 transition" onclick="document.getElementById('instagram-images').click()">
+                                <input type="file" id="instagram-images" class="hidden" accept="image/*" multiple onchange="uploadPlatformImages('instagram', this)">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-pink-400 mb-1"></i>
+                                <p class="text-xs text-gray-600 font-medium">Upload Images (up to 10)</p>
+                            </div>
+                            <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-pink-200 bg-pink-50/30 hover:bg-pink-50 transition" onclick="document.getElementById('instagram-video').click()">
+                                <input type="file" id="instagram-video" class="hidden" accept="video/*" onchange="uploadPlatformVideo('instagram', this)">
+                                <i class="fa-solid fa-film text-2xl text-pink-400 mb-1"></i>
+                                <p class="text-xs text-gray-600 font-medium">Upload Video (Reels)</p>
+                            </div>
+                        </div>
+                        <div id="instagram-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+                        <div id="instagram-video-preview" class="mt-2"></div>
+                    </div>
+                    <textarea id="caption-instagram" class="w-full border-0 bg-white/60 rounded-xl px-4 py-3 h-28 text-sm resize-none focus:ring-2 focus:ring-pink-300 transition" placeholder="Write Instagram caption..." oninput="updateLivePreview()"></textarea>
+                    <div id="instagram-story-features" class="hidden mt-3 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-pink-100">
+                        <div class="text-center">
+                            <a href="/story-designer" class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:from-indigo-700 hover:to-purple-700 transition shadow-lg"><i class="fa-solid fa-palette"></i> Story Designer</a>
+                            <p class="text-xs text-gray-500 mt-3">Design professional stories</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 mt-3">
+                        <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-instagram" value="now" checked class="w-4 h-4"> Publish Now</label>
+                        <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-instagram" value="later" class="w-4 h-4"> Schedule</label>
+                    </div>
+                    <input type="datetime-local" id="schedule-instagram-time" class="w-full border border-pink-200 rounded-lg px-3 py-2 text-sm mt-2 hidden">
+                </div>
+                <!-- LinkedIn -->
+                <div class="platform-card linkedin">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="flex items-center gap-2 font-semibold text-blue-800 cursor-pointer text-sm"><input type="checkbox" id="platform-linkedin" checked class="w-5 h-5 rounded"><i class="fa-brands fa-linkedin"></i> LinkedIn</label>
+                        <select id="size-linkedin" class="text-xs border border-blue-200 rounded-lg px-2 py-1 bg-white"><option value="1200x627">1200x627</option><option value="1080x1080">1080x1080</option><option value="1080x1350">1080x1350</option></select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition" onclick="document.getElementById('linkedin-images').click()">
+                                <input type="file" id="linkedin-images" class="hidden" accept="image/*" multiple onchange="uploadPlatformImages('linkedin', this)">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-blue-400 mb-1"></i>
+                                <p class="text-xs text-gray-600 font-medium">Upload Images (up to 9)</p>
+                            </div>
+                            <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-blue-200 bg-blue-50/30 hover:bg-blue-50 transition" onclick="document.getElementById('linkedin-video').click()">
+                                <input type="file" id="linkedin-video" class="hidden" accept="video/*" onchange="uploadPlatformVideo('linkedin', this)">
+                                <i class="fa-solid fa-film text-2xl text-blue-400 mb-1"></i>
+                                <p class="text-xs text-gray-600 font-medium">Upload Video</p>
+                            </div>
+                        </div>
+                        <div id="linkedin-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+                        <div id="linkedin-video-preview" class="mt-2"></div>
+                    </div>
+                    <textarea id="caption-linkedin" class="w-full border-0 bg-white/60 rounded-xl px-4 py-3 h-28 text-sm resize-none focus:ring-2 focus:ring-blue-300 transition" placeholder="Write LinkedIn caption..." oninput="updateLivePreview()"></textarea>
+                    <div class="flex items-center gap-3 mt-3">
+                        <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-linkedin" value="now" checked class="w-4 h-4"> Publish Now</label>
+                        <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-linkedin" value="later" class="w-4 h-4"> Schedule</label>
+                    </div>
+                    <input type="datetime-local" id="schedule-linkedin-time" class="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm mt-2 hidden">
+                </div>
+                <!-- Facebook -->
+                <div class="platform-card facebook">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="flex items-center gap-2 font-semibold text-indigo-800 cursor-pointer text-sm"><input type="checkbox" id="platform-facebook" checked class="w-5 h-5 rounded"><i class="fa-brands fa-facebook"></i> Facebook</label>
+                        <select id="size-facebook" class="text-xs border border-indigo-200 rounded-lg px-2 py-1 bg-white"><option value="1080x1080">1080x1080</option><option value="1200x627">1200x627</option><option value="1080x1350">1080x1350</option><option value="1080x1920">1080x1920</option></select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-indigo-200 bg-indigo-50/30 hover:bg-indigo-50 transition" onclick="document.getElementById('facebook-images').click()">
+                                <input type="file" id="facebook-images" class="hidden" accept="image/*" multiple onchange="uploadPlatformImages('facebook', this)">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-indigo-400 mb-1"></i>
+                                <p class="text-xs text-gray-600 font-medium">Upload Images (up to 10)</p>
+                            </div>
+                            <div class="upload-zone rounded-lg p-3 text-center cursor-pointer border-2 border-dashed border-indigo-200 bg-indigo-50/30 hover:bg-indigo-50 transition" onclick="document.getElementById('facebook-video').click()">
+                                <input type="file" id="facebook-video" class="hidden" accept="video/*" onchange="uploadPlatformVideo('facebook', this)">
+                                <i class="fa-solid fa-film text-2xl text-indigo-400 mb-1"></i>
+                                <p class="text-xs text-gray-600 font-medium">Upload Video</p>
+                            </div>
+                        </div>
+                        <div id="facebook-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
+                        <div id="facebook-video-preview" class="mt-2"></div>
+                    </div>
+                    <textarea id="caption-facebook" class="w-full border-0 bg-white/60 rounded-xl px-4 py-3 h-28 text-sm resize-none focus:ring-2 focus:ring-indigo-300 transition" placeholder="Write Facebook caption..." oninput="updateLivePreview()"></textarea>
+                    <div class="flex items-center gap-3 mt-3">
+                        <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-facebook" value="now" checked class="w-4 h-4"> Publish Now</label>
+                        <label class="flex items-center gap-1 text-sm cursor-pointer"><input type="radio" name="schedule-facebook" value="later" class="w-4 h-4"> Schedule</label>
+                    </div>
+                    <input type="datetime-local" id="schedule-facebook-time" class="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm mt-2 hidden">
+                </div>
+            </div>
+            <button id="submit-post-btn" onclick="submitPost()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:from-indigo-700 hover:to-purple-700 transition flex items-center justify-center gap-2 shadow-lg mt-6"><i class="fa-solid fa-paper-plane"></i> Publish Post</button>
+        </div>
+    </div>
+    <!-- Preview Column -->
+    <div class="space-y-4 lg:space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6 lg:sticky lg:top-6">
+            <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-eye text-green-600"></i></span> Post Preview</h3>
+            <div class="post-preview">
+                <div class="post-preview-header">
+                    <div class="post-preview-avatar"><span id="preview-avatar"><i class="fa-solid fa-building"></i></span></div>
+                    <div><p class="font-semibold text-sm" id="preview-name">Client Name</p><p class="text-xs text-gray-400">Just now</p></div>
+                </div>
+                <div class="carousel-preview" id="carousel-preview">
+                    <div class="flex items-center justify-center h-full text-gray-400">
+                        <div class="text-center"><i class="fa-regular fa-image text-4xl"></i><p class="text-sm mt-2">Add images to preview</p></div>
+                    </div>
+                </div>
+                <div class="p-4"><p class="text-sm text-gray-600 leading-relaxed" id="preview-caption">Caption will appear here...</p></div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 mt-4">
+                <div class="bg-pink-50 rounded-xl p-3 text-center"><p class="text-2xl" id="preview-images-count">0</p><p class="text-xs text-gray-500">Images</p></div>
+                <div class="bg-blue-50 rounded-xl p-3 text-center"><p class="text-2xl" id="preview-platforms-count">3</p><p class="text-xs text-gray-500">Platforms</p></div>
+                <div class="bg-green-50 rounded-xl p-3 text-center"><p class="text-2xl" id="preview-type"><i class="fa-solid fa-image"></i></p><p class="text-xs text-gray-500" id="preview-type-text">Image</p></div>
+            </div>
+        </div>
+        <!-- Schedule Suggestions -->
+        <div id="schedule-suggestions" class="hidden bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+            <h3 class="font-bold text-sm mb-3"><i class="fa-solid fa-lightbulb text-yellow-500 mr-1"></i> Suggested Times</h3>
+            <div id="suggestions-list" class="space-y-2"></div>
+        </div>
+    </div>
+</div>
+<div id="post-result" class="mt-6"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/post-form.js"></script>
+{% endblock %}

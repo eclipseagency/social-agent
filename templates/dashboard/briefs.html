@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-file-lines text-indigo-600 mr-2"></i>Content Briefs</h2>
+    <button onclick="showCreateBriefModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm"><i class="fa-solid fa-plus mr-1"></i> New Brief</button>
+</div>
+<div class="flex gap-2 mb-4 flex-wrap">
+    <select id="brief-filter-client" onchange="loadBriefs()" class="border rounded-lg px-3 py-2 text-sm"><option value="">All Clients</option></select>
+    <select id="brief-filter-status" onchange="loadBriefs()" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="">All Statuses</option>
+        <option value="new">New</option>
+        <option value="in_progress">In Progress</option>
+        <option value="content_ready">Content Ready</option>
+        <option value="design_ready">Design Ready</option>
+        <option value="completed">Completed</option>
+    </select>
+</div>
+<div id="briefs-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <p class="text-gray-500 text-center py-8 col-span-full">Loading briefs...</p>
+</div>
+{% endblock %}
+{% block modals %}
+<div id="create-brief-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hideCreateBriefModal()">
+    <div class="bg-white rounded-xl p-6 w-full sm:w-[600px] max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">New Content Brief</h3><button onclick="hideCreateBriefModal()" class="text-gray-500 text-2xl">&times;</button></div>
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-sm font-medium mb-1">Client *</label><select id="brief-client" class="w-full border rounded-lg px-4 py-2"></select></div>
+                <div><label class="block text-sm font-medium mb-1">Content Type</label><select id="brief-content-type" class="w-full border rounded-lg px-4 py-2"><option value="post">Post</option><option value="carousel">Carousel</option><option value="reel">Reel</option><option value="story">Story</option><option value="video">Video</option></select></div>
+            </div>
+            <div><label class="block text-sm font-medium mb-1">Title *</label><input type="text" id="brief-title" class="w-full border rounded-lg px-4 py-2"></div>
+            <div><label class="block text-sm font-medium mb-1">Description</label><textarea id="brief-description" class="w-full border rounded-lg px-4 py-2 h-24 resize-none"></textarea></div>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-sm font-medium mb-1">Platform</label><select id="brief-platform" class="w-full border rounded-lg px-4 py-2"><option value="">Any</option><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option></select></div>
+                <div><label class="block text-sm font-medium mb-1">Target Date</label><input type="date" id="brief-target-date" class="w-full border rounded-lg px-4 py-2"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-sm font-medium mb-1">Assign Writer</label><select id="brief-writer" class="w-full border rounded-lg px-4 py-2"><option value="">None</option></select></div>
+                <div><label class="block text-sm font-medium mb-1">Assign Designer</label><select id="brief-designer" class="w-full border rounded-lg px-4 py-2"><option value="">None</option></select></div>
+            </div>
+            <div><label class="block text-sm font-medium mb-1">Brand Guidelines</label><textarea id="brief-guidelines" class="w-full border rounded-lg px-4 py-2 h-16 resize-none"></textarea></div>
+            <div class="flex gap-4 pt-2">
+                <button onclick="submitBrief()" class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 font-semibold">Create Brief</button>
+                <button onclick="hideCreateBriefModal()" class="flex-1 bg-gray-200 px-4 py-3 rounded-lg hover:bg-gray-300">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function pageInit() { loadBriefs(); loadClientsDropdown('brief-filter-client'); loadClientsDropdown('brief-client'); loadUsersDropdown('brief-writer'); loadUsersDropdown('brief-designer'); }
+
+async function loadBriefs() {
+    const clientId = document.getElementById('brief-filter-client')?.value || '';
+    const status = document.getElementById('brief-filter-status')?.value || '';
+    let url = API_URL + '/briefs?';
+    if (clientId) url += 'client_id=' + clientId + '&';
+    if (status) url += 'status=' + status;
+    try {
+        const briefs = await fetch(url).then(r => r.json());
+        const container = document.getElementById('briefs-list');
+        if (!briefs || briefs.length === 0) { container.innerHTML = '<p class="text-gray-500 text-center py-8 col-span-full">No briefs found</p>'; return; }
+        const statusColors = { new: 'bg-blue-100 text-blue-800', in_progress: 'bg-yellow-100 text-yellow-800', content_ready: 'bg-purple-100 text-purple-800', design_ready: 'bg-pink-100 text-pink-800', completed: 'bg-green-100 text-green-800', cancelled: 'bg-red-100 text-red-800' };
+        container.innerHTML = briefs.map(b => `
+            <div class="bg-white rounded-xl shadow-sm p-4 border hover:shadow-md transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${statusColors[b.status] || 'bg-gray-100'}">${b.status || 'new'}</span>
+                    <span class="text-xs text-gray-400">${b.target_date || ''}</span>
+                </div>
+                <p class="font-semibold mb-1">${esc(b.title)}</p>
+                <p class="text-xs text-gray-500 mb-2">${esc(b.client_name || '')}</p>
+                <p class="text-xs text-gray-400 line-clamp-2">${esc(b.description || '')}</p>
+            </div>
+        `).join('');
+    } catch (e) {
+        document.getElementById('briefs-list').innerHTML = '<p class="text-gray-500 text-center py-8 col-span-full">Briefs system coming soon</p>';
+    }
+}
+
+function showCreateBriefModal() { document.getElementById('create-brief-modal').classList.remove('hidden'); }
+function hideCreateBriefModal() { document.getElementById('create-brief-modal').classList.add('hidden'); }
+
+async function submitBrief() {
+    const data = {
+        client_id: document.getElementById('brief-client').value,
+        title: document.getElementById('brief-title').value.trim(),
+        description: document.getElementById('brief-description').value.trim(),
+        content_type: document.getElementById('brief-content-type').value,
+        platform: document.getElementById('brief-platform').value,
+        target_date: document.getElementById('brief-target-date').value,
+        assigned_writer_id: document.getElementById('brief-writer').value || null,
+        assigned_designer_id: document.getElementById('brief-designer').value || null,
+        brand_guidelines: document.getElementById('brief-guidelines').value.trim(),
+        created_by_id: currentUser?.id
+    };
+    if (!data.client_id || !data.title) { alert('Client and title are required'); return; }
+    const res = await fetch(API_URL + '/briefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+    if (res.success) { hideCreateBriefModal(); loadBriefs(); showToast('Brief created', 'success'); } else { alert(res.error || 'Failed'); }
+}
+</script>
+{% endblock %}

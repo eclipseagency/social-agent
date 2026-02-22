@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="text-xl sm:text-2xl font-bold mb-6"><i class="fa-solid fa-gear text-indigo-600 mr-2"></i>Settings</h2>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm sm:text-base">Appearance</h3>
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <span class="text-sm">Dark Mode</span>
+            <button onclick="toggleDarkMode()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-moon mr-1"></i> Toggle</button>
+        </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm sm:text-base">Notifications</h3>
+        <div class="space-y-3">
+            <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer"><span class="text-sm">Notify on successful publish</span><input type="checkbox" checked class="w-5 h-5"></label>
+            <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer"><span class="text-sm">Notify on publish failure</span><input type="checkbox" checked class="w-5 h-5"></label>
+        </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm sm:text-base">API Status</h3>
+        <div class="space-y-2">
+            <div class="flex justify-between items-center p-3 bg-pink-50 rounded-lg text-sm"><span><i class="fa-brands fa-instagram mr-2"></i>Instagram</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+            <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg text-sm"><span><i class="fa-brands fa-linkedin mr-2"></i>LinkedIn</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+            <div class="flex justify-between items-center p-3 bg-indigo-50 rounded-lg text-sm"><span><i class="fa-brands fa-facebook mr-2"></i>Facebook</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg text-sm"><span><i class="fa-solid fa-cloud mr-2"></i>Cloudinary</span><span class="text-green-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Connected</span></div>
+        </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm sm:text-base">System Info</h3>
+        <div class="space-y-2">
+            <div class="flex justify-between p-3 bg-gray-50 rounded-lg text-sm"><span>Version</span><span class="font-semibold">3.0.0</span></div>
+            <div class="flex justify-between p-3 bg-gray-50 rounded-lg text-sm"><span>Database</span><span>SQLite</span></div>
+            <div class="flex justify-between p-3 bg-gray-50 rounded-lg text-sm"><span>Platforms</span><span class="font-semibold">3 platforms</span></div>
+            <div class="flex justify-between p-3 bg-purple-50 rounded-lg text-sm"><span>Carousel</span><span class="text-green-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Enabled</span></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-clock text-indigo-600 mr-2"></i>Scheduled Posts</h2>
+    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <button onclick="forcePublishAll(event)" class="flex-1 sm:flex-none bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm"><i class="fa-solid fa-bolt"></i> Force Publish All</button>
+        <button onclick="runSchedulerNow()" class="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm"><i class="fa-solid fa-rocket"></i> Publish Due</button>
+        <select id="filter-platform" onchange="loadScheduledPosts()" class="flex-1 sm:flex-none border rounded-lg px-4 py-2 text-sm">
+            <option value="">All Platforms</option>
+            <option value="instagram">Instagram</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="facebook">Facebook</option>
+        </select>
+    </div>
+</div>
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="w-full min-w-[500px]">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Client</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Topic</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Platform</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Scheduled At</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Status</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="scheduled-table"></tbody>
+    </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function pageInit() { loadScheduledPosts(); }
+
+async function loadScheduledPosts() {
+    const platform = document.getElementById('filter-platform')?.value || '';
+    const posts = await fetch(API_URL + '/all-posts?status=pending' + (platform ? '&platform=' + platform : '')).then(r => r.json());
+    document.getElementById('scheduled-table').innerHTML = posts.map(p => `
+        <tr class="border-t hover:bg-gray-50">
+            <td class="px-6 py-4">${esc(p.client_name) || '-'}</td>
+            <td class="px-6 py-4">${esc(p.topic?.substring(0, 30)) || ''}...</td>
+            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-sm ${getPlatformBgClass(p.platforms)}">${getPlatformIcon(p.platforms)} ${esc(p.platforms)}</span></td>
+            <td class="px-6 py-4 text-sm">${p.scheduled_at?.replace('T', ' ') || '-'}</td>
+            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs ${p.status === 'posted' ? 'bg-green-100 text-green-800' : p.status === 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${p.status}</span></td>
+            <td class="px-6 py-4"><button onclick="deletePost(${p.id})" class="text-red-600 hover:underline text-sm"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>
+    `).join('') || '<tr><td colspan="6" class="text-center py-8 text-gray-500">No scheduled posts</td></tr>';
+}
+
+async function deletePost(id) {
+    if (confirm('Delete this post?')) {
+        await fetch(API_URL + '/posts/' + id, { method: 'DELETE' });
+        loadScheduledPosts();
+    }
+}
+
+async function runSchedulerNow() {
+    const res = await fetch(API_URL + '/run-scheduler', { method: 'POST' }).then(r => r.json());
+    showToast(res.success ? 'Scheduler ran successfully' : 'Error: ' + res.error, res.success ? 'success' : 'error');
+    loadScheduledPosts();
+}
+
+async function forcePublishAll(e) {
+    if (!confirm('Force publish ALL pending posts now?')) return;
+    const btn = e.target.closest('button');
+    btn.disabled = true; btn.innerHTML = '<div class="loading-spinner"></div> Publishing...';
+    const res = await fetch(API_URL + '/force-publish-all', { method: 'POST' }).then(r => r.json());
+    btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Force Publish All';
+    showToast(res.message || 'Done', res.success ? 'success' : 'error');
+    loadScheduledPosts();
+}
+</script>
+{% endblock %}
