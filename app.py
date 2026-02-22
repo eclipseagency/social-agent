@@ -21,7 +21,8 @@ run_migrations()
 
 # Create Flask app
 app = Flask(__name__, static_folder=None)
-CORS(app)
+app.secret_key = os.getenv('SECRET_KEY', os.urandom(24).hex())
+CORS(app, supports_credentials=True)
 
 # Register blueprints
 from routes.auth import auth_bp

@@ -4,6 +4,7 @@ Extends the existing SQLite schema with new tables and columns for
 the agency workflow management features.
 """
 from models import get_db
+from werkzeug.security import generate_password_hash
 
 
 def get_schema_version(db):
@@ -145,6 +146,11 @@ def run_migrations():
         print("Running migration 7: Migrate existing post statuses...")
         _migration_7_migrate_statuses(db)
         set_schema_version(db, 7)
+
+    if version < 8:
+        print("Running migration 8: Ensure default admin user exists...")
+        _migration_8_ensure_admin(db)
+        set_schema_version(db, 8)
 
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
@@ -290,6 +296,24 @@ def _migration_7_migrate_statuses(db):
     db.execute("UPDATE scheduled_posts SET workflow_status='scheduled' WHERE status='pending' AND (workflow_status IS NULL OR workflow_status='draft')")
     db.execute("UPDATE scheduled_posts SET workflow_status='failed' WHERE status='failed' AND (workflow_status IS NULL OR workflow_status='draft')")
     db.commit()
+
+
+def _migration_8_ensure_admin(db):
+    """Create a default admin user if no admin exists."""
+    admin = db.execute("SELECT id FROM users WHERE role='admin'").fetchone()
+    if not admin:
+        import os
+        admin_email = os.getenv('ADMIN_EMAIL', 'admin@eclipseagency.com')
+        admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+        pw_hash = generate_password_hash(admin_password)
+        db.execute(
+            "INSERT INTO users (username, email, password_hash, role) VALUES (?,?,?,?)",
+            ('admin', admin_email, pw_hash, 'admin')
+        )
+        db.commit()
+        print(f"Default admin created: {admin_email}")
+    else:
+        print("Admin user already exists, skipping.")
 
 
 if __name__ == '__main__':

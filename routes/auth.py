@@ -1,5 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 import hashlib
 from models import get_db, dict_from_row
 
@@ -9,6 +10,26 @@ auth_bp = Blueprint('auth', __name__)
 def _check_legacy_hash(password, stored_hash):
     """Check against legacy SHA256 hash from the old exe."""
     return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+
+
+def require_login(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'error': 'Login required'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+def require_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'error': 'Login required'}), 401
+        if session.get('user_role') != 'admin':
+            return jsonify({'success': False, 'error': 'Admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 
 @auth_bp.route('/api/login', methods=['POST'])
@@ -39,6 +60,10 @@ def login():
     if not pw_ok:
         return jsonify({'success': False, 'error': 'Invalid credentials'})
 
+    # Set session
+    session['user_id'] = user['id']
+    session['user_role'] = user['role']
+
     return jsonify({
         'success': True,
         'user': {
@@ -53,6 +78,12 @@ def login():
             'avatar_url': user.get('avatar_url', '')
         }
     })
+
+
+@auth_bp.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'success': True})
 
 
 @auth_bp.route('/api/register', methods=['POST'])
@@ -86,7 +117,10 @@ def register():
 
 
 @auth_bp.route('/api/users/<int:user_id>/dark-mode', methods=['PUT'])
+@require_login
 def toggle_dark_mode(user_id):
+    if session['user_id'] != user_id:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.json or {}
     dark_mode = data.get('dark_mode', 0)
     db = get_db()
@@ -97,6 +131,7 @@ def toggle_dark_mode(user_id):
 
 
 @auth_bp.route('/api/users', methods=['GET'])
+@require_admin
 def list_users():
     db = get_db()
     role_filter = request.args.get('role')
@@ -109,6 +144,7 @@ def list_users():
 
 
 @auth_bp.route('/api/users', methods=['POST'])
+@require_admin
 def create_user():
     data = request.json or {}
     username = data.get('username', '').strip()
@@ -138,6 +174,7 @@ def create_user():
 
 
 @auth_bp.route('/api/users/<int:user_id>', methods=['PUT'])
+@require_admin
 def update_user(user_id):
     data = request.json or {}
     db = get_db()
@@ -158,7 +195,10 @@ def update_user(user_id):
 
 
 @auth_bp.route('/api/users/<int:user_id>', methods=['DELETE'])
+@require_admin
 def delete_user(user_id):
+    if session['user_id'] == user_id:
+        return jsonify({'success': False, 'error': 'Cannot delete your own account'}), 400
     db = get_db()
     db.execute("DELETE FROM users WHERE id=?", (user_id,))
     db.commit()
