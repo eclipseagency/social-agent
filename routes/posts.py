@@ -206,7 +206,7 @@ def upload_design(post_id):
         db.close()
         return jsonify({'error': 'No images provided'}), 400
 
-    # Upload to Cloudinary
+    # Upload files
     urls = []
     errors = []
     for f in files:
