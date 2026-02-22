@@ -13,10 +13,13 @@
     {% block head %}{% endblock %}
 </head>
 <body class="bg-gray-100 min-h-screen">
-    <!-- Mobile Header (simplified — no hamburger, just branding + dark mode) -->
-    <div class="lg:hidden fixed top-0 left-0 right-0 bg-[#0f172a] z-40 px-4 py-3 flex items-center justify-between">
-        <h1 class="text-white font-bold text-sm">Eclipse Agency</h1>
-        <button onclick="toggleDarkMode()" class="text-white"><i class="fa-solid fa-moon"></i></button>
+    <!-- Mobile Header -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 bg-white z-40 px-4 py-3 flex items-center justify-between mobile-top-bar">
+        <h1 class="text-gray-800 font-bold text-base tracking-tight">Eclipse</h1>
+        <div class="flex items-center gap-3">
+            <a href="/notifications" class="text-gray-500 text-lg relative"><i class="fa-solid fa-bell"></i><span id="mobile-notif-dot" class="hidden" style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#ef4444;border-radius:50%;"></span></a>
+            <button onclick="toggleDarkMode()" class="text-gray-500 text-lg"><i class="fa-solid fa-moon"></i></button>
+        </div>
     </div>
 
     <!-- Mobile Overlay -->

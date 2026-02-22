@@ -172,6 +172,22 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .design-gallery img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.15s; }
 .design-gallery img:hover { transform: scale(1.08); }
 
+/* ===== Mobile Top Bar ===== */
+.mobile-top-bar {
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+}
+.dark .mobile-top-bar {
+    background: #0f172a !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.3);
+}
+.dark .mobile-top-bar h1 {
+    color: #f1f5f9 !important;
+}
+.dark .mobile-top-bar a,
+.dark .mobile-top-bar button {
+    color: #94a3b8 !important;
+}
+
 /* ===== Bottom Nav Bar (mobile only) ===== */
 .bottom-nav {
     position: fixed;
@@ -182,90 +198,104 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     background: #ffffff;
     display: flex;
     justify-content: space-around;
-    align-items: flex-end;
-    padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+    align-items: center;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.1);
+    border-top: 1px solid #f1f5f9;
 }
 @media (min-width: 1024px) {
     .bottom-nav { display: none; }
 }
 
-/* Regular tab items */
+/* Tab items */
 .bottom-nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 0;
-    font-size: 11px;
-    font-weight: 600;
-    color: #9ca3af;
+    gap: 3px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #b0b8c4;
     text-decoration: none;
     background: none;
     border: none;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    min-width: 56px;
+    position: relative;
 }
 .bottom-nav-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background 0.2s, transform 0.15s;
 }
 .bottom-nav-item i {
-    font-size: 18px;
-    transition: transform 0.15s;
+    font-size: 22px;
 }
 .bottom-nav-item span {
     line-height: 1;
 }
 
-/* Active state — bg pill + bold color */
+/* Active state — colored pill + bold */
 .bottom-nav-item.active {
     color: #4f46e5;
 }
 .bottom-nav-item.active .bottom-nav-icon {
     background: #eef2ff;
 }
+.bottom-nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 4px;
+    border-radius: 0 0 4px 4px;
+    background: #4f46e5;
+}
 
 /* Tap feedback */
 .bottom-nav-item:active .bottom-nav-icon {
-    transform: scale(0.9);
+    transform: scale(0.88);
+    background: #eef2ff;
 }
 
-/* Center "Create" button — big floating circle */
+/* Center "Create" button */
 .bottom-nav-create {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: #fff;
-    font-size: 24px;
+    font-size: 28px;
     text-decoration: none;
-    box-shadow: 0 4px 15px rgba(99,102,241,0.4);
-    margin-top: -18px;
+    box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+    margin-top: -28px;
     transition: transform 0.15s, box-shadow 0.15s;
     -webkit-tap-highlight-color: transparent;
 }
 .bottom-nav-create:active {
-    transform: scale(0.92);
-    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+    transform: scale(0.9);
+    box-shadow: 0 3px 10px rgba(99,102,241,0.3);
 }
 
 /* ===== Dark mode bottom nav ===== */
 .dark .bottom-nav {
     background: #0f172a;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+    border-top-color: #1e293b;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
 }
 .dark .bottom-nav-item {
-    color: #64748b;
+    color: #475569;
 }
 .dark .bottom-nav-item.active {
     color: #a5b4fc;
@@ -273,8 +303,14 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .dark .bottom-nav-item.active .bottom-nav-icon {
     background: rgba(99,102,241,0.15);
 }
+.dark .bottom-nav-item.active::before {
+    background: #818cf8;
+}
+.dark .bottom-nav-item:active .bottom-nav-icon {
+    background: rgba(99,102,241,0.1);
+}
 .dark .bottom-nav-create {
-    box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+    box-shadow: 0 6px 20px rgba(99,102,241,0.3);
 }
 
 /* Responsive */
