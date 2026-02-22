@@ -236,22 +236,45 @@ async function openPostDetail(postId) {
         ${post.priority && post.priority !== 'normal' ? `<span class="px-3 py-1 rounded-full text-xs font-semibold badge-${post.priority}">${esc(post.priority)}</span>` : ''}
     `;
 
+    // Editable mode for draft/needs_caption
+    const isEditable = ['draft', 'needs_caption'].includes(wf);
+
     // Text on Design (topic)
     const topicSection = document.getElementById('detail-topic-section');
-    if (post.topic) {
-        document.getElementById('detail-topic').textContent = post.topic;
-        topicSection.style.display = '';
+    const topicDisplay = document.getElementById('detail-topic');
+    const topicInput = document.getElementById('detail-topic-input');
+    topicSection.style.display = '';
+    if (isEditable) {
+        topicDisplay.style.display = 'none';
+        topicInput.classList.remove('hidden');
+        topicInput.value = post.topic || '';
     } else {
-        topicSection.style.display = 'none';
+        topicInput.classList.add('hidden');
+        if (post.topic) {
+            topicDisplay.textContent = post.topic;
+            topicDisplay.style.display = '';
+        } else {
+            topicSection.style.display = 'none';
+        }
     }
 
     // Notes for Designer
     const notesSection = document.getElementById('detail-notes-section');
-    if (post.brief_notes) {
-        document.getElementById('detail-notes').textContent = post.brief_notes;
-        notesSection.style.display = '';
+    const notesDisplay = document.getElementById('detail-notes');
+    const notesInput = document.getElementById('detail-notes-input');
+    notesSection.style.display = '';
+    if (isEditable) {
+        notesDisplay.style.display = 'none';
+        notesInput.classList.remove('hidden');
+        notesInput.value = post.brief_notes || '';
     } else {
-        notesSection.style.display = 'none';
+        notesInput.classList.add('hidden');
+        if (post.brief_notes) {
+            notesDisplay.textContent = post.brief_notes;
+            notesDisplay.style.display = '';
+        } else {
+            notesSection.style.display = 'none';
+        }
     }
 
     // Design References
@@ -300,25 +323,53 @@ async function openPostDetail(postId) {
 
     // Tone of Voice
     const tovSection = document.getElementById('detail-tov-section');
-    if (post.tov) {
-        document.getElementById('detail-tov').textContent = post.tov;
-        tovSection.style.display = '';
+    const tovDisplay = document.getElementById('detail-tov');
+    const tovInput = document.getElementById('detail-tov-input');
+    tovSection.style.display = '';
+    if (isEditable) {
+        tovDisplay.style.display = 'none';
+        tovInput.classList.remove('hidden');
+        tovInput.value = post.tov || '';
     } else {
-        tovSection.style.display = 'none';
+        tovInput.classList.add('hidden');
+        if (post.tov) {
+            tovDisplay.textContent = post.tov;
+            tovDisplay.style.display = '';
+        } else {
+            tovSection.style.display = 'none';
+        }
     }
 
     // Assignments
-    const assignments = [];
-    if (post.assigned_writer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i> Copywriter: <strong>${esc(post.assigned_writer_name)}</strong></span>`);
-    if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
-    if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
-    if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
     const assignSection = document.getElementById('detail-assignments-section');
-    if (assignments.length) {
-        document.getElementById('detail-assignments').innerHTML = assignments.join('');
-        assignSection.style.display = '';
+    const assignDisplay = document.getElementById('detail-assignments');
+    const assignEdit = document.getElementById('detail-assignments-edit');
+    assignSection.style.display = '';
+
+    if (isEditable) {
+        assignDisplay.style.display = 'none';
+        assignEdit.classList.remove('hidden');
+        // Load users into dropdowns
+        loadAssignmentDropdowns(post);
     } else {
-        assignSection.style.display = 'none';
+        assignEdit.classList.add('hidden');
+        const assignments = [];
+        if (post.assigned_writer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i> Copywriter: <strong>${esc(post.assigned_writer_name)}</strong></span>`);
+        if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
+        if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
+        if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
+        if (assignments.length) {
+            assignDisplay.innerHTML = assignments.join('');
+            assignDisplay.style.display = '';
+        } else {
+            assignSection.style.display = 'none';
+        }
+    }
+
+    // Save Brief button
+    const saveBriefSection = document.getElementById('detail-save-brief-section');
+    if (saveBriefSection) {
+        saveBriefSection.classList.toggle('hidden', !isEditable);
     }
 
     // Workflow action buttons
@@ -370,6 +421,62 @@ async function openPostDetail(postId) {
 function closePostDetail() {
     document.getElementById('post-detail-modal').classList.add('hidden');
     currentDetailPost = null;
+}
+
+// ========== ASSIGNMENT DROPDOWNS ==========
+
+let _cachedUsers = null;
+async function loadAssignmentDropdowns(post) {
+    if (!_cachedUsers) {
+        _cachedUsers = await apiFetch(`${API_URL}/users`) || [];
+    }
+    const users = _cachedUsers;
+
+    const writerSel = document.getElementById('detail-writer-select');
+    const designerSel = document.getElementById('detail-designer-select');
+    const smSel = document.getElementById('detail-sm-select');
+    const motionSel = document.getElementById('detail-motion-select');
+
+    function fillSelect(sel, selectedId) {
+        sel.innerHTML = '<option value="">--</option>' + users.map(u =>
+            `<option value="${u.id}" ${u.id == selectedId ? 'selected' : ''}>${esc(u.username)}</option>`
+        ).join('');
+    }
+
+    fillSelect(writerSel, post.assigned_writer_id || '');
+    fillSelect(designerSel, post.assigned_designer_id || '');
+    fillSelect(smSel, post.assigned_sm_id || '');
+    fillSelect(motionSel, post.assigned_motion_id || '');
+}
+
+// ========== SAVE BRIEF FROM DETAIL ==========
+
+async function saveBriefFromDetail() {
+    if (!currentDetailPost) return;
+
+    const data = {
+        topic: document.getElementById('detail-topic-input').value.trim(),
+        brief_notes: document.getElementById('detail-notes-input').value.trim(),
+        caption: document.getElementById('detail-caption').value.trim(),
+        tov: document.getElementById('detail-tov-input').value.trim(),
+        assigned_writer_id: document.getElementById('detail-writer-select').value || null,
+        assigned_designer_id: document.getElementById('detail-designer-select').value || null,
+        assigned_sm_id: document.getElementById('detail-sm-select').value || null,
+        assigned_motion_id: document.getElementById('detail-motion-select').value || null,
+    };
+
+    const res = await apiFetch(`${API_URL}/posts/${currentDetailPost.id}`, {
+        method: 'PUT',
+        body: data
+    });
+
+    if (res && res.success) {
+        showToast('Brief saved', 'success');
+        loadCalendar();
+        openPostDetail(currentDetailPost.id);
+    } else {
+        showToast('Save failed', 'error');
+    }
 }
 
 // ========== CAPTION SAVE ==========

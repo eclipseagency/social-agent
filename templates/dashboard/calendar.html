@@ -69,16 +69,18 @@
         <!-- Status & Meta Row -->
         <div class="flex flex-wrap gap-2 mb-4" id="detail-meta"></div>
 
-        <!-- Text on Design -->
+        <!-- Text on Design (editable in draft) -->
         <div class="brief-section" id="detail-topic-section">
             <div class="brief-section-title"><i class="fa-solid fa-pen-fancy mr-1"></i> Text on Design</div>
             <div class="brief-section-content" id="detail-topic"></div>
+            <input type="text" id="detail-topic-input" class="w-full border rounded-lg p-3 text-sm hidden" placeholder="Enter text that goes on the design...">
         </div>
 
-        <!-- Notes for Designer -->
+        <!-- Notes for Designer (editable in draft) -->
         <div class="brief-section" id="detail-notes-section">
             <div class="brief-section-title"><i class="fa-solid fa-paintbrush mr-1"></i> Notes for Designer</div>
             <div class="brief-section-content" id="detail-notes"></div>
+            <textarea id="detail-notes-input" class="w-full border rounded-lg p-3 text-sm hidden" rows="3" placeholder="Instructions or notes for the designer..."></textarea>
         </div>
 
         <!-- Design References -->
@@ -125,17 +127,46 @@
             </div>
         </div>
 
-        <!-- Tone of Voice -->
+        <!-- Tone of Voice (editable in draft) -->
         <div class="brief-section" id="detail-tov-section">
             <div class="brief-section-title"><i class="fa-solid fa-bullhorn mr-1"></i> Tone of Voice</div>
             <div class="brief-section-content" id="detail-tov"></div>
+            <input type="text" id="detail-tov-input" class="w-full border rounded-lg p-3 text-sm hidden" placeholder="e.g. Professional, Playful, Bold...">
         </div>
 
-        <!-- Assignments -->
+        <!-- Assignments (editable in draft) -->
         <div class="brief-section" id="detail-assignments-section">
             <div class="brief-section-title"><i class="fa-solid fa-users mr-1"></i> Assignments</div>
             <div class="brief-section-content text-sm" id="detail-assignments"></div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 hidden" id="detail-assignments-edit">
+                <div>
+                    <label class="text-xs text-gray-500">Copywriter</label>
+                    <select id="detail-writer-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500">Designer</label>
+                    <select id="detail-designer-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500">SM Specialist</label>
+                    <select id="detail-sm-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500">Motion Editor</label>
+                    <select id="detail-motion-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
+                </div>
+            </div>
         </div>
+
+        <!-- Save Brief Button (for draft editing) -->
+        <div class="hidden mt-4" id="detail-save-brief-section">
+            <button onclick="saveBriefFromDetail()" class="w-full bg-indigo-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-indigo-700">
+                <i class="fa-solid fa-save mr-1"></i> Save Brief
+            </button>
+        </div>
+
+        <!-- Workflow Actions -->
+        <div class="flex flex-wrap gap-2 mt-4" id="detail-actions"></div>
 
         <!-- Workflow Actions -->
         <div class="flex flex-wrap gap-2 mt-4" id="detail-actions"></div>
