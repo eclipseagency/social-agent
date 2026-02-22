@@ -63,14 +63,15 @@ function renderCalendar() {
             <div class="flex justify-between items-center mb-1">
                 <span class="font-semibold text-sm ${isToday ? 'text-indigo-600' : ''}">${day}</span>
                 <span class="flex items-center gap-1">
-                    ${daySlots.length > 0 ? `<span class="text-[9px] px-1 rounded ${unfilledSlots.length > 0 ? 'bg-red-100 text-red-600 font-bold' : 'bg-green-100 text-green-600'}">${unfilledSlots.length > 0 ? unfilledSlots.length + ' due' : '✓'}</span>` : ''}
+                    ${daySlots.length > 0 ? `<span class="text-[9px] px-1 rounded ${unfilledSlots.length > 0 ? 'bg-red-100 text-red-600 font-bold animate-pulse' : 'bg-green-100 text-green-600'}">${unfilledSlots.length > 0 ? '⚠ ' + unfilledSlots.length + ' need content' : '✓'}</span>` : ''}
                     ${dayPosts.length > 0 ? `<span class="text-xs text-gray-400">${dayPosts.length}</span>` : ''}
                 </span>
             </div>
             ${daySlots.length > 0 ? `<div class="cal-schedule-slots mb-1" onclick="showDaySlots('${dateStr}'); event.stopPropagation();">${daySlots.slice(0, 4).map(s => {
                 const typeIcon = s.content_type === 'story' ? '📱' : s.content_type === 'video' ? '🎬' : s.content_type === 'reel' ? '🎞' : '📷';
-                const chipClass = s.filled ? 'cal-slot-chip cal-slot-filled' : 'cal-slot-chip';
-                return `<div class="${chipClass}" style="border-left-color:${s.client_color || '#6366f1'}" title="${esc(s.client_name)} — ${s.content_type} — ${s.platform} @ ${s.time}">${typeIcon} ${esc(s.client_name?.substring(0, 6) || '')}</div>`;
+                const chipClass = s.filled ? 'cal-slot-chip cal-slot-filled' : 'cal-slot-chip cal-slot-needs-content';
+                const label = s.filled ? esc(s.client_name?.substring(0, 6) || '') : 'Need Content';
+                return `<div class="${chipClass}" style="border-left-color:${s.client_color || '#6366f1'}" title="${esc(s.client_name)} — ${s.content_type} — ${s.platform} @ ${s.time}${!s.filled ? ' — NEEDS CONTENT' : ''}">${typeIcon} ${label}</div>`;
             }).join('')}${daySlots.length > 4 ? `<div class="cal-slot-chip cal-slot-more">+${daySlots.length - 4}</div>` : ''}</div>` : ''}
             <div class="cal-day-posts">
                 ${filtered.slice(0, 3).map(p => renderCalendarMiniCard(p)).join('')}
@@ -495,7 +496,7 @@ function showDaySlots(dateStr) {
         const typeBg = typeColors[s.content_type] || typeColors['post'];
         const statusBadge = s.filled
             ? '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700"><i class="fa-solid fa-check mr-1"></i>Done</span>'
-            : '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700"><i class="fa-solid fa-clock mr-1"></i>Pending</span>';
+            : '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Needs Content</span>';
 
         html += `
             <div class="border rounded-xl p-4 hover:shadow-md transition" style="border-left: 4px solid ${s.client_color || '#6366f1'}">

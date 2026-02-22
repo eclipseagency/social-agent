@@ -1,9 +1,49 @@
 import json
+import calendar as cal_mod
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from models import get_db, dict_from_row, dicts_from_rows
 
 posting_rules_bp = Blueprint('posting_rules', __name__)
+
+DAY_MAP = {
+    'sun': 6, 'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5
+}
+
+DAY_NAMES_AR = {
+    'sun': 'الأحد', 'mon': 'الاثنين', 'tue': 'الثلاثاء',
+    'wed': 'الأربعاء', 'thu': 'الخميس', 'fri': 'الجمعة', 'sat': 'السبت'
+}
+
+
+def matches_day_code(day_code, weekday, day_of_month, days_in_month):
+    """Check if a day matches a posting day code.
+    Supports: 'fri' (every), 'fri_1' (1st), 'fri_2' (2nd), 'fri_3' (3rd), 'fri_4' (4th), 'fri_last' (last).
+    """
+    if '_' in day_code:
+        parts = day_code.split('_')
+        base_day = parts[0]
+        week_spec = parts[1]
+    else:
+        base_day = day_code
+        week_spec = None
+
+    if DAY_MAP.get(base_day) != weekday:
+        return False
+
+    if week_spec is None:
+        return True  # every occurrence
+
+    # Calculate which occurrence of this weekday in the month
+    week_num = (day_of_month - 1) // 7 + 1  # 1-based week number
+
+    if week_spec == 'last':
+        # Check if this is the last occurrence of this weekday
+        return day_of_month + 7 > days_in_month
+    elif week_spec.isdigit():
+        return week_num == int(week_spec)
+
+    return False
 
 
 @posting_rules_bp.route('/api/clients/<int:client_id>/posting-rules', methods=['GET'])
@@ -154,11 +194,6 @@ def calendar_schedule_slots():
             date_key = p['scheduled_at'][:10]
             existing_set.add(f"{date_key}_{p.get('client_id')}")
 
-    day_map = {
-        'sun': 6, 'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5
-    }
-
-    import calendar as cal_mod
     days_in_month = cal_mod.monthrange(year, month)[1]
 
     slots_by_date = {}
@@ -175,7 +210,7 @@ def calendar_schedule_slots():
                 continue
 
             for day_code in posting_days:
-                if day_map.get(day_code) == weekday:
+                if matches_day_code(day_code, weekday, day, days_in_month):
                     slot_key = f"{date_str}_{rule.get('client_id')}"
                     filled = slot_key in existing_set
 
@@ -220,16 +255,14 @@ def suggest_schedule(client_id):
         if post.get('scheduled_at'):
             existing_slots.add(post['scheduled_at'][:16])  # YYYY-MM-DDTHH:MM
 
-    day_map = {
-        'sun': 6, 'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5
-    }
-
     suggestions = []
     today = datetime.now()
 
     for day_offset in range(60):  # Look ahead 60 days
         check_date = today + timedelta(days=day_offset)
         weekday = check_date.weekday()
+        day_of_month = check_date.day
+        dims = cal_mod.monthrange(check_date.year, check_date.month)[1]
 
         for rule in rules:
             try:
@@ -239,7 +272,8 @@ def suggest_schedule(client_id):
                 continue
 
             for day_code in posting_days:
-                if day_map.get(day_code) == weekday:
+                if matches_day_code(day_code, weekday, day_of_month, dims):
+                    base_day = day_code.split('_')[0] if '_' in day_code else day_code
                     for hour_str in posting_hours:
                         slot_dt = check_date.replace(
                             hour=int(hour_str.split(':')[0]),
@@ -251,14 +285,10 @@ def suggest_schedule(client_id):
 
                         slot_key = slot_dt.strftime('%Y-%m-%dT%H:%M')
                         if slot_key not in existing_slots:
-                            day_names = {
-                                'sun': 'الأحد', 'mon': 'الاثنين', 'tue': 'الثلاثاء',
-                                'wed': 'الأربعاء', 'thu': 'الخميس', 'fri': 'الجمعة', 'sat': 'السبت'
-                            }
                             suggestions.append({
                                 'date': slot_dt.strftime('%Y-%m-%d'),
                                 'day': day_code,
-                                'day_name': day_names.get(day_code, day_code),
+                                'day_name': DAY_NAMES_AR.get(base_day, day_code),
                                 'time': hour_str,
                                 'datetime': slot_key,
                                 'platform': rule['platform']
