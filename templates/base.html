@@ -44,61 +44,71 @@
             <p class="text-slate-400 text-sm">Hello, <span id="user-name" class="text-white font-medium">User</span></p>
             <p id="user-job-title" class="text-slate-500 text-xs mb-6 hidden"></p>
 
-            <!-- Navigation -->
+            <!-- Main Navigation — 6 items -->
             <nav class="space-y-1">
                 <a href="/"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'overview' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-chart-line w-5 text-center"></i> Dashboard
+                   class="sidebar-link {% if active_page == 'overview' %}active{% endif %}">
+                    <i class="fa-solid fa-house w-5 text-center"></i> Dashboard
                 </a>
                 <a href="/clients"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'clients' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                   class="sidebar-link {% if active_page == 'clients' %}active{% endif %}">
                     <i class="fa-solid fa-users w-5 text-center"></i> Clients
                 </a>
                 <a href="/new-post"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'new-post' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                   class="sidebar-link {% if active_page == 'new-post' %}active{% endif %}">
                     <i class="fa-solid fa-pen-to-square w-5 text-center"></i> New Post
                 </a>
-                <a href="/tasks"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'tasks' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Tasks
-                </a>
-                <a href="/pipeline"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'pipeline' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-arrows-spin w-5 text-center"></i> Pipeline
-                </a>
                 <a href="/calendar"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'calendar' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                   class="sidebar-link {% if active_page == 'calendar' %}active{% endif %}">
                     <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar
                 </a>
-                <a href="/analytics"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'analytics' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-chart-bar w-5 text-center"></i> Analytics
-                </a>
-                <a href="/scheduled"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'scheduled' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-clock w-5 text-center"></i> Scheduled
-                </a>
-                <a href="/team" id="users-nav"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'team' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-user-gear w-5 text-center"></i> Team
-                </a>
-                <a href="/briefs"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'briefs' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-file-lines w-5 text-center"></i> Briefs
-                </a>
-                <a href="/reports"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'reports' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-chart-bar w-5 text-center"></i> Reports
+                <a href="/tasks"
+                   class="sidebar-link {% if active_page == 'tasks' %}active{% endif %}">
+                    <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Tasks
                 </a>
                 <a href="/settings"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm {% if active_page == 'settings' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                   class="sidebar-link {% if active_page == 'settings' %}active{% endif %}">
                     <i class="fa-solid fa-gear w-5 text-center"></i> Settings
                 </a>
-                <a href="/notifications"
-                   class="flex items-center gap-3 py-2.5 px-3 rounded-lg transition text-sm relative {% if active_page == 'notifications' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i class="fa-solid fa-bell w-5 text-center"></i> Notifications <span id="sidebar-notif-badge" class="notif-badge hidden">0</span>
-                </a>
             </nav>
+
+            <!-- More section — collapsible -->
+            <div class="mt-4">
+                <button onclick="document.getElementById('sidebar-more').classList.toggle('hidden')" class="flex items-center justify-between w-full text-slate-500 text-xs font-semibold uppercase tracking-wider px-3 py-2 hover:text-slate-300 transition">
+                    <span>More</span>
+                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+                <div id="sidebar-more" class="space-y-1 hidden">
+                    <a href="/pipeline"
+                       class="sidebar-link {% if active_page == 'pipeline' %}active{% endif %}">
+                        <i class="fa-solid fa-arrows-spin w-5 text-center"></i> Pipeline
+                    </a>
+                    <a href="/analytics"
+                       class="sidebar-link {% if active_page == 'analytics' %}active{% endif %}">
+                        <i class="fa-solid fa-chart-bar w-5 text-center"></i> Analytics
+                    </a>
+                    <a href="/scheduled"
+                       class="sidebar-link {% if active_page == 'scheduled' %}active{% endif %}">
+                        <i class="fa-solid fa-clock w-5 text-center"></i> Scheduled
+                    </a>
+                    <a href="/team" id="users-nav"
+                       class="sidebar-link {% if active_page == 'team' %}active{% endif %}">
+                        <i class="fa-solid fa-user-gear w-5 text-center"></i> Team
+                    </a>
+                    <a href="/briefs"
+                       class="sidebar-link {% if active_page == 'briefs' %}active{% endif %}">
+                        <i class="fa-solid fa-file-lines w-5 text-center"></i> Briefs
+                    </a>
+                    <a href="/reports"
+                       class="sidebar-link {% if active_page == 'reports' %}active{% endif %}">
+                        <i class="fa-solid fa-chart-bar w-5 text-center"></i> Reports
+                    </a>
+                    <a href="/notifications"
+                       class="sidebar-link relative {% if active_page == 'notifications' %}active{% endif %}">
+                        <i class="fa-solid fa-bell w-5 text-center"></i> Notifications <span id="sidebar-notif-badge" class="notif-badge hidden">0</span>
+                    </a>
+                </div>
+            </div>
 
             <!-- Bottom buttons -->
             <div class="mt-6 space-y-2 lg:absolute lg:bottom-6 lg:left-6 lg:right-6">
