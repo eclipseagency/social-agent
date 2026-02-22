@@ -88,10 +88,10 @@ function hideAddUserModal() { document.getElementById('add-user-modal').classLis
 async function addUser() {
     const data = { username: document.getElementById('new-username').value, email: document.getElementById('new-email').value, password: document.getElementById('new-password').value, role: document.getElementById('new-role').value, job_title: document.getElementById('new-job-title').value.trim(), phone: document.getElementById('new-phone').value.trim() };
     if (!data.username || !data.email || !data.password) { alert('All fields are required'); return; }
-    const res = await fetch(API_URL + '/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+    const res = await fetch(API_URL + '/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) }).then(r => r.json());
     if (res.success) { hideAddUserModal(); loadUsers(); showToast('User added', 'success'); } else { alert('Error: ' + res.error); }
 }
-async function deleteUser(id) { if (confirm('Delete this user?')) { await fetch(API_URL + '/users/' + id, { method: 'DELETE' }); loadUsers(); } }
+async function deleteUser(id) { if (confirm('Delete this user?')) { const res = await fetch(API_URL + '/users/' + id, { method: 'DELETE', credentials: 'include' }).then(r => r.json()); if (res.success) { loadUsers(); showToast('User deleted', 'success'); } else { alert('Error: ' + (res.error || 'Failed to delete')); } } }
 async function showEditUserModal(id) {
     const users = await fetch(API_URL + '/users').then(r => r.json());
     const user = users.find(u => u.id === id);
@@ -108,7 +108,7 @@ function hideEditUserModal() { document.getElementById('edit-user-modal').classL
 async function updateUser() {
     const id = document.getElementById('edit-user-id').value;
     const data = { username: document.getElementById('edit-username').value.trim(), email: document.getElementById('edit-email').value.trim(), role: document.getElementById('edit-role').value, job_title: document.getElementById('edit-job-title').value.trim(), phone: document.getElementById('edit-phone').value.trim() };
-    const res = await fetch(API_URL + '/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+    const res = await fetch(API_URL + '/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) }).then(r => r.json());
     if (res.success) { hideEditUserModal(); loadUsers(); showToast('User updated', 'success'); } else { alert('Error: ' + (res.error || 'Update failed')); }
 }
 function filterUsersTable() {
