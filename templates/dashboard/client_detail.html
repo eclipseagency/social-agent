@@ -15,6 +15,32 @@
     </div>
 </div>
 
+<!-- Team Assignments -->
+<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+    <h3 class="font-semibold text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-users text-indigo-600"></i> Team Assignments</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="client-assignments-grid">
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Copywriter</label>
+            <select id="ca-writer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Designer</label>
+            <select id="ca-designer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">SM Specialist</label>
+            <select id="ca-sm" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Motion Editor</label>
+            <select id="ca-motion" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
+        </div>
+    </div>
+    <button onclick="saveClientAssignments()" class="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+        <i class="fa-solid fa-save mr-1"></i> Save Assignments
+    </button>
+</div>
+
 <!-- Sub-tabs -->
 <div class="flex gap-2 mb-6 flex-wrap">
     <button onclick="showClientTab('pipeline')" class="tab-btn active" id="tab-pipeline">Pipeline</button>

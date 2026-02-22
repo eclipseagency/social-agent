@@ -7,7 +7,6 @@ let currentPostType = 'post';
 
 function pageInit() {
     loadClientsDropdown('post-client');
-    loadBriefDropdowns();
     initPlatformGalleries();
     // Setup schedule toggle listeners
     ['instagram', 'linkedin', 'facebook'].forEach(p => {
@@ -18,16 +17,6 @@ function pageInit() {
             });
         });
     });
-}
-
-async function loadBriefDropdowns() {
-    const users = await fetch(API_URL + '/users').then(r => r.json());
-    const writerSelect = document.getElementById('post-writer');
-    const designerSelect = document.getElementById('post-designer');
-    const smSelect = document.getElementById('post-sm');
-    if (writerSelect) writerSelect.innerHTML = '<option value="">None</option>' + users.filter(u => ['copywriter', 'admin', 'manager'].includes(u.role)).map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
-    if (designerSelect) designerSelect.innerHTML = '<option value="">None</option>' + users.filter(u => ['designer', 'admin', 'manager'].includes(u.role)).map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
-    if (smSelect) smSelect.innerHTML = '<option value="">None</option>' + users.filter(u => ['sm_specialist', 'admin', 'manager'].includes(u.role)).map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
 }
 
 function onPostTypeChange() {
@@ -215,9 +204,6 @@ async function saveBrief(workflowStatus) {
         tov: document.getElementById('post-tov')?.value || '',
         brief_notes: document.getElementById('post-brief-notes')?.value || '',
         design_reference_urls: briefReferenceUrls.join(','),
-        assigned_writer_id: document.getElementById('post-writer')?.value || null,
-        assigned_designer_id: document.getElementById('post-designer')?.value || null,
-        assigned_sm_id: document.getElementById('post-sm')?.value || null,
         priority: document.getElementById('post-priority')?.value || 'normal',
         workflow_status: workflowStatus,
         created_by_id: currentUser?.id || 1

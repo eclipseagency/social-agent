@@ -9,6 +9,7 @@ let clientStatusFilter = '';
 
 function pageInit() {
     loadClientDetail();
+    loadClientAssignmentDropdowns();
 }
 
 async function loadClientDetail() {
@@ -24,6 +25,62 @@ async function loadClientDetail() {
     loadClientPipeline();
     loadClientAccounts();
     loadClientRules();
+}
+
+// ========== CLIENT ASSIGNMENTS ==========
+
+async function loadClientAssignmentDropdowns() {
+    const users = await apiFetch(API_URL + '/users') || [];
+    const writers = users.filter(u => ['copywriter', 'admin', 'manager'].includes(u.role));
+    const designers = users.filter(u => ['designer', 'admin', 'manager'].includes(u.role));
+    const sms = users.filter(u => ['sm_specialist', 'admin', 'manager'].includes(u.role));
+    const motions = users.filter(u => ['motion_editor', 'admin', 'manager'].includes(u.role));
+
+    function fillSel(id, list) {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- None --</option>' + list.map(u =>
+            `<option value="${u.id}">${esc(u.username)}</option>`
+        ).join('');
+    }
+    fillSel('ca-writer', writers);
+    fillSel('ca-designer', designers);
+    fillSel('ca-sm', sms);
+    fillSel('ca-motion', motions);
+
+    // Wait for clientData to be loaded, then set values
+    await waitForClientData();
+    if (clientData) {
+        document.getElementById('ca-writer').value = clientData.assigned_writer_id || '';
+        document.getElementById('ca-designer').value = clientData.assigned_designer_id || '';
+        document.getElementById('ca-sm').value = clientData.assigned_sm_id || '';
+        document.getElementById('ca-motion').value = clientData.assigned_motion_id || '';
+    }
+}
+
+function waitForClientData() {
+    return new Promise(resolve => {
+        if (clientData) return resolve();
+        const check = setInterval(() => { if (clientData) { clearInterval(check); resolve(); } }, 100);
+        setTimeout(() => { clearInterval(check); resolve(); }, 3000);
+    });
+}
+
+async function saveClientAssignments() {
+    const data = {
+        assigned_writer_id: document.getElementById('ca-writer')?.value || null,
+        assigned_designer_id: document.getElementById('ca-designer')?.value || null,
+        assigned_sm_id: document.getElementById('ca-sm')?.value || null,
+        assigned_motion_id: document.getElementById('ca-motion')?.value || null,
+    };
+    const res = await apiFetch(API_URL + '/clients/' + clientId, { method: 'PUT', body: data });
+    if (res && res.success) {
+        showToast('Team assignments saved', 'success');
+        // Update local clientData
+        Object.assign(clientData, data);
+    } else {
+        showToast('Failed to save assignments', 'error');
+    }
 }
 
 function showClientTab(tab) {
@@ -244,11 +301,18 @@ async function openClientPostDetail(postId) {
     if (post.brief_notes) { document.getElementById('client-detail-notes').textContent = post.brief_notes; notesSection.style.display = ''; }
     else notesSection.style.display = 'none';
 
-    // References
+    // References — larger gallery cards
     const refsSection = document.getElementById('client-detail-references-section');
     const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
     if (refUrls.length) {
-        document.getElementById('client-detail-references').innerHTML = refUrls.map(u => `<img src="${u.trim()}" alt="Reference" onclick="window.open('${u.trim()}','_blank')">`).join('');
+        document.getElementById('client-detail-references').innerHTML = `<div class="ref-gallery">${refUrls.map(u => {
+            const url = u.trim();
+            const filename = url.split('/').pop().split('?')[0];
+            return `<div class="ref-gallery-item">
+                <img src="${url}" alt="Reference" onclick="window.open('${url}','_blank')">
+                <div class="ref-gallery-overlay"><span class="ref-gallery-name">${esc(filename.length > 20 ? filename.substring(0, 17) + '...' : filename)}</span></div>
+            </div>`;
+        }).join('')}</div>`;
         refsSection.style.display = '';
     } else refsSection.style.display = 'none';
 
@@ -266,8 +330,9 @@ async function openClientPostDetail(postId) {
     if (post.tov) { document.getElementById('client-detail-tov').textContent = post.tov; tovSection.style.display = ''; }
     else tovSection.style.display = 'none';
 
-    // Assignments
+    // Assignments (read-only, inherited from client)
     const assignments = [];
+    if (post.assigned_writer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i> Copywriter: <strong>${esc(post.assigned_writer_name)}</strong></span>`);
     if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
     if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
     if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);

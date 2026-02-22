@@ -146,9 +146,17 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .cal-status-dot { width: 7px; height: 7px; border-radius: 50%; margin-left: auto; flex-shrink: 0; }
 .cal-card-thumb { width: 100%; height: 40px; border-radius: 4px; overflow: hidden; margin-bottom: 2px; }
 .cal-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cal-card-topic { color: #1e293b; font-size: 10px; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 1px; }
 .cal-card-caption { color: #64748b; font-size: 10px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-card-upload-hint { background: #ede9fe; color: #7c3aed; font-size: 9px; font-weight: 700; text-align: center; padding: 2px 4px; border-radius: 4px; margin-top: 2px; }
+.cal-mini-card.cal-card-designer-upload { border: 1px dashed #8b5cf6; }
+.cal-mini-card.cal-card-designer-upload:hover { background: #faf5ff; }
 .cal-card-meta { display: flex; justify-content: space-between; margin-top: 2px; }
 .cal-card-client { color: #94a3b8; font-size: 9px; }
+.dark .cal-card-topic { color: #e2e8f0; }
+.dark .cal-card-upload-hint { background: #4c1d95; color: #c4b5fd; }
+.dark .cal-mini-card.cal-card-designer-upload { border-color: #7c3aed; }
+.dark .cal-mini-card.cal-card-designer-upload:hover { background: #2e1065; }
 /* Schedule slot chips (expected posts from posting rules) */
 .cal-schedule-slots { display: flex; flex-wrap: wrap; gap: 2px; }
 .cal-schedule-slots { cursor: pointer; }
@@ -196,6 +204,20 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .design-gallery { display: flex; flex-wrap: wrap; gap: 8px; }
 .design-gallery img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.15s; }
 .design-gallery img:hover { transform: scale(1.08); }
+
+/* Reference gallery — larger, more visual cards */
+.ref-gallery { display: flex; flex-wrap: wrap; gap: 10px; }
+.ref-gallery-item { position: relative; width: 160px; height: 120px; border-radius: 10px; overflow: hidden; cursor: pointer; border: 1px solid #e2e8f0; transition: transform 0.15s, box-shadow 0.15s; }
+.ref-gallery-item:hover { transform: scale(1.04); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.ref-gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+.ref-gallery-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 6px 8px; display: flex; align-items: center; justify-content: space-between; }
+.ref-gallery-name { color: white; font-size: 10px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-gallery-delete { background: rgba(239,68,68,0.85); color: white; border: none; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+.ref-gallery-item:hover .ref-gallery-delete { opacity: 1; }
+.dark .ref-gallery-item { border-color: #374151; }
+@media (max-width: 640px) {
+    .ref-gallery-item { width: 120px; height: 90px; }
+}
 
 /* ===== Sidebar Nav Links ===== */
 .sidebar-link {

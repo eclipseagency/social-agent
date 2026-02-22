@@ -8,7 +8,19 @@ clients_bp = Blueprint('clients', __name__)
 @clients_bp.route('/api/clients', methods=['GET'])
 def list_clients():
     db = get_db()
-    clients = dicts_from_rows(db.execute("SELECT * FROM clients ORDER BY id DESC").fetchall())
+    clients = dicts_from_rows(db.execute("""
+        SELECT c.*,
+               u_writer.username as assigned_writer_name,
+               u_designer.username as assigned_designer_name,
+               u_sm.username as assigned_sm_name,
+               u_motion.username as assigned_motion_name
+        FROM clients c
+        LEFT JOIN users u_writer ON c.assigned_writer_id = u_writer.id
+        LEFT JOIN users u_designer ON c.assigned_designer_id = u_designer.id
+        LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
+        ORDER BY c.id DESC
+    """).fetchall())
     db.close()
     return jsonify(clients)
 
@@ -16,7 +28,19 @@ def list_clients():
 @clients_bp.route('/api/clients/<int:client_id>', methods=['GET'])
 def get_client(client_id):
     db = get_db()
-    client = dict_from_row(db.execute("SELECT * FROM clients WHERE id=?", (client_id,)).fetchone())
+    client = dict_from_row(db.execute("""
+        SELECT c.*,
+               u_writer.username as assigned_writer_name,
+               u_designer.username as assigned_designer_name,
+               u_sm.username as assigned_sm_name,
+               u_motion.username as assigned_motion_name
+        FROM clients c
+        LEFT JOIN users u_writer ON c.assigned_writer_id = u_writer.id
+        LEFT JOIN users u_designer ON c.assigned_designer_id = u_designer.id
+        LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
+        WHERE c.id=?
+    """, (client_id,)).fetchone())
     if not client:
         db.close()
         return jsonify({'error': 'Client not found'}), 404
@@ -47,6 +71,38 @@ def create_client():
     client_id = cursor.lastrowid
     db.close()
     return jsonify({'success': True, 'id': client_id})
+
+
+@clients_bp.route('/api/clients/<int:client_id>', methods=['PUT'])
+def update_client(client_id):
+    data = request.json or {}
+    db = get_db()
+    client = dict_from_row(db.execute("SELECT * FROM clients WHERE id=?", (client_id,)).fetchone())
+    if not client:
+        db.close()
+        return jsonify({'error': 'Client not found'}), 404
+
+    updatable = ['name', 'email', 'company', 'color',
+                 'assigned_writer_id', 'assigned_designer_id',
+                 'assigned_sm_id', 'assigned_motion_id']
+    fields = []
+    params = []
+    for field in updatable:
+        if field in data:
+            fields.append(f"{field}=?")
+            val = data[field]
+            # Convert empty strings to None for integer FK fields
+            if field.endswith('_id') and (val == '' or val is None):
+                val = None
+            params.append(val)
+
+    if fields:
+        params.append(client_id)
+        db.execute(f"UPDATE clients SET {', '.join(fields)} WHERE id=?", params)
+        db.commit()
+
+    db.close()
+    return jsonify({'success': True})
 
 
 @clients_bp.route('/api/clients/<int:client_id>', methods=['DELETE'])
@@ -95,7 +151,19 @@ def delete_account(account_id):
 def clients_overview():
     """Return all clients with coverage data and pipeline stats."""
     db = get_db()
-    clients = dicts_from_rows(db.execute("SELECT * FROM clients ORDER BY id DESC").fetchall())
+    clients = dicts_from_rows(db.execute("""
+        SELECT c.*,
+               u_writer.username as assigned_writer_name,
+               u_designer.username as assigned_designer_name,
+               u_sm.username as assigned_sm_name,
+               u_motion.username as assigned_motion_name
+        FROM clients c
+        LEFT JOIN users u_writer ON c.assigned_writer_id = u_writer.id
+        LEFT JOIN users u_designer ON c.assigned_designer_id = u_designer.id
+        LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
+        ORDER BY c.id DESC
+    """).fetchall())
 
     today = datetime.now().date()
     this_week_start = today - timedelta(days=today.weekday())

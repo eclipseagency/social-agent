@@ -137,28 +137,10 @@
             <input type="text" id="detail-tov-input" class="w-full border rounded-lg p-3 text-sm hidden" placeholder="e.g. Professional, Playful, Bold...">
         </div>
 
-        <!-- Assignments (editable in draft) -->
+        <!-- Assignments (read-only, inherited from client) -->
         <div class="brief-section" id="detail-assignments-section">
-            <div class="brief-section-title"><i class="fa-solid fa-users mr-1"></i> Assignments</div>
+            <div class="brief-section-title"><i class="fa-solid fa-users mr-1"></i> Assignments <span class="text-gray-400 text-[10px] font-normal ml-1">(from client)</span></div>
             <div class="brief-section-content text-sm" id="detail-assignments"></div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 hidden" id="detail-assignments-edit">
-                <div>
-                    <label class="text-xs text-gray-500">Copywriter</label>
-                    <select id="detail-writer-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500">Designer</label>
-                    <select id="detail-designer-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500">SM Specialist</label>
-                    <select id="detail-sm-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500">Motion Editor</label>
-                    <select id="detail-motion-select" class="w-full border rounded-lg p-2 text-sm"><option value="">--</option></select>
-                </div>
-            </div>
         </div>
 
         <!-- Save Brief Button (for draft editing) -->

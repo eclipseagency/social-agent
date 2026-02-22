@@ -327,11 +327,21 @@ async function openPostDetail(postId) {
     const designsTitle = document.getElementById('detail-designs-title');
     const needsDesign = ['draft', 'needs_caption', 'in_design'].includes(wf);
 
-    // Design References
+    // Design References — larger gallery cards with delete
     const refsSection = document.getElementById('detail-references-section');
     const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
     if (refUrls.length) {
-        document.getElementById('detail-references').innerHTML = refUrls.map(u => `<img src="${u.trim()}" alt="Reference" onclick="window.open('${u.trim()}','_blank')">`).join('');
+        document.getElementById('detail-references').innerHTML = `<div class="ref-gallery">${refUrls.map((u, i) => {
+            const url = u.trim();
+            const filename = url.split('/').pop().split('?')[0];
+            return `<div class="ref-gallery-item">
+                <img src="${url}" alt="Reference" onclick="window.open('${url}','_blank')">
+                <div class="ref-gallery-overlay">
+                    <span class="ref-gallery-name">${esc(filename.length > 20 ? filename.substring(0, 17) + '...' : filename)}</span>
+                    ${needsDesign && canDo('uploadRef') ? `<button class="ref-gallery-delete" onclick="event.stopPropagation(); deleteReference(${post.id}, ${i})" title="Remove"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                </div>
+            </div>`;
+        }).join('')}</div>`;
         refsSection.style.display = '';
     } else if (needsDesign) {
         document.getElementById('detail-references').innerHTML = '<p class="text-gray-400 text-sm">No references added yet — upload references for the designer</p>';
@@ -351,11 +361,14 @@ async function openPostDetail(postId) {
         designsTitle.innerHTML = '<i class="fa-solid fa-palette mr-1"></i> Design Output';
         document.getElementById('detail-designs').innerHTML = designUrls.map(u => `<img src="${u.trim()}" alt="Design" onclick="window.open('${u.trim()}','_blank')">`).join('');
         designsSection.style.display = '';
-    } else if (needsDesign) {
-        // No designs yet — post still needs content
+    } else if (wf === 'in_design') {
+        // Post is actively waiting for designer
         designsTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-orange-500 mr-1"></i> Needs Design';
         document.getElementById('detail-designs').innerHTML = '<div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center"><i class="fa-solid fa-paintbrush text-orange-400 text-xl mb-1 block"></i><p class="text-sm font-semibold text-orange-700">Waiting for designer to create content</p><p class="text-xs text-orange-500 mt-1">The designer should use the references above to create the design</p></div>';
         designsSection.style.display = '';
+    } else if (['draft', 'needs_caption'].includes(wf)) {
+        // Still preparing brief — hide design section, not relevant yet
+        designsSection.style.display = 'none';
     } else {
         designsTitle.innerHTML = '<i class="fa-solid fa-palette mr-1"></i> Design Output';
         document.getElementById('detail-designs').innerHTML = '<p class="text-gray-400 text-sm">No designs attached</p>';
@@ -388,30 +401,21 @@ async function openPostDetail(postId) {
         }
     }
 
-    // Assignments
+    // Assignments (always read-only — inherited from client)
     const assignSection = document.getElementById('detail-assignments-section');
     const assignDisplay = document.getElementById('detail-assignments');
-    const assignEdit = document.getElementById('detail-assignments-edit');
     assignSection.style.display = '';
 
-    if (isEditable && canDo('createPost')) {
-        assignDisplay.style.display = 'none';
-        assignEdit.classList.remove('hidden');
-        // Load users into dropdowns
-        loadAssignmentDropdowns(post);
+    const assignments = [];
+    if (post.assigned_writer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i> Copywriter: <strong>${esc(post.assigned_writer_name)}</strong></span>`);
+    if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
+    if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
+    if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
+    if (assignments.length) {
+        assignDisplay.innerHTML = assignments.join('');
+        assignDisplay.style.display = '';
     } else {
-        assignEdit.classList.add('hidden');
-        const assignments = [];
-        if (post.assigned_writer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i> Copywriter: <strong>${esc(post.assigned_writer_name)}</strong></span>`);
-        if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
-        if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
-        if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
-        if (assignments.length) {
-            assignDisplay.innerHTML = assignments.join('');
-            assignDisplay.style.display = '';
-        } else {
-            assignSection.style.display = 'none';
-        }
+        assignSection.style.display = 'none';
     }
 
     // Save Brief button — only for roles that can create posts
@@ -488,8 +492,8 @@ async function openPostDetail(postId) {
         if (tovSection && !post.tov) tovSection.style.display = 'none';
 
     } else if (role === 'designer' || role === 'motion_editor') {
-        // Designer: brief + references are key info, design upload is their action
-        // Highlight notes and references sections
+        // Designer: topic + notes + references are key info, design upload is their action
+        if (topicSection && post.topic) topicSection.classList.add('role-focus');
         if (notesSection && post.brief_notes) notesSection.classList.add('role-focus');
         if (refsSection) refsSection.classList.add('role-focus');
         // Highlight upload zone when it's their turn
@@ -523,32 +527,6 @@ function closePostDetail() {
     currentDetailPost = null;
 }
 
-// ========== ASSIGNMENT DROPDOWNS ==========
-
-let _cachedUsers = null;
-async function loadAssignmentDropdowns(post) {
-    if (!_cachedUsers) {
-        _cachedUsers = await apiFetch(`${API_URL}/users`) || [];
-    }
-    const users = _cachedUsers;
-
-    const writerSel = document.getElementById('detail-writer-select');
-    const designerSel = document.getElementById('detail-designer-select');
-    const smSel = document.getElementById('detail-sm-select');
-    const motionSel = document.getElementById('detail-motion-select');
-
-    function fillSelect(sel, selectedId) {
-        sel.innerHTML = '<option value="">--</option>' + users.map(u =>
-            `<option value="${u.id}" ${u.id == selectedId ? 'selected' : ''}>${esc(u.username)}</option>`
-        ).join('');
-    }
-
-    fillSelect(writerSel, post.assigned_writer_id || '');
-    fillSelect(designerSel, post.assigned_designer_id || '');
-    fillSelect(smSel, post.assigned_sm_id || '');
-    fillSelect(motionSel, post.assigned_motion_id || '');
-}
-
 // ========== SAVE BRIEF FROM DETAIL ==========
 
 async function saveBriefFromDetail() {
@@ -559,10 +537,6 @@ async function saveBriefFromDetail() {
         brief_notes: document.getElementById('detail-notes-input').value.trim(),
         caption: document.getElementById('detail-caption').value.trim(),
         tov: document.getElementById('detail-tov-input').value.trim(),
-        assigned_writer_id: document.getElementById('detail-writer-select').value || null,
-        assigned_designer_id: document.getElementById('detail-designer-select').value || null,
-        assigned_sm_id: document.getElementById('detail-sm-select').value || null,
-        assigned_motion_id: document.getElementById('detail-motion-select').value || null,
     };
 
     const res = await apiFetch(`${API_URL}/posts/${currentDetailPost.id}`, {
@@ -664,11 +638,34 @@ async function uploadReferenceImages(files) {
         body: formData
     });
     if (res && res.success) {
-        showToast(`${res.urls?.length || 0} reference(s) uploaded`, 'success');
+        const uploadedCount = res.urls?.length || 0;
+        const errorCount = res.errors?.length || 0;
+        if (errorCount > 0) {
+            const errorMsgs = res.errors.map(e => `${e.filename}: ${e.error}`).join(', ');
+            showToast(`${uploadedCount} uploaded, ${errorCount} failed: ${errorMsgs}`, errorCount === files.length ? 'error' : 'info');
+        } else {
+            showToast(`${uploadedCount} reference(s) uploaded`, 'success');
+        }
         loadCalendar();
         openPostDetail(currentDetailPost.id);
     } else {
-        showToast('Upload failed', 'error');
+        showToast(res?.error || 'Upload failed — check file types and try again', 'error');
+    }
+}
+
+// ========== DELETE REFERENCE IMAGE ==========
+
+async function deleteReference(postId, index) {
+    if (!currentDetailPost) return;
+    const refUrls = (currentDetailPost.design_reference_urls || '').split(',').filter(u => u.trim());
+    refUrls.splice(index, 1);
+    const res = await apiFetch(`${API_URL}/posts/${postId}`, {
+        method: 'PUT',
+        body: { design_reference_urls: refUrls.join(',') }
+    });
+    if (res && res.success) {
+        showToast('Reference removed', 'success');
+        openPostDetail(postId);
     }
 }
 

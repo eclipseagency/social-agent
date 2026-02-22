@@ -276,17 +276,8 @@ function getPostStatus(post) {
     if (wf === 'approved') return 'Ready';
     if (wf === 'design_review') return 'Design Review';
     if (wf === 'needs_caption') return 'Needs Caption';
-    if (wf === 'in_design') {
-        const hasDesign = (post.design_output_urls || '').trim();
-        return hasDesign ? 'Design Review' : 'Needs Design';
-    }
-    if (wf === 'draft') {
-        const hasCaption = (post.caption || '').trim();
-        const hasDesign = (post.design_output_urls || '').trim();
-        if (!hasDesign) return 'Needs Design';
-        if (!hasCaption) return 'Needs Caption';
-        return 'Draft';
-    }
+    if (wf === 'in_design') return 'Needs Design';
+    if (wf === 'draft') return 'Draft';
     return wf.replace('_', ' ');
 }
 
@@ -331,22 +322,32 @@ function renderCalendarMiniCard(post) {
     const status = getPostStatus(post);
     const borderClass = getStatusBorderClass(post);
     const time = (post.scheduled_at || '').substring(11, 16) || '';
+    const topic = post.topic || '';
+    const topicPreview = topic.length > 35 ? topic.substring(0, 32) + '...' : topic;
     const caption = post.caption || '';
     const captionPreview = caption.length > 40 ? caption.substring(0, 40) + '...' : caption;
     const thumbnail = (post.design_output_urls || '').split(',')[0].trim();
     const platform = post.platforms || '';
     const contentType = post.post_type || 'post';
+    const wf = post.workflow_status || 'draft';
+
+    // Show upload hint for designers on in_design posts
+    const isDesignerUpload = canDo('uploadDesign') && wf === 'in_design';
 
     const canDrag = canDo('schedule') || canDo('approve');
-    return `<div class="cal-mini-card ${borderClass}" data-post-id="${post.id}" ${canDrag ? `draggable="true" ondragstart="onCardDragStart(event, ${post.id})"` : ''}
-                 onclick="openPostDetail(${post.id}); event.stopPropagation();">
+    // Use the right click handler depending on which page we're on
+    const clickFn = typeof openClientPostDetail === 'function' && typeof clientId !== 'undefined' ? 'openClientPostDetail' : 'openPostDetail';
+    return `<div class="cal-mini-card ${borderClass} ${isDesignerUpload ? 'cal-card-designer-upload' : ''}" data-post-id="${post.id}" ${canDrag ? `draggable="true" ondragstart="onCardDragStart(event, ${post.id})"` : ''}
+                 onclick="${clickFn}(${post.id}); event.stopPropagation();">
         <div class="cal-card-top">
             ${time ? `<span class="cal-card-time">${esc(time)}</span>` : ''}
             <span class="cal-card-icons">${getPlatformIcon(platform)} ${getContentTypeIcon(contentType)}</span>
             <span class="cal-status-dot" style="background:${getStatusColor(status)}" title="${status}"></span>
         </div>
         ${thumbnail ? `<div class="cal-card-thumb"><img src="${thumbnail}" alt="" loading="lazy"></div>` : ''}
+        ${topicPreview ? `<div class="cal-card-topic">${esc(topicPreview)}</div>` : ''}
         ${captionPreview ? `<div class="cal-card-caption">${esc(captionPreview)}</div>` : ''}
+        ${isDesignerUpload ? `<div class="cal-card-upload-hint"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Design</div>` : ''}
         <div class="cal-card-meta">
             <span class="cal-card-client">${esc(post.client_name || '')}</span>
         </div>

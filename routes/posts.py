@@ -202,7 +202,7 @@ def upload_design(post_id):
         return jsonify({'error': 'Post not found'}), 404
 
     files = request.files.getlist('images')
-    if not files:
+    if not files or (len(files) == 1 and files[0].filename == ''):
         db.close()
         return jsonify({'error': 'No images provided'}), 400
 
@@ -215,6 +215,11 @@ def upload_design(post_id):
             urls.append(result['url'])
         except Exception as e:
             errors.append({'filename': f.filename, 'error': str(e)})
+
+    if not urls and errors:
+        db.close()
+        error_detail = '; '.join([f"{e['filename']}: {e['error']}" for e in errors])
+        return jsonify({'success': False, 'error': f'Upload failed: {error_detail}', 'urls': [], 'errors': errors}), 500
 
     if urls:
         # Append to existing design_output_urls
@@ -268,7 +273,7 @@ def upload_reference(post_id):
         return jsonify({'error': 'Post not found'}), 404
 
     files = request.files.getlist('images')
-    if not files:
+    if not files or (len(files) == 1 and files[0].filename == ''):
         db.close()
         return jsonify({'error': 'No images provided'}), 400
 
@@ -294,6 +299,11 @@ def upload_reference(post_id):
         db.commit()
 
     db.close()
+
+    if not urls and errors:
+        error_detail = '; '.join([f"{e['filename']}: {e['error']}" for e in errors])
+        return jsonify({'success': False, 'error': f'Upload failed: {error_detail}', 'urls': [], 'errors': errors}), 500
+
     return jsonify({'success': True, 'urls': urls, 'errors': errors})
 
 
@@ -397,6 +407,24 @@ def add_post_comment(post_id):
 def create_post(client_id):
     data = request.json or {}
     db = get_db()
+
+    # Auto-fill assignments from client if not provided in the request
+    assigned_designer_id = data.get('assigned_designer_id') or None
+    assigned_sm_id = data.get('assigned_sm_id') or None
+    assigned_motion_id = data.get('assigned_motion_id') or None
+    assigned_writer_id = data.get('assigned_writer_id') or None
+
+    if not any([assigned_designer_id, assigned_sm_id, assigned_motion_id, assigned_writer_id]):
+        client = dict_from_row(db.execute(
+            "SELECT assigned_writer_id, assigned_designer_id, assigned_sm_id, assigned_motion_id FROM clients WHERE id=?",
+            (client_id,)
+        ).fetchone())
+        if client:
+            assigned_writer_id = client.get('assigned_writer_id') or None
+            assigned_designer_id = client.get('assigned_designer_id') or None
+            assigned_sm_id = client.get('assigned_sm_id') or None
+            assigned_motion_id = client.get('assigned_motion_id') or None
+
     cursor = db.execute(
         """INSERT INTO scheduled_posts
            (client_id, topic, caption, image_url, platforms, scheduled_at, image_size, post_type,
@@ -415,10 +443,10 @@ def create_post(client_id):
             data.get('tov', ''),
             data.get('brief_notes', ''),
             data.get('design_reference_urls', ''),
-            data.get('assigned_designer_id') or None,
-            data.get('assigned_sm_id') or None,
-            data.get('assigned_motion_id') or None,
-            data.get('assigned_writer_id') or None,
+            assigned_designer_id,
+            assigned_sm_id,
+            assigned_motion_id,
+            assigned_writer_id,
             data.get('priority', 'normal'),
             data.get('workflow_status', ''),
             data.get('created_by_id') or None,
@@ -437,20 +465,20 @@ def create_post(client_id):
             (post_id, user_id, '', wf_status, 'Post created')
         )
         # Notify designer if assigned and status is in_design
-        if wf_status == 'in_design' and data.get('assigned_designer_id'):
+        if wf_status == 'in_design' and assigned_designer_id:
             db.execute(
                 """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
                    VALUES (?,?,?,?,?,?)""",
-                (data['assigned_designer_id'], 'design_assigned',
+                (assigned_designer_id, 'design_assigned',
                  'New Design Brief', f'You have been assigned a new design brief: {data.get("topic", "Untitled")}',
                  'post', post_id)
             )
         # Notify copywriter if assigned and status is needs_caption
-        if wf_status == 'needs_caption' and data.get('assigned_writer_id'):
+        if wf_status == 'needs_caption' and assigned_writer_id:
             db.execute(
                 """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
                    VALUES (?,?,?,?,?,?)""",
-                (data['assigned_writer_id'], 'caption_assigned',
+                (assigned_writer_id, 'caption_assigned',
                  'كتابة كابشن جديد', f'تم تعيينك لكتابة كابشن: {data.get("topic", "Untitled")}',
                  'post', post_id)
             )
@@ -460,7 +488,7 @@ def create_post(client_id):
                                       status, priority, category, post_id)
                    VALUES (?,?,?,?,?,?,?,?,?)""",
                 (f'كابشن: {data.get("topic", "Untitled")}', f'كتابة كابشن لمنشور: {data.get("topic", "Untitled")}',
-                 client_id, data['assigned_writer_id'], data.get('created_by_id') or 1,
+                 client_id, assigned_writer_id, data.get('created_by_id') or 1,
                  'todo', data.get('priority', 'normal'), 'caption', post_id)
             )
         db.commit()

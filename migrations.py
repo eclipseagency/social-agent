@@ -187,6 +187,11 @@ def run_migrations():
         _migration_15_posting_rules_type(db)
         set_schema_version(db, 15)
 
+    if version < 16:
+        print("Running migration 16: Add assignment columns to clients...")
+        _migration_16_client_assignments(db)
+        set_schema_version(db, 16)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -419,6 +424,40 @@ def _migration_15_posting_rules_type(db):
         db.execute("ALTER TABLE client_posting_rules ADD COLUMN content_type TEXT DEFAULT 'post'")
     if not column_exists(db, 'client_posting_rules', 'notes'):
         db.execute("ALTER TABLE client_posting_rules ADD COLUMN notes TEXT DEFAULT ''")
+    db.commit()
+
+
+def _migration_16_client_assignments(db):
+    """Add assignment columns to clients table and backfill from most recent posts."""
+    assignment_cols = [
+        ("assigned_writer_id", "INTEGER"),
+        ("assigned_designer_id", "INTEGER"),
+        ("assigned_sm_id", "INTEGER"),
+        ("assigned_motion_id", "INTEGER"),
+    ]
+    for col_name, col_def in assignment_cols:
+        if not column_exists(db, 'clients', col_name):
+            db.execute(f"ALTER TABLE clients ADD COLUMN {col_name} {col_def}")
+    db.commit()
+
+    # Backfill: for each client, pick the most recent post's assignments as defaults
+    clients = db.execute("SELECT id FROM clients").fetchall()
+    for client in clients:
+        cid = client['id']
+        latest_post = db.execute("""
+            SELECT assigned_writer_id, assigned_designer_id, assigned_sm_id, assigned_motion_id
+            FROM scheduled_posts
+            WHERE client_id=? AND (assigned_writer_id IS NOT NULL OR assigned_designer_id IS NOT NULL
+                                   OR assigned_sm_id IS NOT NULL OR assigned_motion_id IS NOT NULL)
+            ORDER BY created_at DESC LIMIT 1
+        """, (cid,)).fetchone()
+        if latest_post:
+            db.execute("""
+                UPDATE clients SET assigned_writer_id=?, assigned_designer_id=?,
+                                   assigned_sm_id=?, assigned_motion_id=?
+                WHERE id=?
+            """, (latest_post['assigned_writer_id'], latest_post['assigned_designer_id'],
+                  latest_post['assigned_sm_id'], latest_post['assigned_motion_id'], cid))
     db.commit()
 
 
