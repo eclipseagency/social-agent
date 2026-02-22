@@ -172,6 +172,111 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .design-gallery img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.15s; }
 .design-gallery img:hover { transform: scale(1.08); }
 
+/* ===== Bottom Nav Bar (mobile only) ===== */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+}
+@media (min-width: 1024px) {
+    .bottom-nav { display: none; }
+}
+
+/* Regular tab items */
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    min-width: 56px;
+}
+.bottom-nav-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+}
+.bottom-nav-item i {
+    font-size: 18px;
+    transition: transform 0.15s;
+}
+.bottom-nav-item span {
+    line-height: 1;
+}
+
+/* Active state — bg pill + bold color */
+.bottom-nav-item.active {
+    color: #4f46e5;
+}
+.bottom-nav-item.active .bottom-nav-icon {
+    background: #eef2ff;
+}
+
+/* Tap feedback */
+.bottom-nav-item:active .bottom-nav-icon {
+    transform: scale(0.9);
+}
+
+/* Center "Create" button — big floating circle */
+.bottom-nav-create {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 24px;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+    margin-top: -18px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.bottom-nav-create:active {
+    transform: scale(0.92);
+    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+}
+
+/* ===== Dark mode bottom nav ===== */
+.dark .bottom-nav {
+    background: #0f172a;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+}
+.dark .bottom-nav-item {
+    color: #64748b;
+}
+.dark .bottom-nav-item.active {
+    color: #a5b4fc;
+}
+.dark .bottom-nav-item.active .bottom-nav-icon {
+    background: rgba(99,102,241,0.15);
+}
+.dark .bottom-nav-create {
+    box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+}
+
 /* Responsive */
 @media (max-width: 1023px) {
     #sidebar { left: 0; }

@@ -13,9 +13,8 @@
     {% block head %}{% endblock %}
 </head>
 <body class="bg-gray-100 min-h-screen">
-    <!-- Mobile Header -->
+    <!-- Mobile Header (simplified — no hamburger, just branding + dark mode) -->
     <div class="lg:hidden fixed top-0 left-0 right-0 bg-[#0f172a] z-40 px-4 py-3 flex items-center justify-between">
-        <button onclick="toggleMobileMenu()" class="text-white text-xl"><i class="fa-solid fa-bars"></i></button>
         <h1 class="text-white font-bold text-sm">Eclipse Agency</h1>
         <button onclick="toggleDarkMode()" class="text-white"><i class="fa-solid fa-moon"></i></button>
     </div>
@@ -106,7 +105,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 p-4 lg:p-8 lg:ml-64 mt-14 lg:mt-0">
+        <main class="flex-1 p-4 lg:p-8 lg:ml-64 mt-14 lg:mt-0 pb-20 lg:pb-8">
             {% block content %}{% endblock %}
         </main>
     </div>
@@ -114,8 +113,39 @@
     <!-- Modals -->
     {% block modals %}{% endblock %}
 
+    <!-- Mobile Bottom Nav Bar -->
+    <nav class="bottom-nav">
+        <a href="/" class="bottom-nav-item {% if active_page == 'overview' %}active{% endif %}">
+            <div class="bottom-nav-icon">
+                <i class="fa-solid fa-house"></i>
+            </div>
+            <span>Home</span>
+        </a>
+        <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}">
+            <div class="bottom-nav-icon">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <span>Clients</span>
+        </a>
+        <a href="/new-post" class="bottom-nav-create">
+            <i class="fa-solid fa-plus"></i>
+        </a>
+        <a href="/calendar" class="bottom-nav-item {% if active_page == 'calendar' %}active{% endif %}">
+            <div class="bottom-nav-icon">
+                <i class="fa-solid fa-calendar"></i>
+            </div>
+            <span>Calendar</span>
+        </a>
+        <button onclick="toggleMobileMenu()" class="bottom-nav-item">
+            <div class="bottom-nav-icon">
+                <i class="fa-solid fa-grip-lines"></i>
+            </div>
+            <span>More</span>
+        </button>
+    </nav>
+
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+    <div id="toast-container" class="fixed bottom-20 lg:bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <!-- Scripts -->
     <script src="/static/js/common.js"></script>
