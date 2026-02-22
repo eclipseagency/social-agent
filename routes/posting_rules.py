@@ -36,6 +36,8 @@ def create_posting_rule(client_id):
     posting_days = data.get('posting_days', [])
     posting_hours = data.get('posting_hours', [])
     posts_per_day = data.get('posts_per_day', 1)
+    content_type = data.get('content_type', 'post')
+    notes = data.get('notes', '')
 
     if not platform:
         return jsonify({'error': 'Platform required'}), 400
@@ -46,9 +48,9 @@ def create_posting_rule(client_id):
 
     db = get_db()
     cursor = db.execute(
-        """INSERT INTO client_posting_rules (client_id, platform, posting_days, posting_hours, posts_per_day)
-           VALUES (?,?,?,?,?)""",
-        (client_id, platform, json.dumps(posting_days), json.dumps(posting_hours), posts_per_day)
+        """INSERT INTO client_posting_rules (client_id, platform, posting_days, posting_hours, posts_per_day, content_type, notes)
+           VALUES (?,?,?,?,?,?,?)""",
+        (client_id, platform, json.dumps(posting_days), json.dumps(posting_hours), posts_per_day, content_type, notes)
     )
     db.commit()
     rule_id = cursor.lastrowid
@@ -75,6 +77,12 @@ def update_posting_rule(rule_id):
     if 'is_active' in data:
         fields.append("is_active=?")
         params.append(data['is_active'])
+    if 'content_type' in data:
+        fields.append("content_type=?")
+        params.append(data['content_type'])
+    if 'notes' in data:
+        fields.append("notes=?")
+        params.append(data['notes'])
 
     if fields:
         params.append(rule_id)
@@ -178,6 +186,8 @@ def calendar_schedule_slots():
                         'client_name': rule.get('client_name', ''),
                         'client_color': rule.get('client_color', '#6366f1'),
                         'platform': rule.get('platform', ''),
+                        'content_type': rule.get('content_type', 'post'),
+                        'notes': rule.get('notes', ''),
                         'time': posting_hours[0] if posting_hours else '12:00',
                         'filled': filled
                     })

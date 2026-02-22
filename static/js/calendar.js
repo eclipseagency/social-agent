@@ -66,7 +66,11 @@ function renderCalendar() {
                     ${dayPosts.length > 0 ? `<span class="text-xs text-gray-400">${dayPosts.length}</span>` : ''}
                 </span>
             </div>
-            ${unfilledSlots.length > 0 ? `<div class="cal-schedule-slots mb-1">${unfilledSlots.slice(0, 4).map(s => `<div class="cal-slot-chip" style="border-left-color:${s.client_color || '#6366f1'}" title="${esc(s.client_name)} — ${s.platform} @ ${s.time}">${esc(s.client_name?.substring(0, 8) || '')}</div>`).join('')}${unfilledSlots.length > 4 ? `<div class="cal-slot-chip cal-slot-more">+${unfilledSlots.length - 4}</div>` : ''}</div>` : ''}
+            ${daySlots.length > 0 ? `<div class="cal-schedule-slots mb-1" onclick="showDaySlots('${dateStr}'); event.stopPropagation();">${daySlots.slice(0, 4).map(s => {
+                const typeIcon = s.content_type === 'story' ? '📱' : s.content_type === 'video' ? '🎬' : s.content_type === 'reel' ? '🎞' : '📷';
+                const chipClass = s.filled ? 'cal-slot-chip cal-slot-filled' : 'cal-slot-chip';
+                return `<div class="${chipClass}" style="border-left-color:${s.client_color || '#6366f1'}" title="${esc(s.client_name)} — ${s.content_type} — ${s.platform} @ ${s.time}">${typeIcon} ${esc(s.client_name?.substring(0, 6) || '')}</div>`;
+            }).join('')}${daySlots.length > 4 ? `<div class="cal-slot-chip cal-slot-more">+${daySlots.length - 4}</div>` : ''}</div>` : ''}
             <div class="cal-day-posts">
                 ${filtered.slice(0, 3).map(p => renderCalendarMiniCard(p)).join('')}
                 ${filtered.length > 3 ? `<div class="text-xs text-indigo-600 font-semibold text-center cursor-pointer mt-1" onclick="showDayPosts('${dateStr}', ${day})">+${filtered.length - 3} more</div>` : ''}
@@ -463,6 +467,77 @@ async function schedulePost(postId) {
         showToast('Post scheduled', 'success');
         loadCalendar();
         openPostDetail(postId);
+    }
+}
+
+// ========== SCHEDULE SLOTS MODAL ==========
+
+function showDaySlots(dateStr) {
+    const slots = scheduleSlots[dateStr] || [];
+    if (slots.length === 0) return;
+
+    const dayName = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    const typeIcons = { post: '📷 Post', story: '📱 Story', video: '🎬 Video', reel: '🎞 Reel' };
+    const typeColors = { post: 'bg-blue-100 text-blue-800', story: 'bg-pink-100 text-pink-800', video: 'bg-red-100 text-red-800', reel: 'bg-purple-100 text-purple-800' };
+
+    let html = `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="slots-modal" onclick="if(event.target===this) this.remove()">
+        <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[550px] max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-calendar-day text-indigo-600 mr-2"></i>Schedule — ${esc(dayName)}</h3>
+                <button onclick="document.getElementById('slots-modal').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-3">`;
+
+    for (const s of slots) {
+        const typeLabel = typeIcons[s.content_type] || typeIcons['post'];
+        const typeBg = typeColors[s.content_type] || typeColors['post'];
+        const statusBadge = s.filled
+            ? '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700"><i class="fa-solid fa-check mr-1"></i>Done</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700"><i class="fa-solid fa-clock mr-1"></i>Pending</span>';
+
+        html += `
+            <div class="border rounded-xl p-4 hover:shadow-md transition" style="border-left: 4px solid ${s.client_color || '#6366f1'}">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-sm">${esc(s.client_name || '')}</span>
+                        ${statusBadge}
+                    </div>
+                    <span class="text-xs text-gray-400">${esc(s.time)}</span>
+                </div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${typeBg}">${typeLabel}</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${getPlatformBgClass(s.platform)}">${getPlatformIcon(s.platform)} ${esc(s.platform)}</span>
+                </div>
+                ${s.notes ? `<p class="text-sm text-gray-600 bg-gray-50 rounded-lg p-2 mb-2"><i class="fa-solid fa-note-sticky text-yellow-500 mr-1"></i>${esc(s.notes)}</p>` : ''}
+                ${!s.filled ? `<button onclick="createPostFromSlot('${dateStr}', ${s.client_id}, '${esc(s.platform)}', '${esc(s.content_type)}', '${esc(s.time)}'); document.getElementById('slots-modal').remove();" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-700 transition"><i class="fa-solid fa-plus mr-1"></i>Create Post</button>` : ''}
+            </div>`;
+    }
+
+    html += `</div></div></div>`;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function createPostFromSlot(dateStr, clientId, platform, contentType, time) {
+    const scheduledAt = dateStr + 'T' + time + ':00';
+    const data = {
+        topic: '',
+        caption: '',
+        platforms: platform,
+        post_type: contentType,
+        scheduled_at: scheduledAt,
+        workflow_status: 'draft',
+        created_by_id: currentUser?.id || 1
+    };
+    const res = await apiFetch(`${API_URL}/clients/${clientId}/posts`, {
+        method: 'POST',
+        body: data
+    });
+    if (res && res.success) {
+        showToast('Draft post created', 'success');
+        loadCalendar();
+        openPostDetail(res.id);
     }
 }
 

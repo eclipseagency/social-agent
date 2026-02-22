@@ -182,6 +182,11 @@ def run_migrations():
         _migration_14_add_writer(db)
         set_schema_version(db, 14)
 
+    if version < 15:
+        print("Running migration 15: Add content_type and notes to posting rules...")
+        _migration_15_posting_rules_type(db)
+        set_schema_version(db, 15)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -405,6 +410,15 @@ def _migration_14_add_writer(db):
     """Add assigned_writer_id column to scheduled_posts for copywriter workflow."""
     if not column_exists(db, 'scheduled_posts', 'assigned_writer_id'):
         db.execute("ALTER TABLE scheduled_posts ADD COLUMN assigned_writer_id INTEGER REFERENCES users(id)")
+    db.commit()
+
+
+def _migration_15_posting_rules_type(db):
+    """Add content_type and notes columns to client_posting_rules."""
+    if not column_exists(db, 'client_posting_rules', 'content_type'):
+        db.execute("ALTER TABLE client_posting_rules ADD COLUMN content_type TEXT DEFAULT 'post'")
+    if not column_exists(db, 'client_posting_rules', 'notes'):
+        db.execute("ALTER TABLE client_posting_rules ADD COLUMN notes TEXT DEFAULT ''")
     db.commit()
 
 
