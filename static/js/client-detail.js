@@ -31,7 +31,7 @@ async function loadClientDetail() {
 
 async function loadClientAssignmentDropdowns() {
     const users = await apiFetch(API_URL + '/users') || [];
-    const writers = users.filter(u => ['copywriter', 'admin', 'manager'].includes(u.role));
+    const writers = users.filter(u => ['admin', 'manager'].includes(u.role));
     const designers = users.filter(u => ['designer', 'admin', 'manager'].includes(u.role));
     const sms = users.filter(u => ['sm_specialist', 'admin', 'manager'].includes(u.role));
     const motions = users.filter(u => ['motion_editor', 'admin', 'manager'].includes(u.role));
