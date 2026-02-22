@@ -38,7 +38,7 @@ function showClientTab(tab) {
 async function loadClientPipeline() {
     const board = await fetch(API_URL + '/pipeline?client_id=' + clientId).then(r => r.json());
     const container = document.getElementById('client-pipeline-board');
-    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled'];
     container.innerHTML = statuses.map(status => {
         const posts = board[status] || [];
         return `<div class="kanban-column">
@@ -387,41 +387,79 @@ async function deleteAccount(accountId) {
 async function loadClientRules() {
     const rules = await fetch(API_URL + '/clients/' + clientId + '/posting-rules').then(r => r.json());
     const container = document.getElementById('client-rules-content');
-    if (!rules || rules.length === 0) { container.innerHTML = '<p class="text-gray-500 mb-4">No posting rules configured</p>'; }
-    else {
+
+    const typeIcons = { post: '📷', story: '📱', video: '🎬', reel: '🎞' };
+    const dayLabels = { sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat' };
+
+    function formatDayCode(d) {
+        if (d.includes('_')) {
+            const [base, spec] = d.split('_');
+            const label = dayLabels[base] || base;
+            if (spec === 'last') return label + ' (last)';
+            return label + ' (' + spec + getSuffix(spec) + ')';
+        }
+        return dayLabels[d] || d;
+    }
+    function getSuffix(n) { n = parseInt(n); if (n === 1) return 'st'; if (n === 2) return 'nd'; if (n === 3) return 'rd'; return 'th'; }
+
+    if (!rules || rules.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 mb-4">No posting rules configured</p>';
+    } else {
         container.innerHTML = rules.map(r => `
             <div class="bg-white border rounded-lg p-4 mb-3">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="font-semibold">${getPlatformIcon(r.platform)} ${esc(r.platform)}</span>
-                    <button onclick="deletePostingRule(${r.id})" class="text-red-500 text-sm"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold">${getPlatformIcon(r.platform)} ${esc(r.platform)}</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-gray-100">${typeIcons[r.content_type] || '📷'} ${esc(r.content_type || 'post')}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="editPostingRule(${r.id})" class="text-indigo-500 text-sm" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deletePostingRule(${r.id})" class="text-red-500 text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </div>
                 <div class="text-sm text-gray-600">
-                    <p>Days: ${(r.posting_days || []).map(d => `<span class="day-badge active">${d}</span>`).join(' ')}</p>
+                    <p>Days: ${(r.posting_days || []).map(d => `<span class="day-badge active">${formatDayCode(d)}</span>`).join(' ')}</p>
                     <p class="mt-1">Hours: ${(r.posting_hours || []).join(', ')}</p>
-                    <p class="mt-1">Posts/day: ${r.posts_per_day || 1}</p>
+                    ${r.notes ? `<p class="mt-1 text-xs text-gray-500 italic"><i class="fa-solid fa-note-sticky text-yellow-500 mr-1"></i>${esc(r.notes)}</p>` : ''}
                 </div>
             </div>
         `).join('');
     }
+
+    // Add/Edit form
     container.innerHTML += `
-        <div class="bg-gray-50 rounded-lg p-4 mt-4">
-            <h4 class="font-semibold text-sm mb-3">Add Posting Rule</h4>
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <select id="rule-platform" class="border rounded-lg px-3 py-2 text-sm"><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option></select>
+        <div class="bg-gray-50 rounded-lg p-4 mt-4" id="rule-form-container">
+            <h4 class="font-semibold text-sm mb-3" id="rule-form-title">Add Posting Rule</h4>
+            <input type="hidden" id="rule-edit-id" value="">
+            <div class="grid grid-cols-3 gap-3 mb-3">
+                <select id="rule-platform" class="border rounded-lg px-3 py-2 text-sm"><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option><option value="tiktok">TikTok</option><option value="x">X (Twitter)</option></select>
+                <select id="rule-content-type" class="border rounded-lg px-3 py-2 text-sm"><option value="post">📷 Post</option><option value="story">📱 Story</option><option value="video">🎬 Video</option><option value="reel">🎞 Reel</option></select>
                 <input type="number" id="rule-posts-per-day" class="border rounded-lg px-3 py-2 text-sm" value="1" min="1" max="5" placeholder="Posts/day">
             </div>
             <div class="mb-3">
-                <label class="block text-xs font-medium mb-1">Posting Days</label>
+                <label class="block text-xs font-medium mb-1">Posting Days <span class="text-gray-400">(click for every week, or use specific week selector below)</span></label>
                 <div class="flex flex-wrap gap-1" id="rule-days">
-                    ${['sun','mon','tue','wed','thu','fri','sat'].map(d => `<label class="day-badge inactive cursor-pointer"><input type="checkbox" value="${d}" class="hidden" onchange="this.parentElement.className=this.checked?'day-badge active cursor-pointer':'day-badge inactive cursor-pointer'"> ${d}</label>`).join('')}
+                    ${['sun','mon','tue','wed','thu','fri','sat'].map(d => `<label class="day-badge inactive cursor-pointer"><input type="checkbox" value="${d}" class="hidden" onchange="this.parentElement.className=this.checked?'day-badge active cursor-pointer':'day-badge inactive cursor-pointer'"> ${dayLabels[d]}</label>`).join('')}
                 </div>
             </div>
             <div class="mb-3">
+                <label class="block text-xs font-medium mb-1">Specific Week Rules <span class="text-gray-400">(e.g. 2nd Friday only)</span></label>
+                <div id="rule-week-specific" class="space-y-1"></div>
+                <button onclick="addWeekSpecificRow()" class="text-indigo-600 text-xs mt-1"><i class="fa-solid fa-plus"></i> Add week-specific day</button>
+            </div>
+            <div class="mb-3">
                 <label class="block text-xs font-medium mb-1">Posting Hours</label>
-                <div id="rule-hours" class="flex flex-wrap gap-2"><input type="time" class="border rounded px-2 py-1 text-sm" value="10:00"></div>
+                <div id="rule-hours" class="flex flex-wrap gap-2"><input type="time" class="border rounded px-2 py-1 text-sm" value="12:00"></div>
                 <button onclick="addRuleHourInput()" class="text-indigo-600 text-xs mt-1"><i class="fa-solid fa-plus"></i> Add hour</button>
             </div>
-            <button onclick="submitPostingRule()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Save Rule</button>
+            <div class="mb-3">
+                <label class="block text-xs font-medium mb-1">Notes</label>
+                <input type="text" id="rule-notes" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. 2 videos per month on specific weeks">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="submitPostingRule()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm" id="rule-submit-btn">Save Rule</button>
+                <button onclick="resetRuleForm()" class="bg-gray-200 px-4 py-2 rounded-lg text-sm hidden" id="rule-cancel-btn">Cancel</button>
+            </div>
         </div>
     `;
 }
@@ -433,19 +471,118 @@ function addRuleHourInput() {
     container.appendChild(input);
 }
 
-async function submitPostingRule() {
-    const platform = document.getElementById('rule-platform').value;
-    const postsPerDay = parseInt(document.getElementById('rule-posts-per-day').value) || 1;
-    const days = Array.from(document.querySelectorAll('#rule-days input:checked')).map(c => c.value);
-    const hours = Array.from(document.querySelectorAll('#rule-hours input')).map(i => i.value).filter(Boolean);
-    if (!days.length) { alert('Select at least one day'); return; }
-    if (!hours.length) { alert('Add at least one hour'); return; }
-    await fetch(API_URL + '/clients/' + clientId + '/posting-rules', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform, posting_days: days, posting_hours: hours, posts_per_day: postsPerDay })
+function addWeekSpecificRow(day, week) {
+    const container = document.getElementById('rule-week-specific');
+    const dayLabels = { sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat' };
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2';
+    row.innerHTML = `
+        <select class="border rounded px-2 py-1 text-sm ws-day">
+            ${['sun','mon','tue','wed','thu','fri','sat'].map(d => `<option value="${d}" ${d===day?'selected':''}>${dayLabels[d]}</option>`).join('')}
+        </select>
+        <select class="border rounded px-2 py-1 text-sm ws-week">
+            <option value="1" ${week==='1'?'selected':''}>1st week</option>
+            <option value="2" ${week==='2'?'selected':''}>2nd week</option>
+            <option value="3" ${week==='3'?'selected':''}>3rd week</option>
+            <option value="4" ${week==='4'?'selected':''}>4th week</option>
+            <option value="last" ${week==='last'?'selected':''}>Last week</option>
+        </select>
+        <button onclick="this.parentElement.remove()" class="text-red-500 text-sm"><i class="fa-solid fa-times"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+function resetRuleForm() {
+    document.getElementById('rule-edit-id').value = '';
+    document.getElementById('rule-form-title').textContent = 'Add Posting Rule';
+    document.getElementById('rule-platform').value = 'instagram';
+    document.getElementById('rule-content-type').value = 'post';
+    document.getElementById('rule-posts-per-day').value = '1';
+    document.getElementById('rule-notes').value = '';
+    document.querySelectorAll('#rule-days input').forEach(c => { c.checked = false; c.parentElement.className = 'day-badge inactive cursor-pointer'; });
+    document.getElementById('rule-week-specific').innerHTML = '';
+    document.getElementById('rule-hours').innerHTML = '<input type="time" class="border rounded px-2 py-1 text-sm" value="12:00">';
+    document.getElementById('rule-cancel-btn').classList.add('hidden');
+    document.getElementById('rule-submit-btn').textContent = 'Save Rule';
+}
+
+async function editPostingRule(ruleId) {
+    // Fetch all rules and find the one to edit
+    const rules = await fetch(API_URL + '/clients/' + clientId + '/posting-rules').then(r => r.json());
+    const rule = rules.find(r => r.id === ruleId);
+    if (!rule) return;
+
+    document.getElementById('rule-edit-id').value = ruleId;
+    document.getElementById('rule-form-title').textContent = 'Edit Posting Rule';
+    document.getElementById('rule-platform').value = rule.platform || 'instagram';
+    document.getElementById('rule-content-type').value = rule.content_type || 'post';
+    document.getElementById('rule-posts-per-day').value = rule.posts_per_day || 1;
+    document.getElementById('rule-notes').value = rule.notes || '';
+    document.getElementById('rule-cancel-btn').classList.remove('hidden');
+    document.getElementById('rule-submit-btn').textContent = 'Update Rule';
+
+    // Set days: separate regular days vs week-specific
+    const days = rule.posting_days || [];
+    document.querySelectorAll('#rule-days input').forEach(c => { c.checked = false; c.parentElement.className = 'day-badge inactive cursor-pointer'; });
+    document.getElementById('rule-week-specific').innerHTML = '';
+
+    days.forEach(d => {
+        if (d.includes('_')) {
+            const [base, spec] = d.split('_');
+            addWeekSpecificRow(base, spec);
+        } else {
+            const cb = document.querySelector(`#rule-days input[value="${d}"]`);
+            if (cb) { cb.checked = true; cb.parentElement.className = 'day-badge active cursor-pointer'; }
+        }
     });
+
+    // Set hours
+    const hours = rule.posting_hours || ['12:00'];
+    document.getElementById('rule-hours').innerHTML = hours.map(h => `<input type="time" class="border rounded px-2 py-1 text-sm" value="${h}">`).join('');
+
+    // Scroll to form
+    document.getElementById('rule-form-container').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function submitPostingRule() {
+    const editId = document.getElementById('rule-edit-id').value;
+    const platform = document.getElementById('rule-platform').value;
+    const contentType = document.getElementById('rule-content-type').value;
+    const postsPerDay = parseInt(document.getElementById('rule-posts-per-day').value) || 1;
+    const notes = document.getElementById('rule-notes').value.trim();
+
+    // Collect regular days
+    const regularDays = Array.from(document.querySelectorAll('#rule-days input:checked')).map(c => c.value);
+    // Collect week-specific days
+    const wsRows = document.querySelectorAll('#rule-week-specific > div');
+    const weekDays = Array.from(wsRows).map(row => {
+        const day = row.querySelector('.ws-day').value;
+        const week = row.querySelector('.ws-week').value;
+        return day + '_' + week;
+    });
+    const allDays = [...regularDays, ...weekDays];
+
+    const hours = Array.from(document.querySelectorAll('#rule-hours input')).map(i => i.value).filter(Boolean);
+    if (!allDays.length) { alert('Select at least one day'); return; }
+    if (!hours.length) { alert('Add at least one hour'); return; }
+
+    if (editId) {
+        // Update existing rule
+        await fetch(API_URL + '/posting-rules/' + editId, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ posting_days: allDays, posting_hours: hours, posts_per_day: postsPerDay, content_type: contentType, notes })
+        });
+        showToast('Rule updated', 'success');
+    } else {
+        // Create new rule
+        await fetch(API_URL + '/clients/' + clientId + '/posting-rules', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform, posting_days: allDays, posting_hours: hours, posts_per_day: postsPerDay, content_type: contentType, notes })
+        });
+        showToast('Rule added', 'success');
+    }
+    resetRuleForm();
     loadClientRules();
-    showToast('Rule added', 'success');
 }
 
 async function deletePostingRule(ruleId) {
