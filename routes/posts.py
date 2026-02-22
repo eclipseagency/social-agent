@@ -241,6 +241,45 @@ def upload_design(post_id):
     return jsonify({'success': True, 'urls': urls, 'errors': errors})
 
 
+@posts_bp.route('/api/posts/<int:post_id>/upload-reference', methods=['POST'])
+def upload_reference(post_id):
+    """Upload design reference images for a post."""
+    db = get_db()
+    post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    files = request.files.getlist('images')
+    if not files:
+        db.close()
+        return jsonify({'error': 'No images provided'}), 400
+
+    urls = []
+    errors = []
+    for f in files:
+        try:
+            result = upload_image(f, folder='social_agent/references')
+            urls.append(result['url'])
+        except Exception as e:
+            errors.append({'filename': f.filename, 'error': str(e)})
+
+    if urls:
+        existing = post.get('design_reference_urls', '') or ''
+        existing_list = [u.strip() for u in existing.split(',') if u.strip()] if existing else []
+        all_urls = existing_list + urls
+        ref_str = ','.join(all_urls)
+
+        db.execute(
+            "UPDATE scheduled_posts SET design_reference_urls=?, updated_at=datetime('now') WHERE id=?",
+            (ref_str, post_id)
+        )
+        db.commit()
+
+    db.close()
+    return jsonify({'success': True, 'urls': urls, 'errors': errors})
+
+
 # ============ PIPELINE BOARD ============
 
 @posts_bp.route('/api/pipeline', methods=['GET'])

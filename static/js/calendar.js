@@ -260,11 +260,17 @@ async function openPostDetail(postId) {
     if (refUrls.length) {
         document.getElementById('detail-references').innerHTML = refUrls.map(u => `<img src="${u.trim()}" alt="Reference" onclick="window.open('${u.trim()}','_blank')">`).join('');
         refsSection.style.display = '';
-    } else if (['draft', 'needs_caption', 'in_design'].includes(wf)) {
-        document.getElementById('detail-references').innerHTML = '<p class="text-gray-400 text-sm">No references added — designer should use the brief notes above</p>';
+    } else if (needsDesign) {
+        document.getElementById('detail-references').innerHTML = '<p class="text-gray-400 text-sm">No references added yet — upload references for the designer</p>';
         refsSection.style.display = '';
     } else {
         refsSection.style.display = 'none';
+    }
+
+    // Show/hide reference upload zone — only before design is done
+    const refUploadZone = document.getElementById('detail-reference-upload-zone');
+    if (refUploadZone) {
+        refUploadZone.style.display = needsDesign ? '' : 'none';
     }
 
     // Design Outputs — only show when designer has uploaded, or when in design stages
@@ -352,14 +358,10 @@ async function openPostDetail(postId) {
         }
     }
 
-    // Show/hide upload zone based on role + status
+    // Show/hide design upload zone — ONLY when post is in_design (content exists, designer's turn)
     const uploadZone = document.getElementById('detail-upload-zone');
     if (uploadZone) {
-        if (wf === 'in_design' || wf === 'draft') {
-            uploadZone.style.display = '';
-        } else {
-            uploadZone.style.display = 'none';
-        }
+        uploadZone.style.display = (wf === 'in_design') ? '' : 'none';
     }
 
     document.getElementById('post-detail-modal').classList.remove('hidden');
@@ -430,6 +432,36 @@ async function returnToCaption(postId) {
         showToast('Returned to copywriter', 'success');
         loadCalendar();
         openPostDetail(postId);
+    }
+}
+
+// ========== REFERENCE UPLOAD FROM DETAIL MODAL ==========
+
+function handleReferenceFileDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('dragover');
+    if (currentDetailPost && e.dataTransfer.files.length > 0) {
+        uploadReferenceImages(e.dataTransfer.files);
+    }
+}
+
+async function uploadReferenceImages(files) {
+    if (!currentDetailPost || !files.length) return;
+    const formData = new FormData();
+    for (const file of files) {
+        formData.append('images', file);
+    }
+    showToast('Uploading references...', 'info');
+    const res = await apiFetch(`${API_URL}/posts/${currentDetailPost.id}/upload-reference`, {
+        method: 'POST',
+        body: formData
+    });
+    if (res && res.success) {
+        showToast(`${res.urls?.length || 0} reference(s) uploaded`, 'success');
+        loadCalendar();
+        openPostDetail(currentDetailPost.id);
+    } else {
+        showToast('Upload failed', 'error');
     }
 }
 

@@ -84,7 +84,16 @@
         <!-- Design References -->
         <div class="brief-section" id="detail-references-section">
             <div class="brief-section-title"><i class="fa-solid fa-images mr-1"></i> Design References</div>
-            <div class="design-gallery" id="detail-references"></div>
+            <div class="design-gallery mb-2" id="detail-references"></div>
+            <div class="upload-zone p-3 rounded-lg text-center cursor-pointer text-sm text-gray-500" id="detail-reference-upload-zone"
+                 onclick="document.getElementById('detail-reference-input').click()"
+                 ondragover="event.preventDefault(); this.classList.add('dragover')"
+                 ondragleave="this.classList.remove('dragover')"
+                 ondrop="handleReferenceFileDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-xl mb-1 block text-blue-400"></i>
+                Drop reference images here or click to upload
+            </div>
+            <input type="file" id="detail-reference-input" multiple accept="image/*" class="hidden" onchange="uploadReferenceImages(this.files)">
         </div>
 
         <!-- Design Outputs + Upload Zone -->
