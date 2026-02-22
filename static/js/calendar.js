@@ -260,15 +260,34 @@ async function openPostDetail(postId) {
     if (refUrls.length) {
         document.getElementById('detail-references').innerHTML = refUrls.map(u => `<img src="${u.trim()}" alt="Reference" onclick="window.open('${u.trim()}','_blank')">`).join('');
         refsSection.style.display = '';
+    } else if (['draft', 'needs_caption', 'in_design'].includes(wf)) {
+        document.getElementById('detail-references').innerHTML = '<p class="text-gray-400 text-sm">No references added — designer should use the brief notes above</p>';
+        refsSection.style.display = '';
     } else {
         refsSection.style.display = 'none';
     }
 
-    // Design Outputs
+    // Design Outputs — only show when designer has uploaded, or when in design stages
     const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
-    document.getElementById('detail-designs').innerHTML = designUrls.length
-        ? designUrls.map(u => `<img src="${u.trim()}" alt="Design" onclick="window.open('${u.trim()}','_blank')">`).join('')
-        : '<p class="text-gray-400 text-sm">No designs uploaded yet</p>';
+    const designsSection = document.getElementById('detail-designs-section');
+    const designsTitle = document.getElementById('detail-designs-title');
+    const needsDesign = ['draft', 'needs_caption', 'in_design'].includes(wf);
+
+    if (designUrls.length) {
+        // Designer has uploaded designs
+        designsTitle.innerHTML = '<i class="fa-solid fa-palette mr-1"></i> Design Output';
+        document.getElementById('detail-designs').innerHTML = designUrls.map(u => `<img src="${u.trim()}" alt="Design" onclick="window.open('${u.trim()}','_blank')">`).join('');
+        designsSection.style.display = '';
+    } else if (needsDesign) {
+        // No designs yet — post still needs content
+        designsTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-orange-500 mr-1"></i> Needs Design';
+        document.getElementById('detail-designs').innerHTML = '<div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center"><i class="fa-solid fa-paintbrush text-orange-400 text-xl mb-1 block"></i><p class="text-sm font-semibold text-orange-700">Waiting for designer to create content</p><p class="text-xs text-orange-500 mt-1">The designer should use the references above to create the design</p></div>';
+        designsSection.style.display = '';
+    } else {
+        designsTitle.innerHTML = '<i class="fa-solid fa-palette mr-1"></i> Design Output';
+        document.getElementById('detail-designs').innerHTML = '<p class="text-gray-400 text-sm">No designs attached</p>';
+        designsSection.style.display = '';
+    }
 
     // Caption
     document.getElementById('detail-caption').value = post.caption || '';
