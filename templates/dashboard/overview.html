@@ -129,7 +129,7 @@ async function loadMyWork() {
         container.innerHTML = data.map(item => {
             const badgeClass = actionColors[item.action] || 'bg-gray-100 text-gray-800';
             return `
-            <a href="/calendar" class="action-item-card block hover:border-indigo-300 transition">
+            <a href="/calendar?open_post=${item.id}" class="action-item-card block hover:border-indigo-300 transition">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="px-2 py-0.5 rounded text-xs font-semibold badge-${item.priority || 'normal'}">${item.priority || 'normal'}</span>
                     <span class="text-xs text-gray-400">${esc(item.client_name || '')}</span>
@@ -137,7 +137,7 @@ async function loadMyWork() {
                 <p class="font-semibold text-sm mb-1">${esc(item.topic || 'Untitled')}</p>
                 <div class="flex items-center justify-between">
                     <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${esc(item.action_label || item.action || '')}</span>
-                    <span class="text-indigo-600 text-xs font-medium">Open in Calendar &rarr;</span>
+                    <span class="text-indigo-600 text-xs font-medium">Open &rarr;</span>
                 </div>
             </a>`;
         }).join('');

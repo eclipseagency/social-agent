@@ -149,6 +149,15 @@ function checkAuth() {
             if (nameEl) nameEl.textContent = currentUser.name || currentUser.username || currentUser.email;
             const jobEl = document.getElementById('user-job-title');
             if (jobEl && currentUser.job_title) { jobEl.textContent = currentUser.job_title; jobEl.classList.remove('hidden'); }
+            // Role badge
+            const roleBadge = document.getElementById('user-role-badge');
+            if (roleBadge) {
+                const roleLabels = { admin: 'Admin', manager: 'Manager', sm_specialist: 'Moderator', copywriter: 'Copywriter', designer: 'Designer', motion_editor: 'Motion Editor' };
+                const roleColors = { admin: 'bg-red-500/20 text-red-300', manager: 'bg-green-500/20 text-green-300', sm_specialist: 'bg-blue-500/20 text-blue-300', copywriter: 'bg-yellow-500/20 text-yellow-300', designer: 'bg-purple-500/20 text-purple-300', motion_editor: 'bg-pink-500/20 text-pink-300' };
+                const r = currentUser.role || 'user';
+                roleBadge.textContent = roleLabels[r] || r;
+                roleBadge.className = `inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 mb-4 ${roleColors[r] || 'bg-slate-500/20 text-slate-300'}`;
+            }
             // Hide admin-only nav items for non-admins
             if (currentUser.role !== 'admin') {
                 const usersNav = document.getElementById('users-nav');

@@ -69,6 +69,9 @@
         <!-- Status & Meta Row -->
         <div class="flex flex-wrap gap-2 mb-4" id="detail-meta"></div>
 
+        <!-- Role-specific banner (populated by JS) -->
+        <div id="detail-role-banner" class="hidden"></div>
+
         <!-- Text on Design (editable in draft) -->
         <div class="brief-section" id="detail-topic-section">
             <div class="brief-section-title"><i class="fa-solid fa-pen-fancy mr-1"></i> Text on Design</div>
@@ -114,11 +117,11 @@
         </div>
 
         <!-- Caption -->
-        <div class="brief-section">
+        <div class="brief-section" id="detail-caption-section">
             <div class="brief-section-title"><i class="fa-solid fa-message mr-1"></i> Caption</div>
             <textarea id="detail-caption" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="Write caption..."></textarea>
-            <div class="flex gap-2 mt-2">
-                <button onclick="saveCaption()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+            <div class="flex gap-2 mt-2" id="detail-caption-buttons">
+                <button id="btn-save-caption" onclick="saveCaption()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
                     <i class="fa-solid fa-save mr-1"></i> Save Caption
                 </button>
                 <button id="btn-submit-caption" onclick="submitCaption()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 hidden">
@@ -164,9 +167,6 @@
                 <i class="fa-solid fa-save mr-1"></i> Save Brief
             </button>
         </div>
-
-        <!-- Workflow Actions -->
-        <div class="flex flex-wrap gap-2 mt-4" id="detail-actions"></div>
 
         <!-- Workflow Actions -->
         <div class="flex flex-wrap gap-2 mt-4" id="detail-actions"></div>

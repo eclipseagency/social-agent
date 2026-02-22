@@ -10,6 +10,14 @@ let activeStatusFilter = '';
 function pageInit() {
     loadCalendar();
     loadClientsDropdown('calendar-client-filter');
+    // Auto-open post if linked from My Tasks
+    const params = new URLSearchParams(window.location.search);
+    const openPostId = params.get('open_post');
+    if (openPostId) {
+        setTimeout(() => openPostDetail(parseInt(openPostId)), 500);
+        // Clean URL without reload
+        window.history.replaceState({}, '', '/calendar');
+    }
 }
 
 async function loadCalendar() {
@@ -236,6 +244,41 @@ async function openPostDetail(postId) {
         ${post.priority && post.priority !== 'normal' ? `<span class="px-3 py-1 rounded-full text-xs font-semibold badge-${post.priority}">${esc(post.priority)}</span>` : ''}
     `;
 
+    // Role-specific banner
+    const role = currentUser?.role || 'user';
+    const bannerEl = document.getElementById('detail-role-banner');
+    bannerEl.className = 'hidden';
+    bannerEl.innerHTML = '';
+
+    if (role === 'copywriter') {
+        if (wf === 'needs_caption') {
+            bannerEl.className = 'role-banner role-banner-copywriter';
+            bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div><strong>Your turn!</strong> Write and submit the caption for this post.</div>';
+        } else if (wf === 'draft') {
+            bannerEl.className = 'role-banner role-banner-copywriter';
+            bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div>Draft — you can start writing the caption.</div>';
+        } else {
+            bannerEl.className = 'role-banner role-banner-copywriter';
+            bannerEl.innerHTML = '<i class="fa-solid fa-eye"></i><div>View only — this post is in <strong>' + esc(wf.replace(/_/g, ' ')) + '</strong> stage.</div>';
+        }
+    } else if (role === 'designer' || role === 'motion_editor') {
+        if (wf === 'in_design') {
+            bannerEl.className = 'role-banner role-banner-designer';
+            bannerEl.innerHTML = '<i class="fa-solid fa-paintbrush"></i><div><strong>Your turn!</strong> Upload designs using the brief and references below.</div>';
+        } else {
+            bannerEl.className = 'role-banner role-banner-designer';
+            bannerEl.innerHTML = '<i class="fa-solid fa-eye"></i><div>View only — this post is in <strong>' + esc(wf.replace(/_/g, ' ')) + '</strong> stage.</div>';
+        }
+    } else if (role === 'sm_specialist') {
+        if (wf === 'design_review') {
+            bannerEl.className = 'role-banner role-banner-reviewer';
+            bannerEl.innerHTML = '<i class="fa-solid fa-clipboard-check"></i><div><strong>Review needed!</strong> Check the designs and approve or return for changes.</div>';
+        } else if (wf === 'approved') {
+            bannerEl.className = 'role-banner role-banner-reviewer';
+            bannerEl.innerHTML = '<i class="fa-solid fa-calendar-check"></i><div>Approved — ready to schedule.</div>';
+        }
+    }
+
     // Editable mode for draft/needs_caption — only for roles that can create/edit
     const hasEditPerm = canDo('createPost') || canDo('editCaption');
     const isEditable = ['draft', 'needs_caption'].includes(wf) && hasEditPerm;
@@ -423,6 +466,53 @@ async function openPostDetail(postId) {
     const uploadZone = document.getElementById('detail-upload-zone');
     if (uploadZone) {
         uploadZone.style.display = (wf === 'in_design' && canDo('uploadDesign')) ? '' : 'none';
+    }
+
+    // ===== Role-specific UX tailoring =====
+    const captionSection = document.getElementById('detail-caption-section');
+    const captionButtons = document.getElementById('detail-caption-buttons');
+
+    // Reset all role-focus highlights
+    document.querySelectorAll('#post-detail-modal .role-focus').forEach(el => el.classList.remove('role-focus'));
+
+    if (role === 'copywriter') {
+        // Copywriter: caption is their main job — highlight it, hide irrelevant sections
+        if (captionSection && canEditCaption) captionSection.classList.add('role-focus');
+        // Hide design upload zone entirely (they can't upload)
+        if (uploadZone) uploadZone.style.display = 'none';
+        if (refUploadZone) refUploadZone.style.display = 'none';
+        // Hide assignments and save brief (not their concern)
+        if (assignSection) assignSection.style.display = 'none';
+        if (saveBriefSection) saveBriefSection.classList.add('hidden');
+        // Hide TOV editing for copywriter (they follow it, don't set it)
+        if (tovSection && !post.tov) tovSection.style.display = 'none';
+
+    } else if (role === 'designer' || role === 'motion_editor') {
+        // Designer: brief + references are key info, design upload is their action
+        // Highlight notes and references sections
+        if (notesSection && post.brief_notes) notesSection.classList.add('role-focus');
+        if (refsSection) refsSection.classList.add('role-focus');
+        // Highlight upload zone when it's their turn
+        if (wf === 'in_design' && designsSection) designsSection.classList.add('role-focus');
+        // Hide caption section entirely (not their job)
+        if (captionSection) captionSection.style.display = 'none';
+        // Hide assignments and save brief
+        if (assignSection) assignSection.style.display = 'none';
+        if (saveBriefSection) saveBriefSection.classList.add('hidden');
+        if (tovSection) tovSection.style.display = 'none';
+        if (refUploadZone) refUploadZone.style.display = 'none';
+
+    } else if (role === 'sm_specialist') {
+        // SM Specialist / Moderator: review-focused, read-only
+        // Highlight designs section during review
+        if (wf === 'design_review' && designsSection) designsSection.classList.add('role-focus');
+        // Hide upload zones (they don't upload)
+        if (uploadZone) uploadZone.style.display = 'none';
+        if (refUploadZone) refUploadZone.style.display = 'none';
+        // Hide caption buttons (they don't edit captions)
+        if (captionButtons) captionButtons.style.display = 'none';
+        // Hide save brief
+        if (saveBriefSection) saveBriefSection.classList.add('hidden');
     }
 
     document.getElementById('post-detail-modal').classList.remove('hidden');
