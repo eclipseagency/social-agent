@@ -32,6 +32,20 @@ def require_admin(f):
     return decorated
 
 
+def require_role(*roles):
+    """Allow only specific roles (admin always passes)."""
+    def wrapper(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if 'user_id' not in session:
+                return jsonify({'success': False, 'error': 'Login required'}), 401
+            if session.get('user_role') not in list(roles) + ['admin']:
+                return jsonify({'success': False, 'error': 'Permission denied'}), 403
+            return f(*args, **kwargs)
+        return decorated
+    return wrapper
+
+
 @auth_bp.route('/api/login', methods=['POST'])
 def login():
     data = request.json or {}

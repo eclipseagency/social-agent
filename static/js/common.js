@@ -69,6 +69,21 @@ function getOfficialPlatformIcon(platform) {
     return icons[platform] || '';
 }
 
+// === Role Permissions ===
+const ROLE_PERMISSIONS = {
+    admin:         { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, manageRules: true },
+    manager:       { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: true, manageRules: true },
+    sm_specialist: { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: false, manageRules: false },
+    copywriter:    { createPost: false, editCaption: true, uploadDesign: false, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, manageRules: false },
+    designer:      { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, manageRules: false },
+    motion_editor: { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, manageRules: false },
+};
+
+function canDo(action) {
+    const role = currentUser?.role || 'user';
+    return ROLE_PERMISSIONS[role]?.[action] || false;
+}
+
 // === Auth Functions ===
 let currentUser = null;
 
@@ -139,6 +154,13 @@ function checkAuth() {
                 const usersNav = document.getElementById('users-nav');
                 if (usersNav) usersNav.classList.add('hidden');
             }
+            // Role-based nav filtering
+            document.querySelectorAll('[data-nav-perm]').forEach(el => {
+                const perm = el.getAttribute('data-nav-perm');
+                if (perm && !canDo(perm)) {
+                    el.style.display = 'none';
+                }
+            });
             // Apply dark mode
             if (currentUser.dark_mode) document.body.classList.add('dark');
             // Start notification polling

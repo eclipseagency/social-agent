@@ -236,8 +236,9 @@ async function openPostDetail(postId) {
         ${post.priority && post.priority !== 'normal' ? `<span class="px-3 py-1 rounded-full text-xs font-semibold badge-${post.priority}">${esc(post.priority)}</span>` : ''}
     `;
 
-    // Editable mode for draft/needs_caption
-    const isEditable = ['draft', 'needs_caption'].includes(wf);
+    // Editable mode for draft/needs_caption — only for roles that can create/edit
+    const hasEditPerm = canDo('createPost') || canDo('editCaption');
+    const isEditable = ['draft', 'needs_caption'].includes(wf) && hasEditPerm;
 
     // Text on Design (topic)
     const topicSection = document.getElementById('detail-topic-section');
@@ -290,10 +291,10 @@ async function openPostDetail(postId) {
         refsSection.style.display = 'none';
     }
 
-    // Show/hide reference upload zone — only before design is done
+    // Show/hide reference upload zone — only before design is done AND if user can upload refs
     const refUploadZone = document.getElementById('detail-reference-upload-zone');
     if (refUploadZone) {
-        refUploadZone.style.display = needsDesign ? '' : 'none';
+        refUploadZone.style.display = (needsDesign && canDo('uploadRef')) ? '' : 'none';
     }
 
     // Design Outputs — only show when designer has uploaded, or when in design stages
@@ -318,8 +319,12 @@ async function openPostDetail(postId) {
         designsSection.style.display = '';
     }
 
-    // Caption
-    document.getElementById('detail-caption').value = post.caption || '';
+    // Caption — read-only unless user can edit captions AND status allows it
+    const captionEl = document.getElementById('detail-caption');
+    captionEl.value = post.caption || '';
+    const canEditCaption = canDo('editCaption') && ['draft', 'needs_caption'].includes(wf);
+    captionEl.readOnly = !canEditCaption;
+    captionEl.style.opacity = canEditCaption ? '1' : '0.7';
 
     // Tone of Voice
     const tovSection = document.getElementById('detail-tov-section');
@@ -346,7 +351,7 @@ async function openPostDetail(postId) {
     const assignEdit = document.getElementById('detail-assignments-edit');
     assignSection.style.display = '';
 
-    if (isEditable) {
+    if (isEditable && canDo('createPost')) {
         assignDisplay.style.display = 'none';
         assignEdit.classList.remove('hidden');
         // Load users into dropdowns
@@ -366,16 +371,15 @@ async function openPostDetail(postId) {
         }
     }
 
-    // Save Brief button
+    // Save Brief button — only for roles that can create posts
     const saveBriefSection = document.getElementById('detail-save-brief-section');
     if (saveBriefSection) {
-        saveBriefSection.classList.toggle('hidden', !isEditable);
+        saveBriefSection.classList.toggle('hidden', !(isEditable && canDo('createPost')));
     }
 
-    // Workflow action buttons
+    // Workflow action buttons — filtered by role permissions
     const actions = [];
-    const userRole = currentUser?.role || '';
-    if (wf === 'draft') {
+    if (wf === 'draft' && canDo('createPost')) {
         if (post.assigned_writer_id) {
             actions.push(`<button onclick="transitionPost(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>`);
         }
@@ -384,35 +388,41 @@ async function openPostDetail(postId) {
     if (wf === 'needs_caption') {
         // Only show submit caption button (handled separately in caption section)
     }
-    if (wf === 'in_design') {
+    if (wf === 'in_design' && canDo('uploadDesign')) {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
     }
-    if (wf === 'design_review') {
+    if (wf === 'design_review' && canDo('approve')) {
         actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
         actions.push(`<button onclick="returnToDesign(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>`);
         if (post.assigned_writer_id) {
             actions.push(`<button onclick="returnToCaption(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>`);
         }
     }
-    if (wf === 'approved') {
+    if (wf === 'approved' && canDo('schedule')) {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
     }
     document.getElementById('detail-actions').innerHTML = actions.join('');
 
-    // Show/hide caption submit button based on role + status
+    // Show/hide caption submit button — only if user can edit captions AND status is needs_caption
     const submitCaptionBtn = document.getElementById('btn-submit-caption');
     if (submitCaptionBtn) {
-        if (wf === 'needs_caption') {
+        if (wf === 'needs_caption' && canDo('editCaption')) {
             submitCaptionBtn.classList.remove('hidden');
         } else {
             submitCaptionBtn.classList.add('hidden');
         }
     }
 
-    // Show/hide design upload zone — ONLY when post is in_design (content exists, designer's turn)
+    // Show/hide save caption button
+    const saveCaptionBtn = document.getElementById('btn-save-caption');
+    if (saveCaptionBtn) {
+        saveCaptionBtn.style.display = canEditCaption ? '' : 'none';
+    }
+
+    // Show/hide design upload zone — ONLY when post is in_design AND user can upload designs
     const uploadZone = document.getElementById('detail-upload-zone');
     if (uploadZone) {
-        uploadZone.style.display = (wf === 'in_design') ? '' : 'none';
+        uploadZone.style.display = (wf === 'in_design' && canDo('uploadDesign')) ? '' : 'none';
     }
 
     document.getElementById('post-detail-modal').classList.remove('hidden');
@@ -670,7 +680,7 @@ function showDaySlots(dateStr) {
                     <span class="px-2 py-0.5 rounded text-xs font-semibold ${getPlatformBgClass(s.platform)}">${getPlatformIcon(s.platform)} ${esc(s.platform)}</span>
                 </div>
                 ${s.notes ? `<p class="text-sm text-gray-600 bg-gray-50 rounded-lg p-2 mb-2"><i class="fa-solid fa-note-sticky text-yellow-500 mr-1"></i>${esc(s.notes)}</p>` : ''}
-                ${!s.filled ? `<button onclick="createPostFromSlot('${dateStr}', ${s.client_id}, '${esc(s.platform)}', '${esc(s.content_type)}', '${esc(s.time)}'); document.getElementById('slots-modal').remove();" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-700 transition"><i class="fa-solid fa-plus mr-1"></i>Create Post</button>` : ''}
+                ${!s.filled && canDo('createPost') ? `<button onclick="createPostFromSlot('${dateStr}', ${s.client_id}, '${esc(s.platform)}', '${esc(s.content_type)}', '${esc(s.time)}'); document.getElementById('slots-modal').remove();" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-700 transition"><i class="fa-solid fa-plus mr-1"></i>Create Post</button>` : ''}
             </div>`;
     }
 

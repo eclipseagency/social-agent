@@ -54,15 +54,15 @@
                    class="sidebar-link {% if active_page == 'calendar' %}active{% endif %}">
                     <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar
                 </a>
-                <a href="/clients"
+                <a href="/clients" data-nav-perm="manageClients"
                    class="sidebar-link {% if active_page == 'clients' %}active{% endif %}">
                     <i class="fa-solid fa-users w-5 text-center"></i> Clients
                 </a>
-                <a href="/new-post"
+                <a href="/new-post" data-nav-perm="createPost"
                    class="sidebar-link {% if active_page == 'new-post' %}active{% endif %}">
                     <i class="fa-solid fa-pen-to-square w-5 text-center"></i> New Post
                 </a>
-                <a href="/tasks"
+                <a href="/tasks" data-nav-perm="createPost"
                    class="sidebar-link {% if active_page == 'tasks' %}active{% endif %}">
                     <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Tasks
                 </a>
@@ -79,27 +79,27 @@
                     <i class="fa-solid fa-chevron-down text-[10px]"></i>
                 </button>
                 <div id="sidebar-more" class="space-y-1 hidden">
-                    <a href="/pipeline"
+                    <a href="/pipeline" data-nav-perm="viewAll"
                        class="sidebar-link {% if active_page == 'pipeline' %}active{% endif %}">
                         <i class="fa-solid fa-arrows-spin w-5 text-center"></i> Pipeline
                     </a>
-                    <a href="/analytics"
+                    <a href="/analytics" data-nav-perm="viewAll"
                        class="sidebar-link {% if active_page == 'analytics' %}active{% endif %}">
                         <i class="fa-solid fa-chart-bar w-5 text-center"></i> Analytics
                     </a>
-                    <a href="/scheduled"
+                    <a href="/scheduled" data-nav-perm="viewAll"
                        class="sidebar-link {% if active_page == 'scheduled' %}active{% endif %}">
                         <i class="fa-solid fa-clock w-5 text-center"></i> Scheduled
                     </a>
-                    <a href="/team" id="users-nav"
+                    <a href="/team" id="users-nav" data-nav-perm="manageTeam"
                        class="sidebar-link {% if active_page == 'team' %}active{% endif %}">
                         <i class="fa-solid fa-user-gear w-5 text-center"></i> Team
                     </a>
-                    <a href="/briefs"
+                    <a href="/briefs" data-nav-perm="viewAll"
                        class="sidebar-link {% if active_page == 'briefs' %}active{% endif %}">
                         <i class="fa-solid fa-file-lines w-5 text-center"></i> Briefs
                     </a>
-                    <a href="/reports"
+                    <a href="/reports" data-nav-perm="viewAll"
                        class="sidebar-link {% if active_page == 'reports' %}active{% endif %}">
                         <i class="fa-solid fa-chart-bar w-5 text-center"></i> Reports
                     </a>
@@ -140,10 +140,10 @@
             </div>
             <span>Calendar</span>
         </a>
-        <a href="/new-post" class="bottom-nav-create">
+        <a href="/new-post" class="bottom-nav-create" data-nav-perm="createPost">
             <i class="fa-solid fa-plus"></i>
         </a>
-        <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}">
+        <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}" data-nav-perm="manageClients">
             <div class="bottom-nav-icon">
                 <i class="fa-solid fa-users"></i>
             </div>

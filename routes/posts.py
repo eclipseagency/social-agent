@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from models import get_db, dict_from_row, dicts_from_rows
 from services.scheduler import publish_post, run_scheduler, force_publish_all
 from services.cloudinary_service import upload_image
+from routes.auth import require_role, require_login
 
 posts_bp = Blueprint('posts', __name__)
 
@@ -85,6 +86,7 @@ def get_post(post_id):
 # ============ UPDATE POST ============
 
 @posts_bp.route('/api/posts/<int:post_id>', methods=['PUT'])
+@require_login
 def update_post(post_id):
     data = request.json or {}
     db = get_db()
@@ -100,6 +102,18 @@ def update_post(post_id):
         'assigned_writer_id', 'design_reference_urls', 'design_output_urls',
         'platforms', 'scheduled_at', 'image_url', 'image_size', 'post_type'
     ]
+
+    # Role-based field restrictions
+    user_role = session.get('user_role', '')
+    if user_role in ('designer', 'motion_editor'):
+        # Designers can only update design output
+        updatable = ['design_output_urls']
+    elif user_role == 'copywriter':
+        # Copywriters can only update caption
+        updatable = ['caption']
+    elif user_role == 'sm_specialist':
+        # Moderators cannot edit post fields (read-only)
+        updatable = []
     fields = []
     params = []
     for field in updatable:
@@ -178,6 +192,7 @@ def change_workflow(post_id):
 # ============ UPLOAD DESIGN ============
 
 @posts_bp.route('/api/posts/<int:post_id>/upload-design', methods=['POST'])
+@require_role('designer', 'motion_editor')
 def upload_design(post_id):
     db = get_db()
     post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
@@ -242,6 +257,7 @@ def upload_design(post_id):
 
 
 @posts_bp.route('/api/posts/<int:post_id>/upload-reference', methods=['POST'])
+@require_role('manager', 'sm_specialist', 'copywriter')
 def upload_reference(post_id):
     """Upload design reference images for a post."""
     db = get_db()
@@ -376,6 +392,7 @@ def add_post_comment(post_id):
 # ============ CREATE POST (expanded with brief fields) ============
 
 @posts_bp.route('/api/clients/<int:client_id>/posts', methods=['POST'])
+@require_role('manager', 'sm_specialist', 'copywriter')
 def create_post(client_id):
     data = request.json or {}
     db = get_db()
@@ -596,6 +613,7 @@ def my_work():
 # ============ WORKFLOW TRANSITION (enforced) ============
 
 @posts_bp.route('/api/posts/<int:post_id>/transition', methods=['POST'])
+@require_login
 def transition_post(post_id):
     """Transition a post through the workflow with validation."""
     data = request.json or {}
@@ -605,6 +623,25 @@ def transition_post(post_id):
 
     if new_status not in VALID_WORKFLOW_STATUSES:
         return jsonify({'error': f'Invalid status. Must be one of: {VALID_WORKFLOW_STATUSES}'}), 400
+
+    # Role-based transition guards
+    user_role = session.get('user_role', '')
+    if user_role != 'admin':
+        if user_role in ('designer', 'motion_editor'):
+            # Designers can only submit for review (in_design -> design_review)
+            if new_status != 'design_review':
+                return jsonify({'error': 'Permission denied'}), 403
+        elif user_role == 'copywriter':
+            # Copywriters can only send to design (needs_caption -> in_design)
+            if new_status != 'in_design':
+                return jsonify({'error': 'Permission denied'}), 403
+        elif user_role == 'sm_specialist':
+            # Moderators can approve, return to design/caption, and schedule
+            allowed_transitions = ['approved', 'in_design', 'needs_caption', 'scheduled']
+            if new_status not in allowed_transitions:
+                return jsonify({'error': 'Permission denied'}), 403
+        elif user_role == 'manager':
+            pass  # Managers have same access as admin for transitions
 
     db = get_db()
     post = dict_from_row(db.execute("""

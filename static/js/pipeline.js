@@ -59,6 +59,8 @@ function renderPipelineCard(post) {
 function initPipelineDragDrop() {
     pipelineSortables.forEach(s => s.destroy());
     pipelineSortables = [];
+    // Only allow drag & drop for roles that can approve (admin, manager, sm_specialist)
+    if (!canDo('approve')) return;
     const statuses = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
@@ -121,25 +123,25 @@ async function viewPostDetail(postId) {
         ${post.brief_notes ? `<div class="mb-4"><h4 class="font-semibold text-sm mb-1">Brief Notes</h4><p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">${esc(post.brief_notes)}</p></div>` : ''}
         ${refImagesHtml}
         ${designImagesHtml}
-        <!-- Workflow Actions -->
+        <!-- Workflow Actions — filtered by role -->
         <div class="flex flex-wrap gap-2 mb-4">
-            ${post.workflow_status === 'draft' ? `
+            ${post.workflow_status === 'draft' && canDo('createPost') ? `
                 ${post.assigned_writer_id ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>` : ''}
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>
             ` : ''}
-            ${post.workflow_status === 'needs_caption' ? `
+            ${post.workflow_status === 'needs_caption' && canDo('editCaption') ? `
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>
             ` : ''}
-            ${post.workflow_status === 'in_design' ? `
+            ${post.workflow_status === 'in_design' && canDo('uploadDesign') ? `
                 <label class="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm cursor-pointer"><i class="fa-solid fa-upload mr-1"></i> Upload Design <input type="file" class="hidden" multiple accept="image/*" onchange="uploadDesignToPost(${post.id}, this)"></label>
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'design_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>
             ` : ''}
-            ${post.workflow_status === 'design_review' ? `
+            ${post.workflow_status === 'design_review' && canDo('approve') ? `
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'approved')" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Approve</button>
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>
                 ${post.assigned_writer_id ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>` : ''}
             ` : ''}
-            ${post.workflow_status === 'approved' ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'scheduled')" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-clock mr-1"></i> Mark Scheduled</button>` : ''}
+            ${post.workflow_status === 'approved' && canDo('schedule') ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'scheduled')" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-clock mr-1"></i> Mark Scheduled</button>` : ''}
         </div>
         <!-- Comments -->
         <div class="border-t pt-4">
