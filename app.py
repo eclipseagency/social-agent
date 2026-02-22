@@ -26,8 +26,8 @@ app = Flask(
     template_folder=os.path.join(BASE_DIR, 'templates'),
     static_folder=os.path.join(BASE_DIR, 'static')
 )
-app.secret_key = os.getenv('SECRET_KEY', 'social-agent-secret-key-change-in-production')
-CORS(app)
+app.secret_key = os.getenv('SECRET_KEY', os.urandom(24).hex())
+CORS(app, supports_credentials=True)
 
 # Register API blueprints
 from routes.auth import auth_bp

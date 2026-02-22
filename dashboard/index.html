@@ -1067,7 +1067,7 @@ async function register() {
     } catch (e) { errorEl.textContent = 'Connection error'; errorEl.classList.remove('hidden'); }
 }
 
-function logout() { currentUser = null; localStorage.removeItem('user'); document.getElementById('main-app').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); }
+function logout() { fetch(API_URL + '/logout', { method: 'POST' }); currentUser = null; localStorage.removeItem('user'); document.getElementById('main-app').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); }
 
 function showApp() {
     document.getElementById('login-screen')?.classList.add('hidden');
