@@ -2,6 +2,7 @@
 let currentMonth = new Date();
 let calendarPostsData = [];
 let calendarByDate = {};
+let scheduleSlots = {};
 let currentDetailPost = null;
 let draggedPostId = null;
 let activeStatusFilter = '';
@@ -17,10 +18,20 @@ async function loadCalendar() {
     const month = currentMonth.getMonth() + 1;
     let url = `${API_URL}/posts/calendar?year=${year}&month=${month}&include_unscheduled=1`;
     if (clientId) url += `&client_id=${clientId}`;
-    const data = await apiFetch(url);
+
+    // Fetch posts and schedule slots in parallel
+    let slotsUrl = `${API_URL}/calendar/schedule-slots?year=${year}&month=${month}`;
+    if (clientId) slotsUrl += `&client_id=${clientId}`;
+
+    const [data, slotsData] = await Promise.all([
+        apiFetch(url),
+        apiFetch(slotsUrl)
+    ]);
+
     if (!data) return;
     calendarPostsData = data.posts || [];
     calendarByDate = data.by_date || {};
+    scheduleSlots = (slotsData && slotsData.slots) ? slotsData.slots : {};
     renderCalendar();
 }
 
@@ -42,14 +53,20 @@ function renderCalendar() {
         const dayPosts = getDayPosts(dateStr);
         const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
         const filtered = filterByStatus(dayPosts);
+        const daySlots = scheduleSlots[dateStr] || [];
+        const unfilledSlots = daySlots.filter(s => !s.filled);
 
         html += `<div class="bg-white border rounded-lg p-2 cal-day-cell ${isToday ? 'ring-2 ring-indigo-500' : ''}"
                       data-date="${dateStr}"
                       ondragover="onDayDragOver(event)" ondragleave="onDayDragLeave(event)" ondrop="onDayDrop(event, '${dateStr}')">
             <div class="flex justify-between items-center mb-1">
                 <span class="font-semibold text-sm ${isToday ? 'text-indigo-600' : ''}">${day}</span>
-                ${dayPosts.length > 0 ? `<span class="text-xs text-gray-400">${dayPosts.length}</span>` : ''}
+                <span class="flex items-center gap-1">
+                    ${daySlots.length > 0 ? `<span class="text-[9px] px-1 rounded ${unfilledSlots.length > 0 ? 'bg-red-100 text-red-600 font-bold' : 'bg-green-100 text-green-600'}">${unfilledSlots.length > 0 ? unfilledSlots.length + ' due' : '✓'}</span>` : ''}
+                    ${dayPosts.length > 0 ? `<span class="text-xs text-gray-400">${dayPosts.length}</span>` : ''}
+                </span>
             </div>
+            ${unfilledSlots.length > 0 ? `<div class="cal-schedule-slots mb-1">${unfilledSlots.slice(0, 4).map(s => `<div class="cal-slot-chip" style="border-left-color:${s.client_color || '#6366f1'}" title="${esc(s.client_name)} — ${s.platform} @ ${s.time}">${esc(s.client_name?.substring(0, 8) || '')}</div>`).join('')}${unfilledSlots.length > 4 ? `<div class="cal-slot-chip cal-slot-more">+${unfilledSlots.length - 4}</div>` : ''}</div>` : ''}
             <div class="cal-day-posts">
                 ${filtered.slice(0, 3).map(p => renderCalendarMiniCard(p)).join('')}
                 ${filtered.length > 3 ? `<div class="text-xs text-indigo-600 font-semibold text-center cursor-pointer mt-1" onclick="showDayPosts('${dateStr}', ${day})">+${filtered.length - 3} more</div>` : ''}

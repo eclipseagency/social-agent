@@ -94,6 +94,97 @@ def delete_posting_rule(rule_id):
     return jsonify({'success': True})
 
 
+@posting_rules_bp.route('/api/calendar/schedule-slots', methods=['GET'])
+def calendar_schedule_slots():
+    """Return all expected posting slots for a given month based on posting rules."""
+    month = request.args.get('month', type=int)
+    year = request.args.get('year', type=int)
+    client_id = request.args.get('client_id')
+
+    if not month or not year:
+        now = datetime.now()
+        month = month or now.month
+        year = year or now.year
+
+    db = get_db()
+
+    # Get all active rules (optionally filtered by client)
+    if client_id:
+        rules = dicts_from_rows(db.execute(
+            """SELECT r.*, c.name as client_name, c.color as client_color
+               FROM client_posting_rules r
+               LEFT JOIN clients c ON r.client_id = c.id
+               WHERE r.client_id=? AND r.is_active=1""",
+            (client_id,)
+        ).fetchall())
+    else:
+        rules = dicts_from_rows(db.execute(
+            """SELECT r.*, c.name as client_name, c.color as client_color
+               FROM client_posting_rules r
+               LEFT JOIN clients c ON r.client_id = c.id
+               WHERE r.is_active=1"""
+        ).fetchall())
+
+    # Get existing posts for this month to mark which slots are filled
+    start_date = f"{year}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year + 1}-01-01"
+    else:
+        end_date = f"{year}-{month + 1:02d}-01"
+
+    existing_posts = dicts_from_rows(db.execute(
+        """SELECT scheduled_at, client_id, platforms FROM scheduled_posts
+           WHERE scheduled_at >= ? AND scheduled_at < ? AND scheduled_at IS NOT NULL AND scheduled_at != ''""",
+        (start_date, end_date)
+    ).fetchall())
+    db.close()
+
+    # Build set of existing post slots (date + client_id)
+    existing_set = set()
+    for p in existing_posts:
+        if p.get('scheduled_at'):
+            date_key = p['scheduled_at'][:10]
+            existing_set.add(f"{date_key}_{p.get('client_id')}")
+
+    day_map = {
+        'sun': 6, 'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5
+    }
+
+    import calendar as cal_mod
+    days_in_month = cal_mod.monthrange(year, month)[1]
+
+    slots_by_date = {}
+    for day in range(1, days_in_month + 1):
+        check_date = datetime(year, month, day)
+        weekday = check_date.weekday()
+        date_str = check_date.strftime('%Y-%m-%d')
+
+        for rule in rules:
+            try:
+                posting_days = json.loads(rule['posting_days']) if isinstance(rule['posting_days'], str) else rule['posting_days']
+                posting_hours = json.loads(rule['posting_hours']) if isinstance(rule['posting_hours'], str) else rule['posting_hours']
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+            for day_code in posting_days:
+                if day_map.get(day_code) == weekday:
+                    slot_key = f"{date_str}_{rule.get('client_id')}"
+                    filled = slot_key in existing_set
+
+                    if date_str not in slots_by_date:
+                        slots_by_date[date_str] = []
+                    slots_by_date[date_str].append({
+                        'client_id': rule.get('client_id'),
+                        'client_name': rule.get('client_name', ''),
+                        'client_color': rule.get('client_color', '#6366f1'),
+                        'platform': rule.get('platform', ''),
+                        'time': posting_hours[0] if posting_hours else '12:00',
+                        'filled': filled
+                    })
+
+    return jsonify({'slots': slots_by_date, 'month': month, 'year': year})
+
+
 @posting_rules_bp.route('/api/clients/<int:client_id>/suggest-schedule', methods=['GET'])
 def suggest_schedule(client_id):
     """Auto-suggest next available scheduling slots based on posting rules."""
