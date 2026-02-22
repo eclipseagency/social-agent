@@ -19,14 +19,15 @@ async function loadCalendar() {
     let url = `${API_URL}/posts/calendar?year=${year}&month=${month}&include_unscheduled=1`;
     if (clientId) url += `&client_id=${clientId}`;
 
-    // Fetch posts and schedule slots in parallel
-    let slotsUrl = `${API_URL}/calendar/schedule-slots?year=${year}&month=${month}`;
-    if (clientId) slotsUrl += `&client_id=${clientId}`;
+    // Only fetch schedule slots when a specific client is selected
+    const fetches = [apiFetch(url)];
+    if (clientId) {
+        fetches.push(apiFetch(`${API_URL}/calendar/schedule-slots?year=${year}&month=${month}&client_id=${clientId}`));
+    } else {
+        fetches.push(Promise.resolve(null));
+    }
 
-    const [data, slotsData] = await Promise.all([
-        apiFetch(url),
-        apiFetch(slotsUrl)
-    ]);
+    const [data, slotsData] = await Promise.all(fetches);
 
     if (!data) return;
     calendarPostsData = data.posts || [];
