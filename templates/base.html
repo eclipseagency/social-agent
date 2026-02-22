@@ -44,11 +44,15 @@
             <p class="text-slate-400 text-sm">Hello, <span id="user-name" class="text-white font-medium">User</span></p>
             <p id="user-job-title" class="text-slate-500 text-xs mb-6 hidden"></p>
 
-            <!-- Main Navigation — 6 items -->
+            <!-- Main Navigation — 6 items (reordered: My Tasks → Calendar → Clients → New Post → Tasks → Settings) -->
             <nav class="space-y-1">
                 <a href="/"
                    class="sidebar-link {% if active_page == 'overview' %}active{% endif %}">
-                    <i class="fa-solid fa-house w-5 text-center"></i> Dashboard
+                    <i class="fa-solid fa-user-check w-5 text-center"></i> My Tasks
+                </a>
+                <a href="/calendar"
+                   class="sidebar-link {% if active_page == 'calendar' %}active{% endif %}">
+                    <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar
                 </a>
                 <a href="/clients"
                    class="sidebar-link {% if active_page == 'clients' %}active{% endif %}">
@@ -57,10 +61,6 @@
                 <a href="/new-post"
                    class="sidebar-link {% if active_page == 'new-post' %}active{% endif %}">
                     <i class="fa-solid fa-pen-to-square w-5 text-center"></i> New Post
-                </a>
-                <a href="/calendar"
-                   class="sidebar-link {% if active_page == 'calendar' %}active{% endif %}">
-                    <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar
                 </a>
                 <a href="/tasks"
                    class="sidebar-link {% if active_page == 'tasks' %}active{% endif %}">
@@ -130,24 +130,24 @@
     <nav class="bottom-nav">
         <a href="/" class="bottom-nav-item {% if active_page == 'overview' %}active{% endif %}">
             <div class="bottom-nav-icon">
-                <i class="fa-solid fa-house"></i>
+                <i class="fa-solid fa-user-check"></i>
             </div>
-            <span>Home</span>
-        </a>
-        <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}">
-            <div class="bottom-nav-icon">
-                <i class="fa-solid fa-users"></i>
-            </div>
-            <span>Clients</span>
-        </a>
-        <a href="/new-post" class="bottom-nav-create">
-            <i class="fa-solid fa-plus"></i>
+            <span>My Tasks</span>
         </a>
         <a href="/calendar" class="bottom-nav-item {% if active_page == 'calendar' %}active{% endif %}">
             <div class="bottom-nav-icon">
                 <i class="fa-solid fa-calendar"></i>
             </div>
             <span>Calendar</span>
+        </a>
+        <a href="/new-post" class="bottom-nav-create">
+            <i class="fa-solid fa-plus"></i>
+        </a>
+        <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}">
+            <div class="bottom-nav-icon">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <span>Clients</span>
         </a>
         <button onclick="toggleMobileMenu()" class="bottom-nav-item">
             <div class="bottom-nav-icon">

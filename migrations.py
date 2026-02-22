@@ -177,6 +177,10 @@ def run_migrations():
         _migration_13_ensure_admin(db)
         set_schema_version(db, 13)
 
+    if version < 14:
+        print("Running migration 14: Add assigned_writer_id to scheduled_posts...")
+        _migration_14_add_writer(db)
+        set_schema_version(db, 14)
 
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
@@ -395,6 +399,13 @@ def _migration_13_ensure_admin(db):
         print(f"Default admin created: {admin_email}")
     else:
         print("Admin user already exists, skipping.")
+
+
+def _migration_14_add_writer(db):
+    """Add assigned_writer_id column to scheduled_posts for copywriter workflow."""
+    if not column_exists(db, 'scheduled_posts', 'assigned_writer_id'):
+        db.execute("ALTER TABLE scheduled_posts ADD COLUMN assigned_writer_id INTEGER REFERENCES users(id)")
+    db.commit()
 
 
 if __name__ == '__main__':

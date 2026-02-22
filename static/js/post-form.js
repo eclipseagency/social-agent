@@ -22,8 +22,10 @@ function pageInit() {
 
 async function loadBriefDropdowns() {
     const users = await fetch(API_URL + '/users').then(r => r.json());
+    const writerSelect = document.getElementById('post-writer');
     const designerSelect = document.getElementById('post-designer');
     const smSelect = document.getElementById('post-sm');
+    if (writerSelect) writerSelect.innerHTML = '<option value="">None</option>' + users.filter(u => ['copywriter', 'admin', 'manager'].includes(u.role)).map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
     if (designerSelect) designerSelect.innerHTML = '<option value="">None</option>' + users.filter(u => ['designer', 'admin', 'manager'].includes(u.role)).map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
     if (smSelect) smSelect.innerHTML = '<option value="">None</option>' + users.filter(u => ['sm_specialist', 'admin', 'manager'].includes(u.role)).map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
 }
@@ -213,6 +215,7 @@ async function saveBrief(workflowStatus) {
         tov: document.getElementById('post-tov')?.value || '',
         brief_notes: document.getElementById('post-brief-notes')?.value || '',
         design_reference_urls: briefReferenceUrls.join(','),
+        assigned_writer_id: document.getElementById('post-writer')?.value || null,
         assigned_designer_id: document.getElementById('post-designer')?.value || null,
         assigned_sm_id: document.getElementById('post-sm')?.value || null,
         priority: document.getElementById('post-priority')?.value || 'normal',
@@ -221,8 +224,9 @@ async function saveBrief(workflowStatus) {
     };
     const res = await fetch(API_URL + '/clients/' + clientId + '/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
     if (res.success) {
-        showToast(workflowStatus === 'draft' ? 'Brief saved' : 'Sent to designer', 'success');
-        setTimeout(() => { window.location.href = '/pipeline'; }, 1000);
+        const msgs = { 'draft': 'Brief saved', 'needs_caption': 'Sent to copywriter', 'in_design': 'Sent to designer' };
+        showToast(msgs[workflowStatus] || 'Saved', 'success');
+        setTimeout(() => { window.location.href = '/calendar'; }, 1000);
     } else { showToast(res.error || 'Failed', 'error'); }
 }
 

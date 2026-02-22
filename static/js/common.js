@@ -244,6 +244,7 @@ function getPostStatus(post) {
     if (wf === 'scheduled') return 'Scheduled';
     if (wf === 'approved') return 'Ready';
     if (wf === 'design_review') return 'Design Review';
+    if (wf === 'needs_caption') return 'Needs Caption';
     if (wf === 'in_design') {
         const hasDesign = (post.design_output_urls || '').trim();
         return hasDesign ? 'Design Review' : 'Needs Design';

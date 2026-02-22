@@ -27,7 +27,8 @@
                 <div><label class="block text-gray-600 text-sm font-medium mb-2">Tone of Voice</label><textarea id="post-tov" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="e.g. Professional, friendly, bold..."></textarea></div>
                 <div><label class="block text-gray-600 text-sm font-medium mb-2">Brief Notes</label><textarea id="post-brief-notes" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Design instructions, requirements..."></textarea></div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Assign Copywriter</label><select id="post-writer" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="">None</option></select></div>
                 <div><label class="block text-gray-600 text-sm font-medium mb-2">Assign Designer</label><select id="post-designer" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="">None</option></select></div>
                 <div><label class="block text-gray-600 text-sm font-medium mb-2">Assign SM</label><select id="post-sm" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="">None</option></select></div>
                 <div><label class="block text-gray-600 text-sm font-medium mb-2">Priority</label><select id="post-priority" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
@@ -41,8 +42,9 @@
                 </div>
                 <div id="brief-references-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
             </div>
-            <div class="flex gap-3">
+            <div class="flex gap-3 flex-wrap">
                 <button onclick="saveBrief('draft')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-300 transition"><i class="fa-solid fa-bookmark mr-1"></i> Save as Brief</button>
+                <button onclick="saveBrief('needs_caption')" class="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-yellow-500 hover:to-yellow-600 transition"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>
                 <button onclick="saveBrief('in_design')" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-purple-700 transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
             </div>
         </div>

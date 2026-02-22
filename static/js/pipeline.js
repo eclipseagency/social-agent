@@ -27,7 +27,7 @@ async function loadPipeline() {
 }
 
 function renderPipelineBoard(board) {
-    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
         const count = document.getElementById('pcount-' + status);
@@ -59,7 +59,7 @@ function renderPipelineCard(post) {
 function initPipelineDragDrop() {
     pipelineSortables.forEach(s => s.destroy());
     pipelineSortables = [];
-    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
         if (!col) return;
@@ -95,7 +95,7 @@ async function viewPostDetail(postId) {
     const comments = await fetch(API_URL + '/posts/' + postId + '/comments').then(r => r.json());
 
     document.getElementById('post-detail-title').textContent = post.topic || 'Post Details';
-    const statusColors = { draft: 'bg-gray-100 text-gray-800', in_design: 'bg-pink-100 text-pink-800', design_review: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-green-200 text-green-900' };
+    const statusColors = { draft: 'bg-gray-100 text-gray-800', needs_caption: 'bg-yellow-100 text-yellow-800', in_design: 'bg-pink-100 text-pink-800', design_review: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-green-200 text-green-900' };
 
     let designImagesHtml = '';
     if (post.design_output_urls) {
@@ -110,9 +110,10 @@ async function viewPostDetail(postId) {
     }
 
     document.getElementById('post-detail-content').innerHTML = `
-        <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Client</p><p class="font-semibold text-sm">${esc(post.client_name || '-')}</p></div>
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Status</p><span class="px-2 py-0.5 rounded text-xs font-semibold ${statusColors[post.workflow_status] || 'bg-gray-100'}">${post.workflow_status || 'draft'}</span></div>
+            <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Copywriter</p><p class="font-semibold text-sm">${esc(post.assigned_writer_name || '-')}</p></div>
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Designer</p><p class="font-semibold text-sm">${esc(post.assigned_designer_name || '-')}</p></div>
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">SM Specialist</p><p class="font-semibold text-sm">${esc(post.assigned_sm_name || '-')}</p></div>
         </div>
@@ -122,7 +123,13 @@ async function viewPostDetail(postId) {
         ${designImagesHtml}
         <!-- Workflow Actions -->
         <div class="flex flex-wrap gap-2 mb-4">
-            ${post.workflow_status === 'draft' ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>` : ''}
+            ${post.workflow_status === 'draft' ? `
+                ${post.assigned_writer_id ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>` : ''}
+                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>
+            ` : ''}
+            ${post.workflow_status === 'needs_caption' ? `
+                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>
+            ` : ''}
             ${post.workflow_status === 'in_design' ? `
                 <label class="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm cursor-pointer"><i class="fa-solid fa-upload mr-1"></i> Upload Design <input type="file" class="hidden" multiple accept="image/*" onchange="uploadDesignToPost(${post.id}, this)"></label>
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'design_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>
@@ -130,6 +137,7 @@ async function viewPostDetail(postId) {
             ${post.workflow_status === 'design_review' ? `
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'approved')" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Approve</button>
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>
+                ${post.assigned_writer_id ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>` : ''}
             ` : ''}
             ${post.workflow_status === 'approved' ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'scheduled')" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-clock mr-1"></i> Mark Scheduled</button>` : ''}
         </div>

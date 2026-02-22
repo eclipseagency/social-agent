@@ -6,13 +6,14 @@ from services.cloudinary_service import upload_image
 
 posts_bp = Blueprint('posts', __name__)
 
-VALID_WORKFLOW_STATUSES = ['draft', 'in_design', 'design_review', 'approved', 'scheduled', 'posted']
+VALID_WORKFLOW_STATUSES = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled', 'posted']
 
 # Valid workflow transitions: from_status -> list of allowed to_statuses
 VALID_TRANSITIONS = {
-    'draft': ['in_design'],
+    'draft': ['needs_caption', 'in_design'],
+    'needs_caption': ['in_design'],
     'in_design': ['design_review'],
-    'design_review': ['approved', 'in_design'],
+    'design_review': ['approved', 'in_design', 'needs_caption'],
     'approved': ['scheduled'],
     'scheduled': ['posted', 'approved'],
 }
@@ -61,13 +62,15 @@ def get_post(post_id):
                u_designer.username as assigned_designer_name,
                u_sm.username as assigned_sm_name,
                u_motion.username as assigned_motion_name,
-               u_created.username as created_by_name
+               u_created.username as created_by_name,
+               u_writer.username as assigned_writer_name
         FROM scheduled_posts sp
         LEFT JOIN clients c ON sp.client_id = c.id
         LEFT JOIN users u_designer ON sp.assigned_designer_id = u_designer.id
         LEFT JOIN users u_sm ON sp.assigned_sm_id = u_sm.id
         LEFT JOIN users u_motion ON sp.assigned_motion_id = u_motion.id
         LEFT JOIN users u_created ON sp.created_by_id = u_created.id
+        LEFT JOIN users u_writer ON sp.assigned_writer_id = u_writer.id
         WHERE sp.id=?
     """, (post_id,)).fetchone())
 
@@ -94,8 +97,8 @@ def update_post(post_id):
     updatable = [
         'topic', 'caption', 'tov', 'brief_notes', 'priority',
         'assigned_designer_id', 'assigned_motion_id', 'assigned_sm_id',
-        'design_reference_urls', 'design_output_urls', 'platforms',
-        'scheduled_at', 'image_url', 'image_size', 'post_type'
+        'assigned_writer_id', 'design_reference_urls', 'design_output_urls',
+        'platforms', 'scheduled_at', 'image_url', 'image_size', 'post_type'
     ]
     fields = []
     params = []
@@ -251,11 +254,13 @@ def pipeline():
                c.name as client_name,
                u_designer.username as assigned_designer_name,
                u_sm.username as assigned_sm_name,
+               u_writer.username as assigned_writer_name,
                u_created.username as created_by_name
         FROM scheduled_posts sp
         LEFT JOIN clients c ON sp.client_id = c.id
         LEFT JOIN users u_designer ON sp.assigned_designer_id = u_designer.id
         LEFT JOIN users u_sm ON sp.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_writer ON sp.assigned_writer_id = u_writer.id
         LEFT JOIN users u_created ON sp.created_by_id = u_created.id
         WHERE sp.workflow_status IS NOT NULL AND sp.workflow_status != ''
     """
@@ -265,8 +270,8 @@ def pipeline():
         query += " AND sp.client_id=?"
         params.append(client_id)
     if assigned_to:
-        query += " AND (sp.assigned_designer_id=? OR sp.assigned_sm_id=? OR sp.assigned_motion_id=? OR sp.created_by_id=?)"
-        params.extend([assigned_to, assigned_to, assigned_to, assigned_to])
+        query += " AND (sp.assigned_designer_id=? OR sp.assigned_sm_id=? OR sp.assigned_motion_id=? OR sp.assigned_writer_id=? OR sp.created_by_id=?)"
+        params.extend([assigned_to, assigned_to, assigned_to, assigned_to, assigned_to])
 
     query += " ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END, sp.created_at DESC"
 
@@ -275,6 +280,7 @@ def pipeline():
 
     board = {
         'draft': [],
+        'needs_caption': [],
         'in_design': [],
         'design_review': [],
         'approved': [],
@@ -338,8 +344,8 @@ def create_post(client_id):
         """INSERT INTO scheduled_posts
            (client_id, topic, caption, image_url, platforms, scheduled_at, image_size, post_type,
             tov, brief_notes, design_reference_urls, assigned_designer_id, assigned_sm_id,
-            assigned_motion_id, priority, workflow_status, created_by_id)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            assigned_motion_id, assigned_writer_id, priority, workflow_status, created_by_id)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             client_id,
             data.get('topic', ''),
@@ -355,6 +361,7 @@ def create_post(client_id):
             data.get('assigned_designer_id') or None,
             data.get('assigned_sm_id') or None,
             data.get('assigned_motion_id') or None,
+            data.get('assigned_writer_id') or None,
             data.get('priority', 'normal'),
             data.get('workflow_status', ''),
             data.get('created_by_id') or None,
@@ -381,6 +388,24 @@ def create_post(client_id):
                  'New Design Brief', f'You have been assigned a new design brief: {data.get("topic", "Untitled")}',
                  'post', post_id)
             )
+        # Notify copywriter if assigned and status is needs_caption
+        if wf_status == 'needs_caption' and data.get('assigned_writer_id'):
+            db.execute(
+                """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+                   VALUES (?,?,?,?,?,?)""",
+                (data['assigned_writer_id'], 'caption_assigned',
+                 'كتابة كابشن جديد', f'تم تعيينك لكتابة كابشن: {data.get("topic", "Untitled")}',
+                 'post', post_id)
+            )
+            # Auto-create task for copywriter
+            db.execute(
+                """INSERT INTO tasks (title, description, client_id, assigned_to_id, created_by_id,
+                                      status, priority, category, post_id)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (f'كابشن: {data.get("topic", "Untitled")}', f'كتابة كابشن لمنشور: {data.get("topic", "Untitled")}',
+                 client_id, data['assigned_writer_id'], data.get('created_by_id') or 1,
+                 'todo', data.get('priority', 'normal'), 'caption', post_id)
+            )
         db.commit()
 
     db.close()
@@ -400,7 +425,35 @@ def my_work():
     db = get_db()
     items = []
 
-    if role in ('designer', 'motion_editor'):
+    if role == 'copywriter':
+        # Posts assigned to this copywriter that need captions
+        rows = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.assigned_writer_id=? AND sp.workflow_status='needs_caption'
+            ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
+        """, (user_id,)).fetchall())
+        for r in rows:
+            r['action'] = 'needs_caption'
+            r['action_label'] = 'يحتاج كابشن'
+        items.extend(rows)
+
+        # Posts returned from review back to needs_caption
+        returned = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.assigned_writer_id=? AND sp.workflow_status='needs_caption' AND sp.revision_count > 0
+            ORDER BY sp.updated_at DESC
+        """, (user_id,)).fetchall())
+        for r in returned:
+            r['action'] = 'returned_for_edits'
+            r['action_label'] = 'مرتجع للتعديل'
+        existing_ids = {i['id'] for i in items}
+        items.extend([r for r in returned if r['id'] not in existing_ids])
+
+    elif role in ('designer', 'motion_editor'):
         # Posts assigned to this designer that are in_design
         rows = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
@@ -535,9 +588,19 @@ def transition_post(post_id):
         return jsonify({'error': f'Cannot transition from {old_status} to {new_status}. Allowed: {allowed}'}), 400
 
     # Validate requirements
+    if new_status == 'needs_caption' and not post.get('assigned_writer_id'):
+        db.close()
+        return jsonify({'error': 'Copywriter must be assigned before sending to caption writing'}), 400
+
     if new_status == 'in_design' and not post.get('assigned_designer_id'):
         db.close()
         return jsonify({'error': 'Designer must be assigned before moving to design'}), 400
+
+    if new_status == 'in_design' and old_status == 'needs_caption':
+        caption = post.get('caption', '') or ''
+        if not caption.strip():
+            db.close()
+            return jsonify({'error': 'Caption must be written before moving to design'}), 400
 
     if new_status == 'design_review':
         design_urls = post.get('design_output_urls', '') or ''
@@ -548,6 +611,10 @@ def transition_post(post_id):
     if old_status == 'design_review' and new_status == 'in_design' and not comment:
         db.close()
         return jsonify({'error': 'Feedback comment is required when returning to design'}), 400
+
+    if old_status == 'design_review' and new_status == 'needs_caption' and not comment:
+        db.close()
+        return jsonify({'error': 'Feedback comment is required when returning to copywriter'}), 400
 
     if new_status == 'scheduled':
         scheduled_at = data.get('scheduled_at') or post.get('scheduled_at', '')
@@ -569,7 +636,7 @@ def transition_post(post_id):
         update_fields.append("status=?")
         update_params.append('pending')
 
-    if old_status == 'design_review' and new_status == 'in_design':
+    if old_status == 'design_review' and new_status in ('in_design', 'needs_caption'):
         update_fields.append("revision_count=revision_count+1")
 
     update_params.append(post_id)
@@ -582,8 +649,8 @@ def transition_post(post_id):
         (post_id, user_id, old_status, new_status, comment)
     )
 
-    # Add feedback as a comment if returning to design
-    if old_status == 'design_review' and new_status == 'in_design' and comment:
+    # Add feedback as a comment if returning to design or copywriter
+    if old_status == 'design_review' and new_status in ('in_design', 'needs_caption') and comment:
         db.execute(
             """INSERT INTO post_comments (post_id, user_id, content, comment_type)
                VALUES (?,?,?,?)""",
@@ -592,6 +659,14 @@ def transition_post(post_id):
 
     # Create notifications for the next person in the chain
     topic = post.get('topic', 'Untitled')
+
+    if new_status == 'needs_caption' and post.get('assigned_writer_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_writer_id'], 'caption_assigned',
+             'كتابة كابشن جديد', f'تم تعيينك لكتابة كابشن: {topic}', 'post', post_id)
+        )
 
     if new_status == 'in_design' and post.get('assigned_designer_id'):
         db.execute(
@@ -617,12 +692,31 @@ def transition_post(post_id):
              'تصميم مرتجع', f'تم إرجاع التصميم للتعديل: {topic}', 'post', post_id)
         )
 
+    if old_status == 'design_review' and new_status == 'needs_caption' and post.get('assigned_writer_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_writer_id'], 'caption_returned',
+             'كابشن مرتجع', f'تم إرجاع الكابشن للتعديل: {topic}', 'post', post_id)
+        )
+
     if new_status == 'approved' and post.get('created_by_id'):
         db.execute(
             """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
                VALUES (?,?,?,?,?,?)""",
             (post['created_by_id'], 'post_approved',
              'تمت الموافقة', f'تمت الموافقة على: {topic}', 'post', post_id)
+        )
+
+    # Auto-create task for copywriter when moving to needs_caption
+    if new_status == 'needs_caption' and post.get('assigned_writer_id'):
+        db.execute(
+            """INSERT INTO tasks (title, description, client_id, assigned_to_id, created_by_id,
+                                  status, priority, category, post_id)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (f'كابشن: {topic}', f'كتابة كابشن لمنشور: {topic}', post.get('client_id'),
+             post['assigned_writer_id'], user_id, 'todo', post.get('priority', 'normal'),
+             'caption', post_id)
         )
 
     # Auto-create task for designer when moving to in_design
@@ -680,12 +774,14 @@ def calendar_posts():
         SELECT sp.*, c.name as client_name, c.color as client_color,
                u_designer.username as assigned_designer_name,
                u_sm.username as assigned_sm_name,
-               u_motion.username as assigned_motion_name
+               u_motion.username as assigned_motion_name,
+               u_writer.username as assigned_writer_name
         FROM scheduled_posts sp
         LEFT JOIN clients c ON sp.client_id = c.id
         LEFT JOIN users u_designer ON sp.assigned_designer_id = u_designer.id
         LEFT JOIN users u_sm ON sp.assigned_sm_id = u_sm.id
         LEFT JOIN users u_motion ON sp.assigned_motion_id = u_motion.id
+        LEFT JOIN users u_writer ON sp.assigned_writer_id = u_writer.id
         WHERE (
             (sp.scheduled_at >= ? AND sp.scheduled_at < ? AND sp.scheduled_at IS NOT NULL AND sp.scheduled_at != '')
     """

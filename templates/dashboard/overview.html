@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
+<!-- Role-aware header -->
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
-    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-chart-line text-indigo-600 mr-2"></i>Dashboard</h2>
+    <h2 class="text-xl sm:text-2xl font-bold" id="dashboard-title"><i class="fa-solid fa-chart-line text-indigo-600 mr-2"></i>My Tasks</h2>
     <p class="text-gray-500 text-sm" id="current-time"></p>
 </div>
 
-<!-- Stats Cards -->
-<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+<!-- Role-specific Stats Cards -->
+<div id="stats-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
     <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
         <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Clients</h3>
         <p class="text-xl sm:text-3xl font-bold text-indigo-600" id="stat-clients">0</p>
@@ -29,7 +30,7 @@
     </div>
 </div>
 
-<!-- My Work Section (Phase 2) -->
+<!-- My Action Items — role-filtered, links to Calendar -->
 <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
     <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-user-check text-indigo-500 mr-2"></i>My Action Items</h3>
     <div id="my-work-items" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -37,7 +38,7 @@
     </div>
 </div>
 
-<!-- Coverage Alerts (Phase 4) -->
+<!-- Coverage Alerts -->
 <div id="coverage-alerts" class="mb-6 space-y-2"></div>
 
 <!-- Quick Actions + Recent Activity -->
@@ -45,10 +46,10 @@
     <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
         <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-bolt text-indigo-500 mr-2"></i>Quick Actions</h3>
         <div class="grid grid-cols-2 gap-3 quick-actions-grid">
+            <a href="/calendar" class="bg-yellow-50 text-yellow-700 p-3 rounded-lg hover:bg-yellow-100 transition text-sm font-medium text-center"><i class="fa-solid fa-calendar-days mr-1"></i> Calendar</a>
             <a href="/new-post" class="bg-indigo-50 text-indigo-700 p-3 rounded-lg hover:bg-indigo-100 transition text-sm font-medium text-center"><i class="fa-solid fa-pen-to-square mr-1"></i> New Post</a>
             <a href="/pipeline" class="bg-green-50 text-green-700 p-3 rounded-lg hover:bg-green-100 transition text-sm font-medium text-center"><i class="fa-solid fa-arrows-spin mr-1"></i> Pipeline</a>
             <a href="/tasks" class="bg-purple-50 text-purple-700 p-3 rounded-lg hover:bg-purple-100 transition text-sm font-medium text-center"><i class="fa-solid fa-clipboard-list mr-1"></i> Tasks</a>
-            <a href="/calendar" class="bg-yellow-50 text-yellow-700 p-3 rounded-lg hover:bg-yellow-100 transition text-sm font-medium text-center"><i class="fa-solid fa-calendar-days mr-1"></i> Calendar</a>
         </div>
     </div>
     <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
@@ -61,9 +62,26 @@
 {% block scripts %}
 <script>
 function pageInit() {
+    setRoleGreeting();
     loadDashboard();
     loadMyWork();
     loadCoverageAlerts();
+}
+
+function setRoleGreeting() {
+    const titleEl = document.getElementById('dashboard-title');
+    if (!currentUser || !titleEl) return;
+    const role = currentUser.role || 'user';
+    const greetings = {
+        'designer': { icon: 'fa-paintbrush', color: 'text-purple-600', label: 'Design Dashboard' },
+        'motion_editor': { icon: 'fa-film', color: 'text-red-600', label: 'Motion Dashboard' },
+        'copywriter': { icon: 'fa-pen-nib', color: 'text-yellow-600', label: 'Copywriting Dashboard' },
+        'sm_specialist': { icon: 'fa-bullhorn', color: 'text-blue-600', label: 'Social Media Dashboard' },
+        'manager': { icon: 'fa-user-tie', color: 'text-green-600', label: 'Manager Dashboard' },
+        'admin': { icon: 'fa-shield-halved', color: 'text-indigo-600', label: 'Admin Dashboard' }
+    };
+    const g = greetings[role] || { icon: 'fa-chart-line', color: 'text-indigo-600', label: 'My Tasks' };
+    titleEl.innerHTML = `<i class="fa-solid ${g.icon} ${g.color} mr-2"></i>${g.label}`;
 }
 
 async function loadDashboard() {
@@ -85,26 +103,50 @@ async function loadDashboard() {
 
 async function loadMyWork() {
     if (!currentUser) return;
+    const role = currentUser.role || 'user';
     try {
-        const data = await fetch(API_URL + '/posts/my-work?user_id=' + currentUser.id).then(r => r.json());
+        const data = await fetch(API_URL + '/posts/my-work?user_id=' + currentUser.id + '&role=' + role).then(r => r.json());
         const container = document.getElementById('my-work-items');
         if (!data || data.length === 0) {
-            container.innerHTML = '<p class="text-gray-400 text-sm col-span-full text-center py-4">No pending action items</p>';
+            container.innerHTML = `
+                <div class="col-span-full text-center py-8">
+                    <i class="fa-solid fa-circle-check text-4xl text-green-400 mb-3"></i>
+                    <p class="text-gray-500 font-medium">All caught up!</p>
+                    <p class="text-gray-400 text-sm mt-1">No pending action items right now.</p>
+                </div>`;
             return;
         }
-        container.innerHTML = data.map(item => `
-            <div class="action-item-card">
+        const actionColors = {
+            'needs_caption': 'bg-yellow-100 text-yellow-800',
+            'needs_design': 'bg-orange-100 text-orange-800',
+            'needs_review': 'bg-purple-100 text-purple-800',
+            'returned_for_edits': 'bg-red-100 text-red-800',
+            'ready_to_schedule': 'bg-green-100 text-green-800',
+            'unassigned': 'bg-gray-100 text-gray-800',
+            'overdue': 'bg-red-100 text-red-800'
+        };
+        container.innerHTML = data.map(item => {
+            const badgeClass = actionColors[item.action] || 'bg-gray-100 text-gray-800';
+            return `
+            <a href="/calendar" class="action-item-card block hover:border-indigo-300 transition">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="px-2 py-0.5 rounded text-xs font-semibold badge-${item.priority || 'normal'}">${item.priority || 'normal'}</span>
-                    <span class="text-xs text-gray-400">${item.client_name || ''}</span>
+                    <span class="text-xs text-gray-400">${esc(item.client_name || '')}</span>
                 </div>
                 <p class="font-semibold text-sm mb-1">${esc(item.topic || 'Untitled')}</p>
-                <p class="text-xs text-gray-500 mb-2">Status: ${item.workflow_status || 'draft'}</p>
-                <a href="/pipeline" class="text-indigo-600 text-xs font-medium hover:underline">View in Pipeline &rarr;</a>
-            </div>
-        `).join('');
+                <div class="flex items-center justify-between">
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${esc(item.action_label || item.action || '')}</span>
+                    <span class="text-indigo-600 text-xs font-medium">Open in Calendar &rarr;</span>
+                </div>
+            </a>`;
+        }).join('');
     } catch (e) {
-        document.getElementById('my-work-items').innerHTML = '<p class="text-gray-400 text-sm col-span-full text-center py-4">No pending action items</p>';
+        document.getElementById('my-work-items').innerHTML = `
+            <div class="col-span-full text-center py-8">
+                <i class="fa-solid fa-circle-check text-4xl text-green-400 mb-3"></i>
+                <p class="text-gray-500 font-medium">All caught up!</p>
+                <p class="text-gray-400 text-sm mt-1">No pending action items right now.</p>
+            </div>`;
     }
 }
 

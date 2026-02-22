@@ -261,6 +261,7 @@ async function openPostDetail(postId) {
 
     // Assignments
     const assignments = [];
+    if (post.assigned_writer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i> Copywriter: <strong>${esc(post.assigned_writer_name)}</strong></span>`);
     if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
     if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
     if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
@@ -274,8 +275,15 @@ async function openPostDetail(postId) {
 
     // Workflow action buttons
     const actions = [];
+    const userRole = currentUser?.role || '';
     if (wf === 'draft') {
+        if (post.assigned_writer_id) {
+            actions.push(`<button onclick="transitionPost(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>`);
+        }
         actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
+    }
+    if (wf === 'needs_caption') {
+        // Only show submit caption button (handled separately in caption section)
     }
     if (wf === 'in_design') {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
@@ -283,11 +291,34 @@ async function openPostDetail(postId) {
     if (wf === 'design_review') {
         actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
         actions.push(`<button onclick="returnToDesign(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>`);
+        if (post.assigned_writer_id) {
+            actions.push(`<button onclick="returnToCaption(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>`);
+        }
     }
     if (wf === 'approved') {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
     }
     document.getElementById('detail-actions').innerHTML = actions.join('');
+
+    // Show/hide caption submit button based on role + status
+    const submitCaptionBtn = document.getElementById('btn-submit-caption');
+    if (submitCaptionBtn) {
+        if (wf === 'needs_caption') {
+            submitCaptionBtn.classList.remove('hidden');
+        } else {
+            submitCaptionBtn.classList.add('hidden');
+        }
+    }
+
+    // Show/hide upload zone based on role + status
+    const uploadZone = document.getElementById('detail-upload-zone');
+    if (uploadZone) {
+        if (wf === 'in_design' || wf === 'draft') {
+            uploadZone.style.display = '';
+        } else {
+            uploadZone.style.display = 'none';
+        }
+    }
 
     document.getElementById('post-detail-modal').classList.remove('hidden');
 }
@@ -315,6 +346,48 @@ async function saveCaption() {
         // Re-group and render
         rebuildByDate();
         renderCalendar();
+    }
+}
+
+// ========== SUBMIT CAPTION & SEND TO DESIGN ==========
+
+async function submitCaption() {
+    if (!currentDetailPost) return;
+    const caption = document.getElementById('detail-caption').value.trim();
+    if (!caption) {
+        showToast('Please write a caption first', 'error');
+        return;
+    }
+    // Save caption first
+    const saveRes = await apiFetch(`${API_URL}/posts/${currentDetailPost.id}`, {
+        method: 'PUT',
+        body: { caption }
+    });
+    if (!saveRes || !saveRes.success) return;
+
+    // Transition from needs_caption to in_design
+    const res = await apiFetch(`${API_URL}/posts/${currentDetailPost.id}/transition`, {
+        method: 'POST',
+        body: { status: 'in_design', user_id: currentUser?.id || 1 }
+    });
+    if (res && res.success) {
+        showToast('Caption submitted — sent to design', 'success');
+        loadCalendar();
+        openPostDetail(currentDetailPost.id);
+    }
+}
+
+async function returnToCaption(postId) {
+    const comment = prompt('Feedback for copywriter (required):');
+    if (!comment) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'needs_caption', user_id: currentUser?.id || 1, comment }
+    });
+    if (res && res.success) {
+        showToast('Returned to copywriter', 'success');
+        loadCalendar();
+        openPostDetail(postId);
     }
 }
 
