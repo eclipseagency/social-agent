@@ -192,6 +192,11 @@ def run_migrations():
         _migration_16_client_assignments(db)
         set_schema_version(db, 16)
 
+    if version < 17:
+        print("Running migration 17: Add assigned_manager_id to clients and posts...")
+        _migration_17_add_manager(db)
+        set_schema_version(db, 17)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -458,6 +463,15 @@ def _migration_16_client_assignments(db):
                 WHERE id=?
             """, (latest_post['assigned_writer_id'], latest_post['assigned_designer_id'],
                   latest_post['assigned_sm_id'], latest_post['assigned_motion_id'], cid))
+    db.commit()
+
+
+def _migration_17_add_manager(db):
+    """Add assigned_manager_id to clients and scheduled_posts tables."""
+    if not column_exists(db, 'clients', 'assigned_manager_id'):
+        db.execute("ALTER TABLE clients ADD COLUMN assigned_manager_id INTEGER REFERENCES users(id)")
+    if not column_exists(db, 'scheduled_posts', 'assigned_manager_id'):
+        db.execute("ALTER TABLE scheduled_posts ADD COLUMN assigned_manager_id INTEGER REFERENCES users(id)")
     db.commit()
 
 

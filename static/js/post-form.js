@@ -197,10 +197,10 @@ async function saveBrief(workflowStatus) {
     const clientId = document.getElementById('post-client')?.value;
     if (!clientId) { alert('Select a client'); return; }
     const topic = document.getElementById('post-topic')?.value?.trim();
-    if (!topic) { alert('Enter a topic'); return; }
+    if (!topic) { alert('Enter a post topic'); return; }
     const data = {
         topic,
-        caption: '',
+        caption: document.getElementById('post-caption')?.value || '',
         tov: document.getElementById('post-tov')?.value || '',
         brief_notes: document.getElementById('post-brief-notes')?.value || '',
         design_reference_urls: briefReferenceUrls.join(','),
@@ -210,7 +210,7 @@ async function saveBrief(workflowStatus) {
     };
     const res = await fetch(API_URL + '/clients/' + clientId + '/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
     if (res.success) {
-        const msgs = { 'draft': 'Brief saved', 'needs_caption': 'Sent to copywriter', 'in_design': 'Sent to designer' };
+        const msgs = { 'draft': 'Draft saved', 'in_design': 'Sent to designer' };
         showToast(msgs[workflowStatus] || 'Saved', 'success');
         setTimeout(() => { window.location.href = '/calendar'; }, 1000);
     } else { showToast(res.error || 'Failed', 'error'); }

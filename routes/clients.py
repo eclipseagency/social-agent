@@ -13,12 +13,14 @@ def list_clients():
                u_writer.username as assigned_writer_name,
                u_designer.username as assigned_designer_name,
                u_sm.username as assigned_sm_name,
-               u_motion.username as assigned_motion_name
+               u_motion.username as assigned_motion_name,
+               u_manager.username as assigned_manager_name
         FROM clients c
         LEFT JOIN users u_writer ON c.assigned_writer_id = u_writer.id
         LEFT JOIN users u_designer ON c.assigned_designer_id = u_designer.id
         LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
         LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
+        LEFT JOIN users u_manager ON c.assigned_manager_id = u_manager.id
         ORDER BY c.id DESC
     """).fetchall())
     db.close()
@@ -33,12 +35,14 @@ def get_client(client_id):
                u_writer.username as assigned_writer_name,
                u_designer.username as assigned_designer_name,
                u_sm.username as assigned_sm_name,
-               u_motion.username as assigned_motion_name
+               u_motion.username as assigned_motion_name,
+               u_manager.username as assigned_manager_name
         FROM clients c
         LEFT JOIN users u_writer ON c.assigned_writer_id = u_writer.id
         LEFT JOIN users u_designer ON c.assigned_designer_id = u_designer.id
         LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
         LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
+        LEFT JOIN users u_manager ON c.assigned_manager_id = u_manager.id
         WHERE c.id=?
     """, (client_id,)).fetchone())
     if not client:
@@ -84,7 +88,7 @@ def update_client(client_id):
 
     updatable = ['name', 'email', 'company', 'color',
                  'assigned_writer_id', 'assigned_designer_id',
-                 'assigned_sm_id', 'assigned_motion_id']
+                 'assigned_sm_id', 'assigned_motion_id', 'assigned_manager_id']
     fields = []
     params = []
     for field in updatable:
@@ -156,12 +160,14 @@ def clients_overview():
                u_writer.username as assigned_writer_name,
                u_designer.username as assigned_designer_name,
                u_sm.username as assigned_sm_name,
-               u_motion.username as assigned_motion_name
+               u_motion.username as assigned_motion_name,
+               u_manager.username as assigned_manager_name
         FROM clients c
         LEFT JOIN users u_writer ON c.assigned_writer_id = u_writer.id
         LEFT JOIN users u_designer ON c.assigned_designer_id = u_designer.id
         LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
         LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
+        LEFT JOIN users u_manager ON c.assigned_manager_id = u_manager.id
         ORDER BY c.id DESC
     """).fetchall())
 

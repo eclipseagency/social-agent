@@ -70,11 +70,16 @@ function getOfficialPlatformIcon(platform) {
 }
 
 // === Role Permissions ===
+// Workflow: draft → in_design → design_review → approved → scheduled → posted
+// Manager: creates posts, reviews designs in design_review, approves or sends back
+// Copywriter: creates post in draft, writes caption/text/brief, uploads references, sends to designer
+// Designer/Motion Editor: executes design, uploads files, submits for review
+// SM Specialist: schedules approved posts, monitors publishing
 const ROLE_PERMISSIONS = {
     admin:         { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, manageRules: true },
-    manager:       { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: true, viewClients: true, manageRules: true },
-    sm_specialist: { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
-    copywriter:    { createPost: false, editCaption: true, uploadDesign: false, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
+    manager:       { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: true, schedule: false, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, manageRules: true },
+    sm_specialist: { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: false, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
+    copywriter:    { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
     designer:      { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
     motion_editor: { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
 };
@@ -273,21 +278,20 @@ function getPostStatus(post) {
     const wf = post.workflow_status || 'draft';
     if (wf === 'posted') return 'Posted';
     if (wf === 'scheduled') return 'Scheduled';
-    if (wf === 'approved') return 'Ready';
+    if (wf === 'approved') return 'Approved';
     if (wf === 'design_review') return 'Design Review';
-    if (wf === 'needs_caption') return 'Needs Caption';
-    if (wf === 'in_design') return 'Needs Design';
+    if (wf === 'needs_caption') return 'Draft';  // Legacy - treat as draft
+    if (wf === 'in_design') return 'In Design';
     if (wf === 'draft') return 'Draft';
-    return wf.replace('_', ' ');
+    return wf.replace(/_/g, ' ');
 }
 
 function getStatusColor(status) {
     const colors = {
         'Draft': '#94a3b8',
-        'Needs Design': '#f97316',
-        'Needs Caption': '#eab308',
+        'In Design': '#f97316',
         'Design Review': '#8b5cf6',
-        'Ready': '#22c55e',
+        'Approved': '#22c55e',
         'Scheduled': '#3b82f6',
         'Posted': '#10b981'
     };
@@ -298,10 +302,9 @@ function getStatusBorderClass(post) {
     const status = getPostStatus(post);
     const map = {
         'Draft': 'cal-border-draft',
-        'Needs Design': 'cal-border-needs-design',
-        'Needs Caption': 'cal-border-needs-caption',
+        'In Design': 'cal-border-needs-design',
         'Design Review': 'cal-border-design-review',
-        'Ready': 'cal-border-ready',
+        'Approved': 'cal-border-ready',
         'Scheduled': 'cal-border-scheduled',
         'Posted': 'cal-border-posted'
     };

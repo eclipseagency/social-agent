@@ -23,9 +23,13 @@
         <!-- Brief Info -->
         <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
             <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-file-lines text-purple-600"></i></span> Brief Info</h3>
+            <div class="mb-4">
+                <label class="block text-gray-600 text-sm font-medium mb-2">Caption <span class="text-gray-400 text-xs">(written by copywriter)</span></label>
+                <textarea id="post-caption" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-24 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Write the caption for this post..." oninput="updateLivePreview()"></textarea>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div><label class="block text-gray-600 text-sm font-medium mb-2">Tone of Voice</label><textarea id="post-tov" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="e.g. Professional, friendly, bold..."></textarea></div>
-                <div><label class="block text-gray-600 text-sm font-medium mb-2">Brief Notes</label><textarea id="post-brief-notes" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Design instructions, requirements..."></textarea></div>
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Text on Design</label><textarea id="post-tov" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Text to appear on the design..."></textarea></div>
+                <div><label class="block text-gray-600 text-sm font-medium mb-2">Brief &amp; Notes for Designer</label><textarea id="post-brief-notes" class="w-full border border-gray-200 rounded-xl px-4 py-3 h-20 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" placeholder="Design instructions, style requirements..."></textarea></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div><label class="block text-gray-600 text-sm font-medium mb-2">Priority</label><select id="post-priority" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
@@ -41,8 +45,7 @@
                 <div id="brief-references-gallery" class="flex gap-2 mt-2 flex-wrap"></div>
             </div>
             <div class="flex gap-3 flex-wrap">
-                <button onclick="saveBrief('draft')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-300 transition"><i class="fa-solid fa-bookmark mr-1"></i> Save as Brief</button>
-                <button onclick="saveBrief('needs_caption')" class="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-yellow-500 hover:to-yellow-600 transition"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>
+                <button onclick="saveBrief('draft')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-300 transition"><i class="fa-solid fa-bookmark mr-1"></i> Save as Draft</button>
                 <button onclick="saveBrief('in_design')" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-purple-700 transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
             </div>
         </div>

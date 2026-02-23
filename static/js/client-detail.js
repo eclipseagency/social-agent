@@ -31,10 +31,11 @@ async function loadClientDetail() {
 
 async function loadClientAssignmentDropdowns() {
     const users = await apiFetch(API_URL + '/users') || [];
-    const writers = users.filter(u => ['admin', 'manager'].includes(u.role));
-    const designers = users.filter(u => ['designer', 'admin', 'manager'].includes(u.role));
-    const sms = users.filter(u => ['sm_specialist', 'admin', 'manager'].includes(u.role));
-    const motions = users.filter(u => ['motion_editor', 'admin', 'manager'].includes(u.role));
+    const managers = users.filter(u => ['manager', 'admin'].includes(u.role));
+    const writers = users.filter(u => ['copywriter', 'admin'].includes(u.role));
+    const designers = users.filter(u => ['designer', 'admin'].includes(u.role));
+    const sms = users.filter(u => ['sm_specialist', 'admin'].includes(u.role));
+    const motions = users.filter(u => ['motion_editor', 'admin'].includes(u.role));
 
     function fillSel(id, list) {
         const sel = document.getElementById(id);
@@ -43,6 +44,7 @@ async function loadClientAssignmentDropdowns() {
             `<option value="${u.id}">${esc(u.username)}</option>`
         ).join('');
     }
+    fillSel('ca-manager', managers);
     fillSel('ca-writer', writers);
     fillSel('ca-designer', designers);
     fillSel('ca-sm', sms);
@@ -51,6 +53,7 @@ async function loadClientAssignmentDropdowns() {
     // Wait for clientData to be loaded, then set values
     await waitForClientData();
     if (clientData) {
+        if (document.getElementById('ca-manager')) document.getElementById('ca-manager').value = clientData.assigned_manager_id || '';
         document.getElementById('ca-writer').value = clientData.assigned_writer_id || '';
         document.getElementById('ca-designer').value = clientData.assigned_designer_id || '';
         document.getElementById('ca-sm').value = clientData.assigned_sm_id || '';
@@ -68,6 +71,7 @@ function waitForClientData() {
 
 async function saveClientAssignments() {
     const data = {
+        assigned_manager_id: document.getElementById('ca-manager')?.value || null,
         assigned_writer_id: document.getElementById('ca-writer')?.value || null,
         assigned_designer_id: document.getElementById('ca-designer')?.value || null,
         assigned_sm_id: document.getElementById('ca-sm')?.value || null,
@@ -92,16 +96,28 @@ function showClientTab(tab) {
     if (tab === 'pipeline') loadClientPipeline();
 }
 
+const PIPELINE_LABELS = {
+    'draft': { label: 'Draft', icon: 'fa-file-pen', color: 'text-gray-400', badge: 'bg-gray-200' },
+    'in_design': { label: 'In Design', icon: 'fa-paintbrush', color: 'text-pink-500', badge: 'bg-pink-200' },
+    'design_review': { label: 'Design Review', icon: 'fa-magnifying-glass', color: 'text-purple-500', badge: 'bg-purple-200' },
+    'approved': { label: 'Approved', icon: 'fa-circle-check', color: 'text-green-500', badge: 'bg-green-200' },
+    'scheduled': { label: 'Scheduled', icon: 'fa-clock', color: 'text-blue-500', badge: 'bg-blue-200' },
+};
+
 async function loadClientPipeline() {
     const board = await fetch(API_URL + '/pipeline?client_id=' + clientId).then(r => r.json());
     const container = document.getElementById('client-pipeline-board');
-    const statuses = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
     container.innerHTML = statuses.map(status => {
         const posts = board[status] || [];
+        const lbl = PIPELINE_LABELS[status] || { label: status, icon: 'fa-circle', color: '', badge: 'bg-gray-200' };
         return `<div class="kanban-column">
-            <div class="kanban-column-header"><span>${status.replace('_', ' ')}</span><span class="text-xs bg-gray-200 px-2 py-1 rounded-full">${posts.length}</span></div>
+            <div class="kanban-column-header">
+                <span><i class="fa-solid ${lbl.icon} ${lbl.color} mr-1"></i>${lbl.label}</span>
+                <span class="text-xs ${lbl.badge} px-2 py-1 rounded-full">${posts.length}</span>
+            </div>
             <div class="kanban-cards">${posts.map(p => `
-                <div class="kanban-card priority-${p.priority || 'normal'}">
+                <div class="kanban-card priority-${p.priority || 'normal'}" onclick="openClientPostDetail(${p.id})">
                     <p class="font-semibold text-sm">${esc(p.topic || 'Untitled')}</p>
                     <div class="text-xs text-gray-400 mt-1">${getPlatformIcon(p.platforms)} ${esc(p.platforms || '')}</div>
                 </div>
@@ -332,23 +348,32 @@ async function openClientPostDetail(postId) {
 
     // Assignments (read-only, inherited from client)
     const assignments = [];
+    if (post.assigned_manager_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-user-tie text-green-500 mr-1"></i> Manager: <strong>${esc(post.assigned_manager_name)}</strong></span>`);
     if (post.assigned_writer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i> Copywriter: <strong>${esc(post.assigned_writer_name)}</strong></span>`);
     if (post.assigned_designer_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i> Designer: <strong>${esc(post.assigned_designer_name)}</strong></span>`);
-    if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
-    if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
+    if (post.assigned_sm_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i> SM Specialist: <strong>${esc(post.assigned_sm_name)}</strong></span>`);
+    if (post.assigned_motion_name) assignments.push(`<span class="mr-3"><i class="fa-solid fa-film text-red-500 mr-1"></i> Motion Editor: <strong>${esc(post.assigned_motion_name)}</strong></span>`);
     const assignSection = document.getElementById('client-detail-assignments-section');
     if (assignments.length) { document.getElementById('client-detail-assignments').innerHTML = assignments.join(''); assignSection.style.display = ''; }
     else assignSection.style.display = 'none';
 
-    // Actions
+    // Actions — role-based
     const actions = [];
-    if (wf === 'draft') actions.push(`<button onclick="clientTransitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
-    if (wf === 'in_design') actions.push(`<button onclick="document.getElementById('client-detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
-    if (wf === 'design_review') {
-        actions.push(`<button onclick="clientTransitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
-        actions.push(`<button onclick="clientReturnToDesign(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>`);
+    if (wf === 'draft' && (canDo('createPost') || canDo('editCaption'))) {
+        actions.push(`<button onclick="clientTransitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>`);
     }
-    if (wf === 'approved') actions.push(`<button onclick="clientSchedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
+    if (wf === 'in_design' && canDo('uploadDesign')) {
+        actions.push(`<button onclick="document.getElementById('client-detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
+        actions.push(`<button onclick="clientTransitionPost(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>`);
+    }
+    if (wf === 'design_review' && canDo('approve')) {
+        actions.push(`<button onclick="clientTransitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
+        actions.push(`<button onclick="clientReturnToDesign(${post.id})" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Designer</button>`);
+        actions.push(`<button onclick="clientReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>`);
+    }
+    if (wf === 'approved' && canDo('schedule')) {
+        actions.push(`<button onclick="clientSchedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>`);
+    }
     document.getElementById('client-detail-actions').innerHTML = actions.join('');
 
     document.getElementById('client-post-detail-modal').classList.remove('hidden');
@@ -410,7 +435,21 @@ async function clientReturnToDesign(postId) {
         body: { status: 'in_design', user_id: currentUser?.id || 1, comment }
     });
     if (res && res.success) {
-        showToast('Returned to design', 'success');
+        showToast('Returned to designer', 'success');
+        loadClientCalendar();
+        openClientPostDetail(postId);
+    }
+}
+
+async function clientReturnToCopywriter(postId) {
+    const comment = prompt('Feedback for copywriter (required):');
+    if (!comment) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'draft', user_id: currentUser?.id || 1, comment }
+    });
+    if (res && res.success) {
+        showToast('Returned to copywriter', 'success');
         loadClientCalendar();
         openClientPostDetail(postId);
     }
