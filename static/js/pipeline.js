@@ -27,7 +27,7 @@ async function loadPipeline() {
 }
 
 function renderPipelineBoard(board) {
-    const statuses = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
         const count = document.getElementById('pcount-' + status);
@@ -59,9 +59,9 @@ function renderPipelineCard(post) {
 function initPipelineDragDrop() {
     pipelineSortables.forEach(s => s.destroy());
     pipelineSortables = [];
-    // Only allow drag & drop for roles that can approve (admin, manager, sm_specialist)
-    if (!canDo('approve')) return;
-    const statuses = ['draft', 'needs_caption', 'in_design', 'design_review', 'approved', 'scheduled'];
+    // Only allow drag & drop for roles that can approve or schedule (admin, manager, sm_specialist)
+    if (!canDo('approve') && !canDo('schedule')) return;
+    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
         if (!col) return;
@@ -115,33 +115,30 @@ async function viewPostDetail(postId) {
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Client</p><p class="font-semibold text-sm">${esc(post.client_name || '-')}</p></div>
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Status</p><span class="px-2 py-0.5 rounded text-xs font-semibold ${statusColors[post.workflow_status] || 'bg-gray-100'}">${post.workflow_status || 'draft'}</span></div>
+            <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Manager</p><p class="font-semibold text-sm">${esc(post.assigned_manager_name || '-')}</p></div>
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Copywriter</p><p class="font-semibold text-sm">${esc(post.assigned_writer_name || '-')}</p></div>
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Designer</p><p class="font-semibold text-sm">${esc(post.assigned_designer_name || '-')}</p></div>
             <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">SM Specialist</p><p class="font-semibold text-sm">${esc(post.assigned_sm_name || '-')}</p></div>
         </div>
         ${post.caption ? `<div class="mb-4"><h4 class="font-semibold text-sm mb-1">Caption</h4><p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">${esc(post.caption)}</p></div>` : ''}
-        ${post.brief_notes ? `<div class="mb-4"><h4 class="font-semibold text-sm mb-1">Brief Notes</h4><p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">${esc(post.brief_notes)}</p></div>` : ''}
+        ${post.brief_notes ? `<div class="mb-4"><h4 class="font-semibold text-sm mb-1">Brief / Notes</h4><p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">${esc(post.brief_notes)}</p></div>` : ''}
         ${refImagesHtml}
         ${designImagesHtml}
         <!-- Workflow Actions — filtered by role -->
         <div class="flex flex-wrap gap-2 mb-4">
-            ${post.workflow_status === 'draft' && canDo('createPost') ? `
-                ${post.assigned_writer_id ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>` : ''}
-                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>
-            ` : ''}
-            ${post.workflow_status === 'needs_caption' && canDo('editCaption') ? `
-                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>
+            ${post.workflow_status === 'draft' && (canDo('createPost') || canDo('editCaption')) ? `
+                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
             ` : ''}
             ${post.workflow_status === 'in_design' && canDo('uploadDesign') ? `
                 <label class="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm cursor-pointer"><i class="fa-solid fa-upload mr-1"></i> Upload Design <input type="file" class="hidden" multiple accept="image/*" onchange="uploadDesignToPost(${post.id}, this)"></label>
-                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'design_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>
+                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>
             ` : ''}
             ${post.workflow_status === 'design_review' && canDo('approve') ? `
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'approved')" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Approve</button>
-                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>
-                ${post.assigned_writer_id ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>` : ''}
+                <button onclick="promptReturnToDesign(${post.id})" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Designer</button>
+                <button onclick="promptReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>
             ` : ''}
-            ${post.workflow_status === 'approved' && canDo('schedule') ? `<button onclick="changePostWorkflowAndRefresh(${post.id}, 'scheduled')" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-clock mr-1"></i> Mark Scheduled</button>` : ''}
+            ${post.workflow_status === 'approved' && canDo('schedule') ? `<button onclick="promptSchedulePost(${post.id})" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>` : ''}
         </div>
         <!-- Comments -->
         <div class="border-t pt-4">
@@ -164,6 +161,45 @@ async function changePostWorkflowAndRefresh(postId, newStatus) {
     await changePostWorkflow(postId, newStatus);
     hidePostDetailModal();
     showToast('Status updated', 'success');
+}
+
+async function promptReturnToDesign(postId) {
+    const comment = prompt('Feedback for designer (required):');
+    if (!comment) return;
+    const userId = currentUser?.id || 1;
+    const res = await fetch(API_URL + '/posts/' + postId + '/transition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'in_design', user_id: userId, comment })
+    }).then(r => r.json());
+    if (res.success) { showToast('Returned to designer', 'success'); hidePostDetailModal(); loadPipeline(); }
+    else showToast(res.error || 'Failed', 'error');
+}
+
+async function promptReturnToCopywriter(postId) {
+    const comment = prompt('Feedback for copywriter (required):');
+    if (!comment) return;
+    const userId = currentUser?.id || 1;
+    const res = await fetch(API_URL + '/posts/' + postId + '/transition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'draft', user_id: userId, comment })
+    }).then(r => r.json());
+    if (res.success) { showToast('Returned to copywriter', 'success'); hidePostDetailModal(); loadPipeline(); }
+    else showToast(res.error || 'Failed', 'error');
+}
+
+async function promptSchedulePost(postId) {
+    const dt = prompt('Schedule date/time (YYYY-MM-DDTHH:MM):');
+    if (!dt) return;
+    const userId = currentUser?.id || 1;
+    const res = await fetch(API_URL + '/posts/' + postId + '/transition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'scheduled', user_id: userId, scheduled_at: dt })
+    }).then(r => r.json());
+    if (res.success) { showToast('Post scheduled', 'success'); hidePostDetailModal(); loadPipeline(); }
+    else showToast(res.error || 'Failed', 'error');
 }
 
 async function uploadDesignToPost(postId, input) {

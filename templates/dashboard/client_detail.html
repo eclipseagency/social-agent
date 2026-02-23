@@ -18,21 +18,25 @@
 <!-- Team Assignments -->
 <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
     <h3 class="font-semibold text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-users text-indigo-600"></i> Team Assignments</h3>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="client-assignments-grid">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="client-assignments-grid">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">Manager</label>
+            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-user-tie text-green-500 mr-1"></i>Manager</label>
+            <select id="ca-manager" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i>Copywriter</label>
             <select id="ca-writer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">Designer</label>
+            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i>Designer</label>
             <select id="ca-designer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">SM Specialist</label>
+            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i>SM Specialist</label>
             <select id="ca-sm" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">Motion Editor</label>
+            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-film text-red-500 mr-1"></i>Motion Editor</label>
             <select id="ca-motion" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
         </div>
     </div>
