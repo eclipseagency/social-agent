@@ -148,10 +148,10 @@
             </div>
             <input type="file" id="client-detail-design-input" multiple accept="image/*" class="hidden" onchange="uploadClientDetailDesign(this.files)">
         </div>
-        <div class="brief-section">
+        <div class="brief-section" id="client-detail-caption-section">
             <div class="brief-section-title"><i class="fa-solid fa-message mr-1"></i> Caption</div>
             <textarea id="client-detail-caption" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="Write caption..."></textarea>
-            <button onclick="saveClientCaption()" class="mt-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+            <button id="client-detail-caption-save-btn" onclick="saveClientCaption()" class="mt-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
                 <i class="fa-solid fa-save mr-1"></i> Save Caption
             </button>
         </div>

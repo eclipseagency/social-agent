@@ -338,8 +338,14 @@ async function openClientPostDetail(postId) {
         ? designUrls.map(u => `<img src="${u.trim()}" alt="Design" onclick="window.open('${u.trim()}','_blank')">`).join('')
         : '<p class="text-gray-400 text-sm">No designs uploaded yet</p>';
 
-    // Caption
-    document.getElementById('client-detail-caption').value = post.caption || '';
+    // Caption — editable for roles with editCaption permission
+    const captionTextarea = document.getElementById('client-detail-caption');
+    const captionSaveBtn = document.getElementById('client-detail-caption-save-btn');
+    const canEditCap = canDo('editCaption') && !['approved', 'scheduled', 'posted'].includes(wf);
+    captionTextarea.value = post.caption || '';
+    captionTextarea.readOnly = !canEditCap;
+    captionTextarea.style.opacity = canEditCap ? '1' : '0.7';
+    if (captionSaveBtn) captionSaveBtn.style.display = canEditCap ? '' : 'none';
 
     // Tone of Voice
     const tovSection = document.getElementById('client-detail-tov-section');
