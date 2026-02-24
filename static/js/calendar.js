@@ -26,8 +26,6 @@ async function loadCalendar() {
     const month = currentMonth.getMonth() + 1;
     let url = `${API_URL}/posts/calendar?year=${year}&month=${month}&include_unscheduled=1`;
     if (clientId) url += `&client_id=${clientId}`;
-    // Non-viewAll roles (copywriter, designer, motion_editor) only see their assigned posts
-    if (!canDo('viewAll') && currentUser) url += `&assigned_to=${currentUser.id}`;
 
     // Only fetch schedule slots when a specific client is selected
     const fetches = [apiFetch(url)];
