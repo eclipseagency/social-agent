@@ -6,6 +6,7 @@ set -e
 
 BRANCH="master"
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV_DIR="$PROJECT_DIR/venv"
 
 echo "=============================="
 echo " Social Agent — Update Script"
@@ -23,9 +24,13 @@ git checkout "$BRANCH"
 git pull origin "$BRANCH"
 echo "      Done."
 
-# 2. Install / update dependencies
+# 2. Install / update dependencies into the venv
 echo "[2/4] Installing Python dependencies ..."
-pip install -r requirements.txt -q
+if [ ! -f "$VENV_DIR/bin/activate_this.py" ]; then
+    echo "      Venv missing — running setup_venv.sh first ..."
+    bash "$PROJECT_DIR/setup_venv.sh"
+fi
+"$VENV_DIR/bin/pip" install -r requirements.txt -q
 echo "      Done."
 
 # 3. Run database migrations

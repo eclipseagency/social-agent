@@ -78,7 +78,7 @@ function getOfficialPlatformIcon(platform) {
 const ROLE_PERMISSIONS = {
     admin:         { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, manageRules: true },
     manager:       { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: true, schedule: false, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, manageRules: true },
-    sm_specialist: { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: false, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
+    sm_specialist: { createPost: false, editCaption: true, uploadDesign: false, uploadRef: false, approve: false, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
     copywriter:    { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
     designer:      { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
     motion_editor: { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
