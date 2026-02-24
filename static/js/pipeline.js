@@ -20,7 +20,9 @@ async function loadPipeline() {
     const assignee = document.getElementById('pipeline-filter-assignee')?.value || '';
     let url = API_URL + '/pipeline?';
     if (clientId) url += 'client_id=' + clientId + '&';
-    if (assignee) url += 'assigned_to=' + assignee;
+    // Non-viewAll roles only see their assigned posts unless a specific assignee filter is chosen
+    const effectiveAssignee = assignee || (!canDo('viewAll') && currentUser ? String(currentUser.id) : '');
+    if (effectiveAssignee) url += 'assigned_to=' + effectiveAssignee;
     const board = await fetch(url).then(r => r.json());
     renderPipelineBoard(board);
     initPipelineDragDrop();
@@ -49,7 +51,10 @@ function renderPipelineCard(post) {
             <p class="font-semibold text-sm mb-2">${esc(post.topic || 'Untitled')}</p>
             <div class="flex items-center justify-between text-xs text-gray-400">
                 <span>${platforms}</span>
-                <span>${post.assigned_designer_name ? '<i class="fa-solid fa-palette mr-1"></i>' + esc(post.assigned_designer_name) : ''}</span>
+                <span class="flex flex-col items-end gap-0.5">
+                    ${post.assigned_designer_name ? '<span><i class="fa-solid fa-palette mr-1"></i>' + esc(post.assigned_designer_name) + '</span>' : ''}
+                    ${post.assigned_motion_name ? '<span><i class="fa-solid fa-film mr-1"></i>' + esc(post.assigned_motion_name) + '</span>' : ''}
+                </span>
             </div>
             ${post.design_output_urls ? '<div class="mt-2"><i class="fa-solid fa-image text-green-500 text-xs"></i> <span class="text-xs text-green-600">Design attached</span></div>' : ''}
         </div>

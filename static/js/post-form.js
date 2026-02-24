@@ -23,12 +23,18 @@ function onPostTypeChange() {
     const select = document.getElementById('post-type-select');
     currentPostType = select.value;
     const storyFeatures = document.getElementById('instagram-story-features');
-    if (currentPostType === 'story') {
+    if (currentPostType === 'story' || currentPostType === 'reel') {
         document.getElementById('size-instagram').value = '1080x1920';
         document.getElementById('size-facebook').value = '1080x1920';
         document.getElementById('platform-linkedin').checked = false;
         document.getElementById('platform-linkedin').disabled = true;
         if (storyFeatures) storyFeatures.classList.remove('hidden');
+    } else if (currentPostType === 'video') {
+        document.getElementById('size-instagram').value = '1080x1080';
+        document.getElementById('size-facebook').value = '1080x1080';
+        document.getElementById('size-linkedin').value = '1200x627';
+        document.getElementById('platform-linkedin').disabled = false;
+        if (storyFeatures) storyFeatures.classList.add('hidden');
     } else {
         document.getElementById('size-instagram').value = '1080x1080';
         document.getElementById('size-facebook').value = '1080x1080';
@@ -198,6 +204,14 @@ async function saveBrief(workflowStatus) {
     if (!clientId) { alert('Select a client'); return; }
     const topic = document.getElementById('post-topic')?.value?.trim();
     if (!topic) { alert('Enter a post topic'); return; }
+    // Collect selected platforms
+    const selectedPlatforms = ['instagram', 'linkedin', 'facebook']
+        .filter(p => document.getElementById('platform-' + p)?.checked)
+        .join(',') || 'instagram';
+    // Collect post type and primary size
+    const postType = document.getElementById('post-type-select')?.value || 'post';
+    const primaryPlatform = selectedPlatforms.split(',')[0] || 'instagram';
+    const imageSize = document.getElementById('size-' + primaryPlatform)?.value || '1080x1080';
     const data = {
         topic,
         caption: document.getElementById('post-caption')?.value || '',
@@ -205,6 +219,9 @@ async function saveBrief(workflowStatus) {
         brief_notes: document.getElementById('post-brief-notes')?.value || '',
         design_reference_urls: briefReferenceUrls.join(','),
         priority: document.getElementById('post-priority')?.value || 'normal',
+        platforms: selectedPlatforms,
+        post_type: postType,
+        image_size: imageSize,
         workflow_status: workflowStatus,
         created_by_id: currentUser?.id || 1
     };
