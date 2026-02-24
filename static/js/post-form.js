@@ -7,6 +7,7 @@ let currentPostType = 'post';
 
 function pageInit() {
     loadClientsDropdown('post-client');
+    loadUsersDropdown('post-designer', 'designer');
     initPlatformGalleries();
     // Setup schedule toggle listeners
     ['instagram', 'linkedin', 'facebook'].forEach(p => {
@@ -223,7 +224,8 @@ async function saveBrief(workflowStatus) {
         post_type: postType,
         image_size: imageSize,
         workflow_status: workflowStatus,
-        created_by_id: currentUser?.id || 1
+        created_by_id: currentUser?.id || 1,
+        assigned_designer_id: document.getElementById('post-designer')?.value || null
     };
     const res = await fetch(API_URL + '/clients/' + clientId + '/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
     if (res.success) {

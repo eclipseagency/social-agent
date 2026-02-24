@@ -151,8 +151,9 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .cal-card-upload-hint { background: #ede9fe; color: #7c3aed; font-size: 9px; font-weight: 700; text-align: center; padding: 2px 4px; border-radius: 4px; margin-top: 2px; }
 .cal-mini-card.cal-card-designer-upload { border: 1px dashed #8b5cf6; }
 .cal-mini-card.cal-card-designer-upload:hover { background: #faf5ff; }
-.cal-card-meta { display: flex; justify-content: space-between; margin-top: 2px; }
+.cal-card-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; flex-wrap: wrap; gap: 2px; }
 .cal-card-client { color: #94a3b8; font-size: 9px; }
+.cal-card-assignee { color: #6366f1; font-size: 9px; font-weight: 600; }
 .dark .cal-card-topic { color: #e2e8f0; }
 .dark .cal-card-upload-hint { background: #4c1d95; color: #c4b5fd; }
 .dark .cal-mini-card.cal-card-designer-upload { border-color: #7c3aed; }

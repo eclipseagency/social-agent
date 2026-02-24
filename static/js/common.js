@@ -353,6 +353,7 @@ function renderCalendarMiniCard(post) {
         ${isDesignerUpload ? `<div class="cal-card-upload-hint"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Design</div>` : ''}
         <div class="cal-card-meta">
             <span class="cal-card-client">${esc(post.client_name || '')}</span>
+            ${(post.assigned_designer_name || post.assigned_writer_name || post.assigned_sm_name) ? `<span class="cal-card-assignee"><i class="fa-solid fa-user text-indigo-400"></i> ${esc(post.assigned_designer_name || post.assigned_writer_name || post.assigned_sm_name)}</span>` : ''}
         </div>
     </div>`;
 }
