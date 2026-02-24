@@ -516,8 +516,7 @@ async function openPostDetail(postId) {
         // Hide upload zones (they don't upload)
         if (uploadZone) uploadZone.style.display = 'none';
         if (refUploadZone) refUploadZone.style.display = 'none';
-        // Hide caption buttons (they don't edit captions)
-        if (captionButtons) captionButtons.style.display = 'none';
+        // Caption buttons shown (they can edit captions)
         // Hide save brief
         if (saveBriefSection) saveBriefSection.classList.add('hidden');
     }
