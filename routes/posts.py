@@ -114,8 +114,8 @@ def update_post(post_id):
         # Copywriters can only update caption
         updatable = ['caption']
     elif user_role == 'sm_specialist':
-        # Moderators cannot edit post fields (read-only)
-        updatable = []
+        # SM Specialists can update caption, topic, brief notes, tov, platforms, and schedule
+        updatable = ['caption', 'topic', 'brief_notes', 'tov', 'platforms', 'scheduled_at', 'priority', 'post_type', 'image_size']
     fields = []
     params = []
     for field in updatable:
@@ -705,8 +705,8 @@ def transition_post(post_id):
             if new_status != 'in_design':
                 return jsonify({'error': 'Permission denied'}), 403
         elif user_role == 'sm_specialist':
-            # SM Specialists can only schedule (approved -> scheduled)
-            if new_status != 'scheduled':
+            # SM Specialists can send to design (draft -> in_design) or schedule (approved -> scheduled)
+            if new_status not in ('in_design', 'scheduled'):
                 return jsonify({'error': 'Permission denied'}), 403
         elif user_role == 'manager':
             pass  # Managers have same access as admin for transitions
