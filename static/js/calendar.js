@@ -26,6 +26,8 @@ async function loadCalendar() {
     const month = currentMonth.getMonth() + 1;
     let url = `${API_URL}/posts/calendar?year=${year}&month=${month}&include_unscheduled=1`;
     if (clientId) url += `&client_id=${clientId}`;
+    // Non-viewAll roles (copywriter, designer, motion_editor) only see their assigned posts
+    if (!canDo('viewAll') && currentUser) url += `&assigned_to=${currentUser.id}`;
 
     // Only fetch schedule slots when a specific client is selected
     const fetches = [apiFetch(url)];
@@ -430,13 +432,11 @@ async function openPostDetail(postId) {
     // Workflow action buttons — filtered by role permissions
     const actions = [];
     if (wf === 'draft' && canDo('createPost')) {
-        if (post.assigned_writer_id) {
-            actions.push(`<button onclick="transitionPost(${post.id}, 'needs_caption')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Send to Copywriter</button>`);
-        }
         actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
     }
-    if (wf === 'needs_caption') {
-        // Only show submit caption button (handled separately in caption section)
+    if (wf === 'draft' && canDo('editCaption') && !canDo('createPost')) {
+        // Copywriter: can send to design once caption and brief are ready
+        actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
     }
     if (wf === 'in_design' && canDo('uploadDesign')) {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
@@ -453,10 +453,10 @@ async function openPostDetail(postId) {
     }
     document.getElementById('detail-actions').innerHTML = actions.join('');
 
-    // Show/hide caption submit button — only if user can edit captions AND status is needs_caption
+    // Show/hide caption submit button — only for copywriters in draft state
     const submitCaptionBtn = document.getElementById('btn-submit-caption');
     if (submitCaptionBtn) {
-        if (wf === 'needs_caption' && canDo('editCaption')) {
+        if (['draft', 'needs_caption'].includes(wf) && canDo('editCaption') && !canDo('createPost')) {
             submitCaptionBtn.classList.remove('hidden');
         } else {
             submitCaptionBtn.classList.add('hidden');
@@ -610,7 +610,7 @@ async function returnToCaption(postId) {
     if (!comment) return;
     const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
         method: 'POST',
-        body: { status: 'needs_caption', user_id: currentUser?.id || 1, comment }
+        body: { status: 'draft', user_id: currentUser?.id || 1, comment }
     });
     if (res && res.success) {
         showToast('Returned to copywriter', 'success');

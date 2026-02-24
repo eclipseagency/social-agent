@@ -71,7 +71,7 @@ function getOfficialPlatformIcon(platform) {
 
 // === Role Permissions ===
 // Workflow: draft → in_design → design_review → approved → scheduled → posted
-// Manager: creates posts, reviews designs in design_review, approves or sends back
+// Manager: assigns team members to clients, reviews designs in design_review, approves or sends back
 // Copywriter: creates post in draft, writes caption/text/brief, uploads references, sends to designer
 // Designer/Motion Editor: executes design, uploads files, submits for review
 // SM Specialist: schedules approved posts, monitors publishing

@@ -803,6 +803,15 @@ def transition_post(post_id):
              'New Design Task', f'You have a new design to work on: {topic}', 'post', post_id)
         )
 
+    # Notify motion editor when moving to in_design
+    if new_status == 'in_design' and post.get('assigned_motion_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_motion_id'], 'motion_assigned',
+             'New Motion Task', f'You have a new video/motion design to work on: {topic}', 'post', post_id)
+        )
+
     # Notify designer when design is returned for revision
     if old_status == 'design_review' and new_status == 'in_design' and post.get('assigned_designer_id'):
         db.execute(
@@ -856,6 +865,17 @@ def transition_post(post_id):
                VALUES (?,?,?,?,?,?,?,?,?)""",
             (f'Design: {topic}', f'Execute design for post: {topic}', post.get('client_id'),
              post['assigned_designer_id'], user_id, 'todo', post.get('priority', 'normal'),
+             'design', post_id)
+        )
+
+    # Auto-create task for motion editor when moving to in_design
+    if new_status == 'in_design' and post.get('assigned_motion_id'):
+        db.execute(
+            """INSERT INTO tasks (title, description, client_id, assigned_to_id, created_by_id,
+                                  status, priority, category, post_id)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (f'Motion: {topic}', f'Create video/motion content for post: {topic}', post.get('client_id'),
+             post['assigned_motion_id'], user_id, 'todo', post.get('priority', 'normal'),
              'design', post_id)
         )
 
@@ -941,6 +961,11 @@ def calendar_posts():
     if client_id:
         query += " AND sp.client_id=?"
         params.append(client_id)
+
+    assigned_to = request.args.get('assigned_to')
+    if assigned_to:
+        query += " AND (sp.assigned_designer_id=? OR sp.assigned_sm_id=? OR sp.assigned_motion_id=? OR sp.assigned_writer_id=? OR sp.created_by_id=?)"
+        params.extend([assigned_to, assigned_to, assigned_to, assigned_to, assigned_to])
 
     query += " ORDER BY COALESCE(sp.scheduled_at, sp.created_at) ASC"
 
