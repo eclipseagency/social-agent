@@ -256,7 +256,10 @@ async function openPostDetail(postId) {
             bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div><strong>Your turn!</strong> Write and submit the caption for this post.</div>';
         } else if (wf === 'draft') {
             bannerEl.className = 'role-banner role-banner-copywriter';
-            bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div>Draft — you can start writing the caption.</div>';
+            bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div>Draft — write the caption and save it.</div>';
+        } else if (['in_design', 'design_review'].includes(wf)) {
+            bannerEl.className = 'role-banner role-banner-copywriter';
+            bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div>You can still edit and save the caption.</div>';
         } else {
             bannerEl.className = 'role-banner role-banner-copywriter';
             bannerEl.innerHTML = '<i class="fa-solid fa-eye"></i><div>View only — this post is in <strong>' + esc(wf.replace(/_/g, ' ')) + '</strong> stage.</div>';
@@ -375,10 +378,10 @@ async function openPostDetail(postId) {
         designsSection.style.display = '';
     }
 
-    // Caption — read-only unless user can edit captions AND status allows it
+    // Caption — read-only unless user can edit captions AND post not yet approved/published
     const captionEl = document.getElementById('detail-caption');
     captionEl.value = post.caption || '';
-    const canEditCaption = canDo('editCaption') && ['draft', 'needs_caption'].includes(wf);
+    const canEditCaption = canDo('editCaption') && !['approved', 'scheduled', 'posted'].includes(wf);
     captionEl.readOnly = !canEditCaption;
     captionEl.style.opacity = canEditCaption ? '1' : '0.7';
 
