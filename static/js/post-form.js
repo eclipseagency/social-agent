@@ -235,15 +235,50 @@ async function saveBrief(workflowStatus) {
     } else { showToast(res.error || 'Failed', 'error'); }
 }
 
+function renderResults(resultDiv, results) {
+    resultDiv.innerHTML = '<div class="flex flex-wrap gap-4 justify-center">' + results.map(r => {
+        const isSuccess = r.success || r.scheduled;
+        const isPending = r.pending;
+        const statusText = r.scheduled ? 'Scheduled'
+            : isPending ? 'Publishing...'
+            : isSuccess ? 'Published'
+            : r.error || 'Failed';
+        return `<div class="result-card ${isSuccess || isPending ? r.platform : 'error'} ${isSuccess ? 'success-animation' : ''}">
+            <div class="icon">${getOfficialPlatformIcon(r.platform)}</div>
+            <div class="platform-name">${getPlatformName(r.platform)}</div>
+            <div class="status">${statusText}</div>
+        </div>`;
+    }).join('') + '</div>';
+}
+
+async function waitForPublish(postId, platform) {
+    // Poll every 500ms for up to 8 seconds, then give up and show pending
+    for (let i = 0; i < 16; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        try {
+            const res = await fetch(API_URL + '/posts/' + postId + '/publish-status').then(r => r.json());
+            if (res.status !== 'pending') {
+                const log = (res.logs || []).find(l => l.platform === platform);
+                const failed = res.status === 'failed' || (log && log.status === 'failed');
+                return { platform, success: !failed, error: failed ? (log?.response || 'Failed to publish') : '' };
+            }
+        } catch (e) {}
+    }
+    // Still pending after 8s — publishing is happening in the background
+    return { platform, pending: true };
+}
+
 async function submitPost() {
     const clientId = document.getElementById('post-client')?.value;
     if (!clientId) { alert('Select a client'); return; }
     const topic = document.getElementById('post-topic')?.value?.trim() || '';
     const platforms = ['instagram', 'linkedin', 'facebook'];
     const btn = document.getElementById('submit-post-btn');
+    const resultDiv = document.getElementById('post-result');
     btn.disabled = true;
     btn.innerHTML = '<div class="loading-spinner mx-auto"></div>';
     let results = [];
+    let pendingPolls = [];
 
     for (const platform of platforms) {
         if (!document.getElementById('platform-' + platform)?.checked) continue;
@@ -273,22 +308,27 @@ async function submitPost() {
                 post_type: currentPostType, image_size: imageSize
             };
             const res = await fetch(API_URL + '/post-now-single', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
-            results.push({ platform, ...res });
+            if (!res.success) {
+                results.push({ platform, success: false, error: res.error || 'Failed' });
+            } else {
+                results.push({ platform, pending: true });
+                pendingPolls.push({ platform, postId: res.post_id });
+            }
         }
     }
 
+    // Re-enable button and show initial "Publishing..." cards immediately
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Post';
+    renderResults(resultDiv, results);
 
-    const resultDiv = document.getElementById('post-result');
-    resultDiv.innerHTML = '<div class="flex flex-wrap gap-4 justify-center">' + results.map(r => {
-        const isSuccess = r.success || r.scheduled;
-        return `<div class="result-card ${isSuccess ? r.platform : 'error'} success-animation">
-            <div class="icon">${getOfficialPlatformIcon(r.platform)}</div>
-            <div class="platform-name">${getPlatformName(r.platform)}</div>
-            <div class="status">${r.scheduled ? 'Scheduled' : isSuccess ? 'Published' : r.error || 'Failed'}</div>
-        </div>`;
-    }).join('') + '</div>';
+    // Poll all platforms in parallel
+    await Promise.all(pendingPolls.map(async ({ platform, postId }) => {
+        const finalResult = await waitForPublish(postId, platform);
+        const idx = results.findIndex(r => r.platform === platform);
+        if (idx !== -1) results[idx] = finalResult;
+        renderResults(resultDiv, results);
+    }));
 
     initPlatformGalleries();
 }
