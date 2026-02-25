@@ -2,7 +2,7 @@ import threading
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session
 from models import get_db, dict_from_row, dicts_from_rows
-from services.scheduler import publish_post, run_scheduler, force_publish_all
+from services.scheduler import publish_post, run_scheduler, force_publish_all, get_account_for_client, _get_env_account
 from services.cloudinary_service import upload_image
 from routes.auth import require_role, require_login
 
@@ -1040,6 +1040,12 @@ def post_now_single():
     video_url = data.get('video_url', '')
     post_type = data.get('post_type', 'post')
     image_size = data.get('image_size', '1080x1080')
+
+    # Check account exists before doing anything
+    base_platform = platform.replace('_story', '').replace('_reel', '')
+    account = get_account_for_client(client_id, base_platform) or _get_env_account(base_platform)
+    if not account:
+        return jsonify({'success': False, 'error': f'No {base_platform} account connected. Please add the account first.'})
 
     # Build image_url string
     if video_url:
