@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session
 from models import get_db, dict_from_row, dicts_from_rows
@@ -1062,11 +1063,14 @@ def post_now_single():
     post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
     db.close()
 
-    # Publish immediately
-    results = publish_post(post)
-    platform_result = results.get(platform, {})
+    # Publish in background thread to avoid blocking the request
+    def do_publish():
+        publish_post(post)
 
-    return jsonify(platform_result)
+    t = threading.Thread(target=do_publish, daemon=True)
+    t.start()
+
+    return jsonify({'success': True, 'post_id': post_id})
 
 
 @posts_bp.route('/api/posts/<int:post_id>', methods=['DELETE'])

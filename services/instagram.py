@@ -10,7 +10,7 @@ def post_image(access_token, account_id, image_url, caption=''):
         'image_url': image_url,
         'caption': caption,
         'access_token': access_token
-    })
+    }, timeout=30)
     create_data = create_resp.json()
     if 'id' not in create_data:
         return {'success': False, 'error': create_data.get('error', {}).get('message', 'Failed to create media container')}
@@ -22,7 +22,7 @@ def post_image(access_token, account_id, image_url, caption=''):
     pub_resp = requests.post(publish_url, data={
         'creation_id': container_id,
         'access_token': access_token
-    })
+    }, timeout=30)
     pub_data = pub_resp.json()
     if 'id' in pub_data:
         return {'success': True, 'post_id': pub_data['id'], 'type': 'image'}
@@ -38,7 +38,7 @@ def post_carousel(access_token, account_id, image_urls, caption=''):
             'image_url': url,
             'is_carousel_item': 'true',
             'access_token': access_token
-        })
+        }, timeout=30)
         data = resp.json()
         if 'id' not in data:
             return {'success': False, 'error': f'Failed to create carousel item: {data.get("error", {}).get("message", "")}'}
@@ -51,7 +51,7 @@ def post_carousel(access_token, account_id, image_urls, caption=''):
         'children': ','.join(children_ids),
         'caption': caption,
         'access_token': access_token
-    })
+    }, timeout=30)
     data = resp.json()
     if 'id' not in data:
         return {'success': False, 'error': data.get('error', {}).get('message', 'Failed to create carousel')}
@@ -63,7 +63,7 @@ def post_carousel(access_token, account_id, image_urls, caption=''):
     pub_resp = requests.post(publish_url, data={
         'creation_id': container_id,
         'access_token': access_token
-    })
+    }, timeout=30)
     pub_data = pub_resp.json()
     if 'id' in pub_data:
         return {'success': True, 'post_id': pub_data['id'], 'type': 'carousel'}
@@ -77,7 +77,7 @@ def post_story(access_token, account_id, image_url):
         'image_url': image_url,
         'media_type': 'STORIES',
         'access_token': access_token
-    })
+    }, timeout=30)
     create_data = create_resp.json()
     if 'id' not in create_data:
         return {'success': False, 'error': create_data.get('error', {}).get('message', 'Failed to create story')}
@@ -88,7 +88,7 @@ def post_story(access_token, account_id, image_url):
     pub_resp = requests.post(publish_url, data={
         'creation_id': container_id,
         'access_token': access_token
-    })
+    }, timeout=30)
     pub_data = pub_resp.json()
     if 'id' in pub_data:
         return {'success': True, 'post_id': pub_data['id'], 'type': 'story'}
@@ -103,7 +103,7 @@ def post_reel(access_token, account_id, video_url, caption=''):
         'media_type': 'REELS',
         'caption': caption,
         'access_token': access_token
-    })
+    }, timeout=30)
     create_data = create_resp.json()
     if 'id' not in create_data:
         return {'success': False, 'error': create_data.get('error', {}).get('message', 'Failed to create reel')}
@@ -116,7 +116,7 @@ def post_reel(access_token, account_id, video_url, caption=''):
         status_resp = requests.get(status_url, params={
             'fields': 'status_code',
             'access_token': access_token
-        })
+        }, timeout=30)
         status_data = status_resp.json()
         if status_data.get('status_code') == 'FINISHED':
             break
@@ -128,7 +128,7 @@ def post_reel(access_token, account_id, video_url, caption=''):
     pub_resp = requests.post(publish_url, data={
         'creation_id': container_id,
         'access_token': access_token
-    })
+    }, timeout=30)
     pub_data = pub_resp.json()
     if 'id' in pub_data:
         return {'success': True, 'post_id': pub_data['id'], 'type': 'video'}
