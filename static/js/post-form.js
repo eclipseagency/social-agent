@@ -235,33 +235,6 @@ async function saveBrief(workflowStatus) {
     } else { showToast(res.error || 'Failed', 'error'); }
 }
 
-function renderResults(resultDiv, results) {
-    resultDiv.innerHTML = '<div class="flex flex-wrap gap-4 justify-center">' + results.map(r => {
-        const isSuccess = r.success || r.scheduled;
-        const statusText = r.scheduled ? 'Scheduled' : r.publishing ? 'Publishing...' : isSuccess ? 'Published' : r.error || 'Failed';
-        return `<div class="result-card ${isSuccess || r.publishing ? r.platform : 'error'} ${isSuccess ? 'success-animation' : ''}">
-            <div class="icon">${getOfficialPlatformIcon(r.platform)}</div>
-            <div class="platform-name">${getPlatformName(r.platform)}</div>
-            <div class="status">${statusText}</div>
-        </div>`;
-    }).join('') + '</div>';
-}
-
-async function pollPublishStatus(postId, platform) {
-    for (let i = 0; i < 30; i++) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        try {
-            const res = await fetch(API_URL + '/posts/' + postId + '/publish-status').then(r => r.json());
-            if (res.status !== 'pending') {
-                const log = (res.logs || []).find(l => l.platform === platform);
-                const failed = res.status === 'failed' || (log && log.status === 'failed');
-                return { platform, success: !failed, error: failed ? 'Failed to publish' : '' };
-            }
-        } catch (e) {}
-    }
-    return { platform, success: false, error: 'Publishing timed out' };
-}
-
 async function submitPost() {
     const clientId = document.getElementById('post-client')?.value;
     if (!clientId) { alert('Select a client'); return; }
@@ -270,9 +243,7 @@ async function submitPost() {
     const btn = document.getElementById('submit-post-btn');
     btn.disabled = true;
     btn.innerHTML = '<div class="loading-spinner mx-auto"></div>';
-    const resultDiv = document.getElementById('post-result');
     let results = [];
-    let pendingPolls = [];
 
     for (const platform of platforms) {
         if (!document.getElementById('platform-' + platform)?.checked) continue;
@@ -302,25 +273,22 @@ async function submitPost() {
                 post_type: currentPostType, image_size: imageSize
             };
             const res = await fetch(API_URL + '/post-now-single', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
-            if (!res.success) {
-                results.push({ platform, success: false, error: res.error || 'Failed to queue' });
-            } else {
-                results.push({ platform, publishing: true });
-                pendingPolls.push({ platform, postId: res.post_id });
-            }
+            results.push({ platform, ...res });
         }
     }
 
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Post';
-    renderResults(resultDiv, results);
 
-    for (const { platform, postId } of pendingPolls) {
-        const finalResult = await pollPublishStatus(postId, platform);
-        const idx = results.findIndex(r => r.platform === platform);
-        if (idx !== -1) results[idx] = finalResult;
-        renderResults(resultDiv, results);
-    }
+    const resultDiv = document.getElementById('post-result');
+    resultDiv.innerHTML = '<div class="flex flex-wrap gap-4 justify-center">' + results.map(r => {
+        const isSuccess = r.success || r.scheduled;
+        return `<div class="result-card ${isSuccess ? r.platform : 'error'} success-animation">
+            <div class="icon">${getOfficialPlatformIcon(r.platform)}</div>
+            <div class="platform-name">${getPlatformName(r.platform)}</div>
+            <div class="status">${r.scheduled ? 'Scheduled' : isSuccess ? 'Published' : r.error || 'Failed'}</div>
+        </div>`;
+    }).join('') + '</div>';
 
     initPlatformGalleries();
 }

@@ -1069,14 +1069,11 @@ def post_now_single():
     post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
     db.close()
 
-    # Publish in background thread to avoid blocking the request
-    def do_publish():
-        publish_post(post)
-
-    t = threading.Thread(target=do_publish, daemon=True)
-    t.start()
-
-    return jsonify({'success': True, 'post_id': post_id})
+    # Publish synchronously and return the actual result
+    results = publish_post(post)
+    platform_result = results.get(platform, results.get(base_platform, {'success': False, 'error': 'Unknown error'}))
+    platform_result['post_id'] = post_id
+    return jsonify(platform_result)
 
 
 @posts_bp.route('/api/posts/<int:post_id>/publish-status', methods=['GET'])
