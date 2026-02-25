@@ -1073,6 +1073,20 @@ def post_now_single():
     return jsonify({'success': True, 'post_id': post_id})
 
 
+@posts_bp.route('/api/posts/<int:post_id>/publish-status', methods=['GET'])
+def get_publish_status(post_id):
+    db = get_db()
+    post = db.execute("SELECT status FROM scheduled_posts WHERE id=?", (post_id,)).fetchone()
+    if not post:
+        db.close()
+        return jsonify({'error': 'Not found'}), 404
+    logs = dicts_from_rows(db.execute(
+        "SELECT platform, status, response FROM post_logs WHERE post_id=?", (post_id,)
+    ).fetchall())
+    db.close()
+    return jsonify({'status': post['status'], 'logs': logs})
+
+
 @posts_bp.route('/api/posts/<int:post_id>', methods=['DELETE'])
 @require_role('manager')
 def delete_post(post_id):
