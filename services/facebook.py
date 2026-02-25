@@ -8,7 +8,7 @@ def post_image(access_token, page_id, image_url, caption=''):
         'url': image_url,
         'message': caption,
         'access_token': access_token
-    })
+    }, timeout=30)
     data = resp.json()
     if 'id' in data:
         return {'success': True, 'post_id': data['id'], 'type': 'image'}
@@ -21,7 +21,7 @@ def post_text(access_token, page_id, text):
     resp = requests.post(url, data={
         'message': text,
         'access_token': access_token
-    })
+    }, timeout=30)
     data = resp.json()
     if 'id' in data:
         return {'success': True, 'post_id': data['id'], 'type': 'text'}
@@ -35,7 +35,7 @@ def post_video(access_token, page_id, video_url, caption=''):
         'file_url': video_url,
         'description': caption,
         'access_token': access_token
-    })
+    }, timeout=30)
     data = resp.json()
     if 'id' in data:
         return {'success': True, 'post_id': data['id'], 'type': 'video'}
@@ -51,7 +51,7 @@ def post_story(access_token, page_id, image_url):
         'url': image_url,
         'published': 'false',
         'access_token': access_token
-    })
+    }, timeout=30)
     photo_data = photo_resp.json()
     if 'id' not in photo_data:
         return {'success': False, 'error': 'Failed to upload story photo'}
@@ -59,7 +59,7 @@ def post_story(access_token, page_id, image_url):
     story_resp = requests.post(url, data={
         'photo_id': photo_data['id'],
         'access_token': access_token
-    })
+    }, timeout=30)
     story_data = story_resp.json()
     if 'id' in story_data:
         return {'success': True, 'post_id': story_data['id'], 'type': 'story'}
@@ -75,7 +75,7 @@ def post_multiple_images(access_token, page_id, image_urls, caption=''):
             'url': img_url,
             'published': 'false',
             'access_token': access_token
-        })
+        }, timeout=30)
         data = resp.json()
         if 'id' in data:
             photo_ids.append(data['id'])
@@ -88,7 +88,7 @@ def post_multiple_images(access_token, page_id, image_urls, caption=''):
     for i, pid in enumerate(photo_ids):
         post_data[f'attached_media[{i}]'] = f'{{"media_fbid":"{pid}"}}'
 
-    resp = requests.post(feed_url, data=post_data)
+    resp = requests.post(feed_url, data=post_data, timeout=30)
     data = resp.json()
     if 'id' in data:
         return {'success': True, 'post_id': data['id'], 'type': 'carousel'}
