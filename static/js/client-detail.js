@@ -20,8 +20,6 @@ async function loadClientDetail() {
     document.getElementById('cd-name').textContent = clientData.name || '-';
     document.getElementById('cd-company').textContent = clientData.company || '-';
     document.getElementById('cd-email').textContent = clientData.email || '-';
-    document.getElementById('cd-accounts').textContent = (clientData.accounts || []).length;
-
     loadClientCalendar();
 }
 
@@ -34,6 +32,7 @@ async function loadClientCalendar() {
     if (!data) return;
     clientPostsData = data.posts || [];
     clientCalByDate = data.by_date || {};
+    document.getElementById('cd-posts-count').textContent = clientPostsData.length;
     renderClientCalendar();
 }
 
@@ -172,13 +171,30 @@ if (typeof onCardDragStart === 'undefined') {
     };
 }
 
+// ========== PLATFORM MULTI-SELECT HELPERS ==========
+
+function getSelectedPlatforms() {
+    return Array.from(document.querySelectorAll('#cp-platforms input:checked')).map(cb => cb.value);
+}
+
+function setSelectedPlatforms(platforms) {
+    const list = (platforms || '').split(',').map(s => s.trim()).filter(Boolean);
+    document.querySelectorAll('#cp-platforms input').forEach(cb => {
+        cb.checked = list.includes(cb.value);
+    });
+}
+
+function clearSelectedPlatforms() {
+    document.querySelectorAll('#cp-platforms input').forEach(cb => { cb.checked = false; });
+}
+
 // ========== CREATE POST MODAL ==========
 
 function openCreatePostModal(dateStr) {
     document.getElementById('cp-edit-id').value = '';
     document.getElementById('create-post-title').textContent = 'Create Post';
     document.getElementById('cp-date').value = dateStr || '';
-    document.getElementById('cp-platform').value = 'instagram';
+    clearSelectedPlatforms();
     document.getElementById('cp-post-type').value = 'post';
     document.getElementById('cp-time').value = '12:00';
     document.getElementById('cp-tov').value = '';
@@ -200,11 +216,11 @@ function updateSlidePreview() {
     const tov = document.getElementById('cp-tov').value.trim();
     const caption = document.getElementById('cp-caption').value.trim();
     const notes = document.getElementById('cp-notes').value.trim();
-    const platform = document.getElementById('cp-platform').value;
+    const platforms = getSelectedPlatforms();
     const postType = document.getElementById('cp-post-type').value;
     const date = document.getElementById('cp-date').value;
 
-    if (!tov && !caption && !notes && createPostRefFiles.length === 0) {
+    if (!tov && !caption && !notes && createPostRefFiles.length === 0 && platforms.length === 0) {
         document.getElementById('cp-slide-preview').innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Start typing to see preview...</p>';
         return;
     }
@@ -216,7 +232,9 @@ function updateSlidePreview() {
     if (date) {
         html += `<span class="pres-date">${new Date(date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}</span>`;
     }
-    html += `<span class="pres-badge bg-gray-100 text-gray-700">${getPlatformIcon(platform)} ${esc(platform)}</span>`;
+    platforms.forEach(p => {
+        html += `<span class="pres-badge bg-gray-100 text-gray-700">${getPlatformIcon(p)} ${esc(p)}</span>`;
+    });
     html += `<span class="pres-badge bg-gray-100 text-gray-700">${getContentTypeIcon(postType)} ${esc(postType)}</span>`;
     html += '</div>';
 
@@ -289,20 +307,21 @@ async function submitCreatePost(workflowStatus) {
     const editId = document.getElementById('cp-edit-id').value;
     const date = document.getElementById('cp-date').value;
     const time = document.getElementById('cp-time').value || '12:00';
-    const platform = document.getElementById('cp-platform').value;
+    const platforms = getSelectedPlatforms();
     const postType = document.getElementById('cp-post-type').value;
     const tov = document.getElementById('cp-tov').value.trim();
     const caption = document.getElementById('cp-caption').value.trim();
     const notes = document.getElementById('cp-notes').value.trim();
 
     if (!date) { showToast('Please select a date', 'error'); return; }
+    if (platforms.length === 0) { showToast('Please select at least one platform', 'error'); return; }
     if (!tov) { showToast('Please enter text on design / TOV', 'error'); return; }
 
     const scheduledAt = date + 'T' + time + ':00';
 
     const postData = {
         client_id: clientId,
-        platforms: platform,
+        platforms: platforms.join(','),
         post_type: postType,
         topic: tov,
         caption: caption,
@@ -484,7 +503,7 @@ async function editPostInModal(postId) {
 
     document.getElementById('cp-edit-id').value = post.id;
     document.getElementById('create-post-title').textContent = 'Edit Post';
-    document.getElementById('cp-platform').value = post.platforms || 'instagram';
+    setSelectedPlatforms(post.platforms || '');
     document.getElementById('cp-post-type').value = post.post_type || 'post';
     document.getElementById('cp-tov').value = post.topic || '';
     document.getElementById('cp-caption').value = post.caption || '';

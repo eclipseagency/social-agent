@@ -11,7 +11,7 @@
         <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-xs">Name</p><p class="font-semibold" id="cd-name">-</p></div>
         <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-xs">Company</p><p class="font-semibold" id="cd-company">-</p></div>
         <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-xs">Email</p><p class="font-semibold" id="cd-email">-</p></div>
-        <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-xs">Accounts</p><p class="font-semibold" id="cd-accounts">0</p></div>
+        <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-xs">Posts This Month</p><p class="font-semibold" id="cd-posts-count">0</p></div>
     </div>
 </div>
 
@@ -67,20 +67,33 @@
                 <!-- Left: Form -->
                 <div class="create-post-form p-4 space-y-3">
                     <input type="hidden" id="cp-edit-id" value="">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
-                            <input type="date" id="cp-date" class="w-full border rounded-lg px-3 py-2 text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Platform</label>
-                            <select id="cp-platform" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="updateSlidePreview()">
-                                <option value="instagram">Instagram</option>
-                                <option value="linkedin">LinkedIn</option>
-                                <option value="facebook">Facebook</option>
-                                <option value="tiktok">TikTok</option>
-                                <option value="x">X (Twitter)</option>
-                            </select>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+                        <input type="date" id="cp-date" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Platforms</label>
+                        <div class="flex flex-wrap gap-2" id="cp-platforms">
+                            <label class="platform-toggle" data-platform="instagram">
+                                <input type="checkbox" value="instagram" class="hidden" onchange="updateSlidePreview()">
+                                <span><i class="fa-brands fa-instagram mr-1"></i>Instagram</span>
+                            </label>
+                            <label class="platform-toggle" data-platform="facebook">
+                                <input type="checkbox" value="facebook" class="hidden" onchange="updateSlidePreview()">
+                                <span><i class="fa-brands fa-facebook mr-1"></i>Facebook</span>
+                            </label>
+                            <label class="platform-toggle" data-platform="linkedin">
+                                <input type="checkbox" value="linkedin" class="hidden" onchange="updateSlidePreview()">
+                                <span><i class="fa-brands fa-linkedin mr-1"></i>LinkedIn</span>
+                            </label>
+                            <label class="platform-toggle" data-platform="tiktok">
+                                <input type="checkbox" value="tiktok" class="hidden" onchange="updateSlidePreview()">
+                                <span><i class="fa-brands fa-tiktok mr-1"></i>TikTok</span>
+                            </label>
+                            <label class="platform-toggle" data-platform="x">
+                                <input type="checkbox" value="x" class="hidden" onchange="updateSlidePreview()">
+                                <span><i class="fa-brands fa-x-twitter mr-1"></i>X</span>
+                            </label>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
