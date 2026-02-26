@@ -7,14 +7,18 @@
 <div class="mb-4">
     <input type="text" id="user-search" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" placeholder="Search users by name or email..." oninput="filterUsersTable()">
 </div>
+
+<!-- User Cards with Performance -->
+<div id="user-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
+
+<!-- User Table -->
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-    <table class="w-full min-w-[500px]">
+    <table class="w-full min-w-[600px]">
         <thead class="bg-gray-50">
             <tr>
                 <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Username</th>
-                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Email</th>
                 <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Role</th>
-                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Job Title</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">This Month</th>
                 <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Status</th>
                 <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Actions</th>
             </tr>
@@ -63,24 +67,86 @@
 <script>
 const roleLabels = {admin:'Admin',sm_specialist:'SMM Specialist',designer:'Graphic Designer',motion_designer:'Motion Designer',moderator:'Account Moderator'};
 const roleClasses = {admin:'bg-purple-100 text-purple-800',sm_specialist:'bg-green-100 text-green-800',designer:'bg-pink-100 text-pink-800',motion_designer:'bg-orange-100 text-orange-800',moderator:'bg-blue-100 text-blue-800'};
+const roleIcons = {admin:'fa-shield-halved',sm_specialist:'fa-pen-nib',designer:'fa-palette',motion_designer:'fa-film',moderator:'fa-clipboard-check'};
+
+let usersData = [];
+let userStatsData = {};
 
 function pageInit() { loadUsers(); }
 
 async function loadUsers() {
-    const users = await fetch(API_URL + '/users').then(r => r.json());
-    document.getElementById('users-table').innerHTML = users.map(u => `
-        <tr class="border-t hover:bg-gray-50">
-            <td class="px-6 py-4 font-semibold">${esc(u.username)}</td>
-            <td class="px-6 py-4">${esc(u.email)}</td>
-            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-sm ${roleClasses[u.role] || 'bg-gray-100'}">${roleLabels[u.role] || u.role}</span></td>
-            <td class="px-6 py-4 text-sm text-gray-600">${u.job_title ? esc(u.job_title) : '-'}</td>
-            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-sm ${u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
-            <td class="px-6 py-4 flex gap-2">
-                <button onclick="showEditUserModal(${u.id})" class="text-indigo-600 hover:underline"><i class="fa-solid fa-pen"></i></button>
-                ${u.id !== currentUser?.id ? `<button onclick="deleteUser(${u.id})" class="text-red-600 hover:underline"><i class="fa-solid fa-trash"></i></button>` : ''}
+    const [users, stats] = await Promise.all([
+        fetch(API_URL + '/users').then(r => r.json()),
+        fetch(API_URL + '/users/stats').then(r => r.json()).catch(() => ({}))
+    ]);
+    usersData = users;
+    userStatsData = stats;
+    renderUserCards();
+    renderUserTable();
+}
+
+function buildProgressBar(completed, required, label) {
+    if (required === 0 && completed === 0) return '<span class="text-xs text-gray-400">No data</span>';
+    const pct = required > 0 ? Math.min(Math.round((completed / required) * 100), 100) : 100;
+    const barColor = pct >= 100 ? 'bg-green-500' : pct >= 50 ? 'bg-indigo-500' : 'bg-orange-500';
+    const textColor = pct >= 100 ? 'text-green-700' : pct >= 50 ? 'text-indigo-700' : 'text-orange-700';
+    return `<div class="w-full">
+        <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-semibold ${textColor}">${completed}${required > 0 ? ' / ' + required : ''}</span>
+            <span class="text-[10px] text-gray-400">${label}</span>
+        </div>
+        ${required > 0 ? `<div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="${barColor} h-2 rounded-full transition-all" style="width:${pct}%"></div>
+        </div>` : ''}
+    </div>`;
+}
+
+function renderUserCards() {
+    const el = document.getElementById('user-cards');
+    if (!el) return;
+    el.innerHTML = usersData.map(u => {
+        const s = userStatsData[String(u.id)] || { completed: 0, required: 0, label: '' };
+        const icon = roleIcons[u.role] || 'fa-user';
+        const pct = s.required > 0 ? Math.min(Math.round((s.completed / s.required) * 100), 100) : (s.completed > 0 ? 100 : 0);
+        const ringColor = pct >= 100 ? 'text-green-500' : pct >= 50 ? 'text-indigo-500' : 'text-orange-500';
+        return `<div class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition">
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="fa-solid ${icon} ${roleClasses[u.role]?.split(' ')[1] || 'text-gray-600'}"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-sm">${esc(u.username)}</h3>
+                        <span class="text-[11px] px-2 py-0.5 rounded ${roleClasses[u.role] || 'bg-gray-100'}">${roleLabels[u.role] || u.role}</span>
+                    </div>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.is_active ? 'Active' : 'Inactive'}</span>
+            </div>
+            ${u.job_title ? `<p class="text-xs text-gray-500 mb-2">${esc(u.job_title)}</p>` : ''}
+            <div class="mt-2">${buildProgressBar(s.completed, s.required, s.label)}</div>
+        </div>`;
+    }).join('');
+}
+
+function renderUserTable() {
+    document.getElementById('users-table').innerHTML = usersData.map(u => {
+        const s = userStatsData[String(u.id)] || { completed: 0, required: 0, label: '' };
+        return `<tr class="border-t hover:bg-gray-50">
+            <td class="px-4 sm:px-6 py-4">
+                <div class="font-semibold">${esc(u.username)}</div>
+                <div class="text-xs text-gray-400">${esc(u.email)}</div>
             </td>
-        </tr>
-    `).join('');
+            <td class="px-4 sm:px-6 py-4"><span class="px-2 py-1 rounded text-xs ${roleClasses[u.role] || 'bg-gray-100'}">${roleLabels[u.role] || u.role}</span></td>
+            <td class="px-4 sm:px-6 py-4" style="min-width:160px">${buildProgressBar(s.completed, s.required, s.label)}</td>
+            <td class="px-4 sm:px-6 py-4"><span class="px-2 py-1 rounded text-xs ${u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td class="px-4 sm:px-6 py-4">
+                <div class="flex gap-2">
+                    <button onclick="showEditUserModal(${u.id})" class="text-indigo-600 hover:underline"><i class="fa-solid fa-pen"></i></button>
+                    ${u.id !== currentUser?.id ? `<button onclick="deleteUser(${u.id})" class="text-red-600 hover:underline"><i class="fa-solid fa-trash"></i></button>` : ''}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 function showAddUserModal() { document.getElementById('add-user-modal').classList.remove('hidden'); }
@@ -93,8 +159,7 @@ async function addUser() {
 }
 async function deleteUser(id) { if (confirm('Delete this user?')) { const res = await fetch(API_URL + '/users/' + id, { method: 'DELETE', credentials: 'include' }).then(r => r.json()); if (res.success) { loadUsers(); showToast('User deleted', 'success'); } else { alert('Error: ' + (res.error || 'Failed to delete')); } } }
 async function showEditUserModal(id) {
-    const users = await fetch(API_URL + '/users').then(r => r.json());
-    const user = users.find(u => u.id === id);
+    const user = usersData.find(u => u.id === id);
     if (!user) return;
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-username').value = user.username || '';
@@ -114,6 +179,7 @@ async function updateUser() {
 function filterUsersTable() {
     const q = (document.getElementById('user-search')?.value || '').toLowerCase();
     document.querySelectorAll('#users-table tr').forEach(row => { row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+    document.querySelectorAll('#user-cards > div').forEach(card => { card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none'; });
 }
 </script>
 {% endblock %}
