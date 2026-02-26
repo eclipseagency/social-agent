@@ -20,7 +20,40 @@ async function loadClientDetail() {
     document.getElementById('cd-name').textContent = clientData.name || '-';
     document.getElementById('cd-company').textContent = clientData.company || '-';
     document.getElementById('cd-email').textContent = clientData.email || '-';
+
+    // Show brief and content requirements
+    renderBriefSection();
+
     loadClientCalendar();
+}
+
+function renderBriefSection() {
+    const section = document.getElementById('cd-brief-section');
+    if (!section || !clientData) return;
+
+    const hasBrief = clientData.brief_text && clientData.brief_text.trim();
+    const hasReqs = clientData.content_requirements && clientData.content_requirements.trim();
+
+    if (hasBrief || hasReqs) {
+        section.classList.remove('hidden');
+        document.getElementById('cd-brief-text').textContent = clientData.brief_text || 'No brief set';
+
+        const reqsEl = document.getElementById('cd-content-reqs');
+        let reqs = [];
+        try { reqs = JSON.parse(clientData.content_requirements || '[]'); } catch (e) {}
+        if (reqs.length > 0) {
+            reqsEl.innerHTML = reqs.map(r =>
+                `<div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                    <span>${getPlatformIcon(r.platform)} <strong>${r.count}</strong> ${esc(r.type)}${r.count > 1 ? 's' : ''} on ${esc(r.platform)}</span>
+                </div>`
+            ).join('');
+        } else {
+            reqsEl.innerHTML = '<p class="text-gray-400 text-xs italic">No requirements set</p>';
+        }
+    } else {
+        section.classList.add('hidden');
+    }
 }
 
 // ========== CLIENT CALENDAR ==========
@@ -32,6 +65,23 @@ async function loadClientCalendar() {
     if (!data) return;
     clientPostsData = data.posts || [];
     clientCalByDate = data.by_date || {};
+
+    // Role-based filtering: motion_designer only sees video/reel
+    if (currentUser?.role === 'motion_designer') {
+        clientPostsData = clientPostsData.filter(p => ['video', 'reel'].includes((p.post_type || '').toLowerCase()));
+        // Also filter by_date
+        for (const date in clientCalByDate) {
+            clientCalByDate[date] = clientCalByDate[date].filter(p => ['video', 'reel'].includes((p.post_type || '').toLowerCase()));
+        }
+    }
+    // Designer only sees post/story (image-based)
+    if (currentUser?.role === 'designer') {
+        clientPostsData = clientPostsData.filter(p => ['post', 'story'].includes((p.post_type || '').toLowerCase()));
+        for (const date in clientCalByDate) {
+            clientCalByDate[date] = clientCalByDate[date].filter(p => ['post', 'story'].includes((p.post_type || '').toLowerCase()));
+        }
+    }
+
     document.getElementById('cd-posts-count').textContent = clientPostsData.length;
     renderClientCalendar();
 }
@@ -61,6 +111,10 @@ function renderClientCalendar() {
     document.getElementById('client-calendar-month').textContent = clientMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Only SMM and admin can create posts
+    const canCreate = canDo('createPost');
+
     let html = '';
     for (let i = 0; i < firstDay; i++) html += '<div class="bg-gray-50 rounded p-1 min-h-[80px]"></div>';
     for (let day = 1; day <= daysInMonth; day++) {
@@ -69,15 +123,15 @@ function renderClientCalendar() {
         const filtered = filterClientByStatus(dayPosts);
         const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
 
-        html += `<div class="bg-white border rounded-lg p-1 cal-day-cell cal-day-clickable ${isToday ? 'ring-2 ring-indigo-500' : ''}"
+        html += `<div class="bg-white border rounded-lg p-1 cal-day-cell ${canCreate ? 'cal-day-clickable' : ''} ${isToday ? 'ring-2 ring-indigo-500' : ''}"
                       data-date="${dateStr}"
-                      onclick="onDayCellClick(event, '${dateStr}')"
+                      ${canCreate ? `onclick="onDayCellClick(event, '${dateStr}')"` : ''}
                       ondragover="onClientDayDragOver(event)" ondragleave="onClientDayDragLeave(event)" ondrop="onClientDayDrop(event, '${dateStr}')">
             <div class="flex justify-between items-center mb-1">
                 <span class="font-semibold text-xs ${isToday ? 'text-indigo-600' : ''}">${day}</span>
-                <button class="cal-add-btn" onclick="event.stopPropagation(); openCreatePostModal('${dateStr}')" title="Add post">
+                ${canCreate ? `<button class="cal-add-btn" onclick="event.stopPropagation(); openCreatePostModal('${dateStr}')" title="Add post">
                     <i class="fa-solid fa-plus"></i>
-                </button>
+                </button>` : ''}
             </div>
             ${filtered.slice(0, 3).map(p => renderCalendarMiniCard(p)).join('')}
             ${filtered.length > 3 ? `<div class="text-[10px] text-indigo-600 font-semibold text-center cursor-pointer" onclick="event.stopPropagation(); openPostSlideView(${filtered[3].id})">+${filtered.length - 3} more</div>` : ''}
@@ -94,8 +148,8 @@ function changeClientMonth(delta) {
 // ========== DAY CELL CLICK ==========
 
 function onDayCellClick(event, dateStr) {
-    // Don't open create modal if clicking on a mini-card or the + button
     if (event.target.closest('.cal-mini-card') || event.target.closest('.cal-add-btn')) return;
+    if (!canDo('createPost')) return;
     openCreatePostModal(dateStr);
 }
 
@@ -158,7 +212,6 @@ async function uploadClientDesignFiles(postId, files) {
     if (res && res.success) {
         showToast(`${res.urls?.length || 0} design(s) uploaded`, 'success');
         loadClientCalendar();
-        // Refresh slide view if open for same post
         if (slideViewPostId === postId) openPostSlideView(postId);
     }
 }
@@ -191,6 +244,7 @@ function clearSelectedPlatforms() {
 // ========== CREATE POST MODAL ==========
 
 function openCreatePostModal(dateStr) {
+    if (!canDo('createPost')) { showToast('You do not have permission to create posts', 'error'); return; }
     document.getElementById('cp-edit-id').value = '';
     document.getElementById('create-post-title').textContent = 'Create Post';
     document.getElementById('cp-date').value = dateStr || '';
@@ -334,11 +388,9 @@ async function submitCreatePost(workflowStatus) {
     let postId;
 
     if (editId) {
-        // Update existing post
         const res = await apiFetch(`${API_URL}/posts/${editId}`, { method: 'PUT', body: postData });
         if (!res || !res.success) { showToast('Failed to update post', 'error'); return; }
         postId = parseInt(editId);
-        // Transition if not staying as draft
         if (workflowStatus !== 'draft') {
             await apiFetch(`${API_URL}/posts/${postId}/transition`, {
                 method: 'POST',
@@ -346,7 +398,6 @@ async function submitCreatePost(workflowStatus) {
             });
         }
     } else {
-        // Create new post
         const res = await apiFetch(`${API_URL}/clients/${clientId}/posts`, { method: 'POST', body: postData });
         if (!res || res.error) { showToast('Failed to create post', 'error'); return; }
         postId = res.id;
@@ -427,17 +478,25 @@ async function openPostSlideView(postId) {
         body += '</div>';
     }
 
-    // Designer upload zone (conditional: in_design + can upload)
+    // Designer upload zone (conditional: in_design + can upload design)
     if (wf === 'in_design' && canDo('uploadDesign')) {
-        body += `<div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500 mb-4" id="psd-upload-zone"
-                     onclick="document.getElementById('psd-design-input').click()"
-                     ondragover="event.preventDefault(); this.classList.add('dragover')"
-                     ondragleave="this.classList.remove('dragover')"
-                     ondrop="handlePsdDesignDrop(event)">
-            <i class="fa-solid fa-cloud-arrow-up text-2xl mb-1 block text-indigo-400"></i>
-            Drop designs here or click to upload
-        </div>
-        <input type="file" id="psd-design-input" multiple accept="image/*" class="hidden" onchange="uploadPsdDesign(this.files)">`;
+        // Motion designer can only upload for video/reel posts
+        const postType = (post.post_type || '').toLowerCase();
+        const isMotion = currentUser?.role === 'motion_designer';
+        const isDesigner = currentUser?.role === 'designer';
+        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story'].includes(postType));
+
+        if (showUpload) {
+            body += `<div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500 mb-4" id="psd-upload-zone"
+                         onclick="document.getElementById('psd-design-input').click()"
+                         ondragover="event.preventDefault(); this.classList.add('dragover')"
+                         ondragleave="this.classList.remove('dragover')"
+                         ondrop="handlePsdDesignDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-2xl mb-1 block text-indigo-400"></i>
+                Drop designs here or click to upload
+            </div>
+            <input type="file" id="psd-design-input" multiple accept="image/*,video/*" class="hidden" onchange="uploadPsdDesign(this.files)">`;
+        }
     }
 
     // Caption
@@ -473,19 +532,33 @@ function buildPostSlideActions(post) {
     const wf = post.workflow_status || 'draft';
     let actions = '';
 
-    if (wf === 'draft' && (canDo('createPost') || canDo('editCaption'))) {
+    // Draft: SMM/admin can edit and send to designer
+    if (wf === 'draft' && canDo('createPost')) {
         actions += `<button onclick="editPostInModal(${post.id})" class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700"><i class="fa-solid fa-pen mr-1"></i> Edit</button>`;
         actions += `<button onclick="clientTransitionPost(${post.id}, 'in_design')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>`;
     }
+
+    // In Design: designer/motion_designer can upload and submit for review
     if (wf === 'in_design' && canDo('uploadDesign')) {
-        actions += `<button onclick="document.getElementById('psd-design-input')?.click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`;
-        actions += `<button onclick="clientTransitionPost(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>`;
+        const postType = (post.post_type || '').toLowerCase();
+        const isMotion = currentUser?.role === 'motion_designer';
+        const isDesigner = currentUser?.role === 'designer';
+        const showActions = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story'].includes(postType));
+
+        if (showActions) {
+            actions += `<button onclick="document.getElementById('psd-design-input')?.click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`;
+            actions += `<button onclick="clientTransitionPost(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>`;
+        }
     }
+
+    // Design Review: moderator/admin can approve or return
     if (wf === 'design_review' && canDo('approve')) {
         actions += `<button onclick="clientTransitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`;
         actions += `<button onclick="clientReturnToDesign(${post.id})" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Designer</button>`;
         actions += `<button onclick="clientReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>`;
     }
+
+    // Approved: moderator/admin can schedule
     if (wf === 'approved' && canDo('schedule')) {
         actions += `<button onclick="openSchedulePicker(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>`;
     }
@@ -496,6 +569,7 @@ function buildPostSlideActions(post) {
 // ========== EDIT POST IN MODAL ==========
 
 async function editPostInModal(postId) {
+    if (!canDo('createPost')) { showToast('You do not have permission to edit posts', 'error'); return; }
     const post = await apiFetch(`${API_URL}/posts/${postId}`);
     if (!post || post.error) return;
 
@@ -509,7 +583,6 @@ async function editPostInModal(postId) {
     document.getElementById('cp-caption').value = post.caption || '';
     document.getElementById('cp-notes').value = post.brief_notes || '';
 
-    // Parse date/time from scheduled_at
     const sa = post.scheduled_at || '';
     if (sa) {
         document.getElementById('cp-date').value = sa.substring(0, 10);
@@ -519,7 +592,6 @@ async function editPostInModal(postId) {
         document.getElementById('cp-time').value = '12:00';
     }
 
-    // Show existing reference URLs as read-only previews
     createPostRefFiles = [];
     const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
     document.getElementById('cp-ref-previews').innerHTML = refUrls.map(u => `

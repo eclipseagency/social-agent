@@ -66,10 +66,13 @@ def create_client():
     if not name:
         return jsonify({'error': 'Client name required'}), 400
 
+    brief_text = data.get('brief_text', '').strip()
+    content_requirements = data.get('content_requirements', '').strip()
+
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO clients (name, email, company) VALUES (?,?,?)",
-        (name, email or None, company or None)
+        "INSERT INTO clients (name, email, company, brief_text, content_requirements) VALUES (?,?,?,?,?)",
+        (name, email or None, company or None, brief_text, content_requirements)
     )
     db.commit()
     client_id = cursor.lastrowid
@@ -86,7 +89,7 @@ def update_client(client_id):
         db.close()
         return jsonify({'error': 'Client not found'}), 404
 
-    updatable = ['name', 'email', 'company', 'color',
+    updatable = ['name', 'email', 'company', 'color', 'brief_text', 'content_requirements',
                  'assigned_writer_id', 'assigned_designer_id',
                  'assigned_sm_id', 'assigned_motion_id', 'assigned_manager_id']
     fields = []

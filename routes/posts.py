@@ -218,7 +218,7 @@ def change_workflow(post_id):
 # ============ UPLOAD DESIGN ============
 
 @posts_bp.route('/api/posts/<int:post_id>/upload-design', methods=['POST'])
-@require_role('designer', 'motion_editor')
+@require_role('designer', 'motion_designer', 'admin')
 def upload_design(post_id):
     db = get_db()
     post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
@@ -288,7 +288,7 @@ def upload_design(post_id):
 
 
 @posts_bp.route('/api/posts/<int:post_id>/upload-reference', methods=['POST'])
-@require_role('manager', 'sm_specialist', 'copywriter')
+@require_role('admin', 'sm_specialist')
 def upload_reference(post_id):
     """Upload design reference images for a post."""
     db = get_db()
@@ -429,7 +429,7 @@ def add_post_comment(post_id):
 # ============ CREATE POST (expanded with brief fields) ============
 
 @posts_bp.route('/api/clients/<int:client_id>/posts', methods=['POST'])
-@require_role('manager', 'sm_specialist', 'copywriter')
+@require_role('admin', 'sm_specialist')
 def create_post(client_id):
     data = request.json or {}
     db = get_db()
@@ -989,7 +989,7 @@ def calendar_posts():
 # ============ RESCHEDULE (drag-and-drop) ============
 
 @posts_bp.route('/api/posts/<int:post_id>/reschedule', methods=['PUT'])
-@require_role('manager', 'sm_specialist')
+@require_role('admin', 'sm_specialist')
 def reschedule_post(post_id):
     """Reschedule a post to a new date/time (for calendar drag-and-drop)."""
     data = request.json or {}
@@ -1094,7 +1094,7 @@ def get_publish_status(post_id):
 
 
 @posts_bp.route('/api/posts/<int:post_id>', methods=['DELETE'])
-@require_role('manager')
+@require_role('admin')
 def delete_post(post_id):
     db = get_db()
     db.execute("DELETE FROM post_comments WHERE post_id=?", (post_id,))

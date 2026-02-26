@@ -2,24 +2,23 @@
 {% block content %}
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
     <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-building text-indigo-600 mr-2"></i>Accounts</h2>
-    <button onclick="showAddClientModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm w-full sm:w-auto"><i class="fa-solid fa-plus mr-1"></i> Add Account</button>
+    <button onclick="showAddClientModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm w-full sm:w-auto" data-perm="manageClients"><i class="fa-solid fa-plus mr-1"></i> Add Account</button>
 </div>
 <div class="mb-4">
-    <input type="text" id="client-search" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" placeholder="Search accounts by name, company, or email..." oninput="filterClientsTable()">
+    <input type="text" id="client-search" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" placeholder="Search accounts by name or company..." oninput="filterClientsTable()">
 </div>
 
-<!-- Client Cards with Coverage (Phase 4) -->
+<!-- Account Cards -->
 <div id="client-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
 
-<!-- Client Table -->
+<!-- Account Table -->
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
     <table class="w-full min-w-[500px]">
         <thead class="bg-gray-50">
             <tr>
                 <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Account Name</th>
                 <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Company</th>
-                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600 hidden sm:table-cell">Email</th>
-                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Accounts</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600 hidden sm:table-cell">Brief</th>
                 <th class="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-600">Actions</th>
             </tr>
         </thead>
@@ -29,13 +28,34 @@
 {% endblock %}
 
 {% block modals %}
-<!-- Add Client Modal -->
-<div id="add-client-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideAddClientModal()">
-    <div class="bg-white rounded-xl p-6 w-[90%] sm:w-96 max-w-md shadow-2xl">
+<!-- Add Account Modal (admin only) -->
+<div id="add-client-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hideAddClientModal()">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
         <h3 class="text-xl font-bold mb-4">New Account</h3>
         <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Account Name *</label><input type="text" id="client-name" class="w-full border rounded-lg px-4 py-2"></div>
-        <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Email</label><input type="email" id="client-email" class="w-full border rounded-lg px-4 py-2"></div>
         <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Company</label><input type="text" id="client-company" class="w-full border rounded-lg px-4 py-2"></div>
+        <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Email</label><input type="email" id="client-email" class="w-full border rounded-lg px-4 py-2"></div>
+        <div class="mb-4">
+            <label class="block text-gray-700 mb-2 text-sm">Account Brief</label>
+            <textarea id="client-brief" class="w-full border rounded-lg px-4 py-2 text-sm" rows="3" placeholder="Brand guidelines, tone, target audience..."></textarea>
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-700 mb-2 text-sm font-semibold">Content Requirements (per month)</label>
+            <div class="space-y-3 mt-2" id="content-req-rows">
+                <div class="flex items-center gap-2 flex-wrap content-req-row">
+                    <select class="cr-platform border rounded-lg px-2 py-1 text-sm">
+                        <option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="x">X</option>
+                    </select>
+                    <select class="cr-type border rounded-lg px-2 py-1 text-sm">
+                        <option value="post">Post</option><option value="story">Story</option><option value="reel">Reel</option><option value="video">Video</option>
+                    </select>
+                    <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="1" placeholder="#">
+                    <span class="text-xs text-gray-400">/ month</span>
+                    <button onclick="this.closest('.content-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
+                </div>
+            </div>
+            <button onclick="addContentReqRow()" class="text-indigo-600 text-xs mt-2"><i class="fa-solid fa-plus mr-1"></i>Add requirement</button>
+        </div>
         <div class="flex gap-4">
             <button onclick="addClient()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg">Add Account</button>
             <button onclick="hideAddClientModal()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg">Cancel</button>

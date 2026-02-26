@@ -72,16 +72,18 @@ function getOfficialPlatformIcon(platform) {
 // === Role Permissions ===
 // Workflow: draft → in_design → design_review → approved → scheduled → posted
 // Manager: assigns team members to clients, reviews designs in design_review, approves or sends back
-// Copywriter: creates post in draft, writes caption/text/brief, uploads references, sends to designer
-// Designer/Motion Editor: executes design, uploads files, submits for review
-// SM Specialist: schedules approved posts, monitors publishing
+// Roles:
+// Admin: manages accounts, team, sets requirements/brief, full access
+// SMM Specialist: creates posts on calendar, writes TOV/caption, uploads references, views designs
+// Designer: views image posts (post/story), uploads designs, views brief. Cannot create posts.
+// Motion Designer: same as designer but only sees video/reel content. Uploads motion designs.
+// Moderator: approves designs, schedules posts, shares with client. Final approval role.
 const ROLE_PERMISSIONS = {
-    admin:         { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, manageRules: true },
-    manager:       { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: true, schedule: false, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, manageRules: true },
-    sm_specialist: { createPost: true, editCaption: true, uploadDesign: false, uploadRef: false, approve: false, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
-    copywriter:    { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true, manageRules: false },
-    designer:      { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
-    motion_editor: { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: false, manageRules: false },
+    admin:            { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, viewClients: true },
+    sm_specialist:    { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: false, schedule: false, viewAll: true, manageTeam: false, manageClients: false, viewClients: true },
+    designer:         { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true },
+    motion_designer:  { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true },
+    moderator:        { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true },
 };
 
 function canDo(action) {
@@ -157,8 +159,8 @@ function checkAuth() {
             // Role badge
             const roleBadge = document.getElementById('user-role-badge');
             if (roleBadge) {
-                const roleLabels = { admin: 'Admin', manager: 'Manager', sm_specialist: 'Moderator', copywriter: 'Copywriter', designer: 'Designer', motion_editor: 'Motion Editor' };
-                const roleColors = { admin: 'bg-red-500/20 text-red-300', manager: 'bg-green-500/20 text-green-300', sm_specialist: 'bg-blue-500/20 text-blue-300', copywriter: 'bg-yellow-500/20 text-yellow-300', designer: 'bg-purple-500/20 text-purple-300', motion_editor: 'bg-pink-500/20 text-pink-300' };
+                const roleLabels = { admin: 'Admin', sm_specialist: 'SMM Specialist', designer: 'Graphic Designer', motion_designer: 'Motion Designer', moderator: 'Account Moderator' };
+                const roleColors = { admin: 'bg-red-500/20 text-red-300', sm_specialist: 'bg-green-500/20 text-green-300', designer: 'bg-purple-500/20 text-purple-300', motion_designer: 'bg-orange-500/20 text-orange-300', moderator: 'bg-blue-500/20 text-blue-300' };
                 const r = currentUser.role || 'user';
                 roleBadge.textContent = roleLabels[r] || r;
                 roleBadge.className = `inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 mb-4 ${roleColors[r] || 'bg-slate-500/20 text-slate-300'}`;
@@ -171,6 +173,13 @@ function checkAuth() {
             // Role-based nav filtering
             document.querySelectorAll('[data-nav-perm]').forEach(el => {
                 const perm = el.getAttribute('data-nav-perm');
+                if (perm && !canDo(perm)) {
+                    el.style.display = 'none';
+                }
+            });
+            // Role-based element visibility
+            document.querySelectorAll('[data-perm]').forEach(el => {
+                const perm = el.getAttribute('data-perm');
                 if (perm && !canDo(perm)) {
                     el.style.display = 'none';
                 }

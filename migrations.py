@@ -197,6 +197,16 @@ def run_migrations():
         _migration_17_add_manager(db)
         set_schema_version(db, 17)
 
+    if version < 18:
+        print("Running migration 18: Add brief and content requirements to clients...")
+        _migration_18_client_brief_requirements(db)
+        set_schema_version(db, 18)
+
+    if version < 19:
+        print("Running migration 19: Reset all data to empty...")
+        _migration_19_reset_data(db)
+        set_schema_version(db, 19)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -472,6 +482,32 @@ def _migration_17_add_manager(db):
         db.execute("ALTER TABLE clients ADD COLUMN assigned_manager_id INTEGER REFERENCES users(id)")
     if not column_exists(db, 'scheduled_posts', 'assigned_manager_id'):
         db.execute("ALTER TABLE scheduled_posts ADD COLUMN assigned_manager_id INTEGER REFERENCES users(id)")
+    db.commit()
+
+
+def _migration_18_client_brief_requirements(db):
+    """Add brief_text and content_requirements to clients."""
+    if not column_exists(db, 'clients', 'brief_text'):
+        db.execute("ALTER TABLE clients ADD COLUMN brief_text TEXT DEFAULT ''")
+    if not column_exists(db, 'clients', 'content_requirements'):
+        db.execute("ALTER TABLE clients ADD COLUMN content_requirements TEXT DEFAULT ''")
+    db.commit()
+
+
+def _migration_19_reset_data(db):
+    """Reset all data tables to empty, keeping only the admin user."""
+    # Clear all content data
+    tables_to_clear = [
+        'workflow_history', 'post_comments', 'post_logs', 'brief_posts',
+        'task_comments', 'tasks', 'notifications', 'notification_settings',
+        'client_posting_rules', 'content_briefs', 'accounts',
+        'scheduled_posts', 'clients'
+    ]
+    for table in tables_to_clear:
+        if table_exists(db, table):
+            db.execute(f"DELETE FROM {table}")
+    # Clear non-admin users
+    db.execute("DELETE FROM users WHERE role != 'admin'")
     db.commit()
 
 
