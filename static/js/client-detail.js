@@ -6,6 +6,10 @@ let clientCalByDate = {};
 let clientDetailPost = null;
 let clientDraggedPostId = null;
 let clientStatusFilter = '';
+let presMonth = new Date();
+let presPosts = [];
+let presCurrentIndex = 0;
+let presIsFullscreen = false;
 
 function pageInit() {
     loadClientDetail();
@@ -88,12 +92,13 @@ async function saveClientAssignments() {
 }
 
 function showClientTab(tab) {
-    ['pipeline', 'calendar', 'accounts', 'rules'].forEach(t => {
+    ['pipeline', 'calendar', 'accounts', 'rules', 'presentation'].forEach(t => {
         document.getElementById('client-tab-' + t)?.classList.toggle('active', t === tab);
         document.getElementById('tab-' + t)?.classList.toggle('active', t === tab);
     });
     if (tab === 'calendar') loadClientCalendar();
     if (tab === 'pipeline') loadClientPipeline();
+    if (tab === 'presentation') loadPresentation();
 }
 
 const PIPELINE_LABELS = {
@@ -388,6 +393,14 @@ async function openClientPostDetail(postId) {
 function closeClientPostDetail() {
     document.getElementById('client-post-detail-modal').classList.add('hidden');
     clientDetailPost = null;
+    // If presentation tab is active, refresh data while preserving slide index
+    if (document.getElementById('client-tab-presentation')?.classList.contains('active')) {
+        const savedIndex = presCurrentIndex;
+        loadPresentation().then(() => {
+            presCurrentIndex = Math.min(savedIndex, presPosts.length - 1);
+            if (presPosts.length > 0) renderPresSlide();
+        });
+    }
 }
 
 // ========== CLIENT CAPTION SAVE ==========
@@ -719,3 +732,190 @@ async function saveAccount() {
     loadClientDetail();
     showToast('Account linked', 'success');
 }
+
+// ========== PRESENTATION VIEW ==========
+
+async function loadPresentation() {
+    const year = presMonth.getFullYear();
+    const month = presMonth.getMonth() + 1;
+    document.getElementById('pres-month-label').textContent = presMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const data = await apiFetch(`${API_URL}/posts/calendar?year=${year}&month=${month}&client_id=${clientId}&include_unscheduled=1`);
+    if (!data) { presPosts = []; }
+    else {
+        const posts = data.posts || [];
+        posts.sort((a, b) => {
+            const da = a.scheduled_at || a.created_at || '';
+            const db = b.scheduled_at || b.created_at || '';
+            return da.localeCompare(db);
+        });
+        presPosts = posts;
+    }
+
+    presCurrentIndex = 0;
+    if (presPosts.length > 0) {
+        document.getElementById('pres-slide-content').classList.remove('hidden');
+        document.getElementById('pres-empty-state').classList.add('hidden');
+        renderPresSlide();
+    } else {
+        document.getElementById('pres-slide-content').innerHTML = '';
+        document.getElementById('pres-slide-content').classList.add('hidden');
+        document.getElementById('pres-empty-state').classList.remove('hidden');
+        document.getElementById('pres-slide-counter').textContent = '0 / 0';
+        document.getElementById('pres-dots').innerHTML = '';
+        document.getElementById('pres-prev-btn').disabled = true;
+        document.getElementById('pres-next-btn').disabled = true;
+    }
+}
+
+function changePresMonth(delta) {
+    presMonth.setMonth(presMonth.getMonth() + delta);
+    loadPresentation();
+}
+
+function renderPresSlide() {
+    if (presPosts.length === 0) return;
+    const post = presPosts[presCurrentIndex];
+    const status = getPostStatus(post);
+    const color = getStatusColor(status);
+    const dateStr = post.scheduled_at || post.created_at || '';
+    const dateObj = dateStr ? new Date(dateStr) : null;
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const formattedDate = dateObj ? `${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${dayNames[dateObj.getDay()]}` : 'Unscheduled';
+
+    const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
+    const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
+
+    let html = `<div onclick="openClientPostDetail(${post.id})" style="cursor:pointer">`;
+
+    // Header
+    html += `<div class="pres-slide-header">`;
+    html += `<span class="pres-badge text-white" style="background:${color}">${esc(status)}</span>`;
+    if (post.post_type) html += `<span class="pres-badge bg-gray-100 text-gray-700">${getContentTypeIcon(post.post_type)} ${esc(post.post_type)}</span>`;
+    if (post.platforms) html += `<span class="pres-badge ${getPlatformBgClass(post.platforms)}">${getPlatformIcon(post.platforms)} ${esc(post.platforms)}</span>`;
+    if (post.dimensions) html += `<span class="pres-badge bg-gray-100 text-gray-600">${esc(post.dimensions)}</span>`;
+    html += `<span class="pres-date">${esc(formattedDate)}</span>`;
+    html += `</div>`;
+
+    // TOV / Topic block
+    if (post.topic) {
+        html += `<div class="pres-tov-block">`;
+        html += `<div class="pres-tov-label">Text on Design / Topic</div>`;
+        html += `<div>${esc(post.topic)}</div>`;
+        html += `</div>`;
+    }
+
+    // Design References
+    if (refUrls.length > 0) {
+        html += `<div class="pres-images-grid">`;
+        html += `<div class="pres-img-label">Design References</div>`;
+        refUrls.forEach(u => {
+            const url = u.trim();
+            html += `<img class="pres-ref-img" src="${url}" alt="Reference" onclick="event.stopPropagation(); window.open('${url}','_blank')">`;
+        });
+        html += `</div>`;
+    }
+
+    // Design Output
+    if (designUrls.length > 0) {
+        html += `<div class="pres-images-grid">`;
+        html += `<div class="pres-img-label">Design Output</div>`;
+        designUrls.forEach(u => {
+            const url = u.trim();
+            html += `<img class="pres-design-img" src="${url}" alt="Design" onclick="event.stopPropagation(); window.open('${url}','_blank')">`;
+        });
+        html += `</div>`;
+    }
+
+    // Caption block
+    if (post.caption) {
+        html += `<div class="pres-caption-block">`;
+        html += `<div class="pres-caption-label">Caption</div>`;
+        html += `<div>${esc(post.caption)}</div>`;
+        html += `</div>`;
+    }
+
+    // Notes for Designer
+    if (post.brief_notes) {
+        html += `<div class="pres-notes-block">`;
+        html += `<div class="pres-notes-label">Notes for Designer</div>`;
+        html += `<div>${esc(post.brief_notes)}</div>`;
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+
+    // Apply animation
+    const container = document.getElementById('pres-slide-container');
+    container.style.animation = 'none';
+    container.offsetHeight; // trigger reflow
+    container.style.animation = '';
+
+    document.getElementById('pres-slide-content').innerHTML = html;
+    document.getElementById('pres-slide-content').classList.remove('hidden');
+    document.getElementById('pres-empty-state').classList.add('hidden');
+
+    // Update counter
+    document.getElementById('pres-slide-counter').textContent = `${presCurrentIndex + 1} / ${presPosts.length}`;
+
+    // Update nav buttons
+    document.getElementById('pres-prev-btn').disabled = presCurrentIndex === 0;
+    document.getElementById('pres-next-btn').disabled = presCurrentIndex === presPosts.length - 1;
+
+    renderPresDots();
+}
+
+function presNavigate(direction) {
+    const newIndex = presCurrentIndex + direction;
+    if (newIndex < 0 || newIndex >= presPosts.length) return;
+    presCurrentIndex = newIndex;
+    renderPresSlide();
+}
+
+function renderPresDots() {
+    const container = document.getElementById('pres-dots');
+    if (presPosts.length > 30) { container.innerHTML = ''; return; }
+    container.innerHTML = presPosts.map((_, i) =>
+        `<div class="pres-dot ${i === presCurrentIndex ? 'active' : ''}" onclick="presGoToSlide(${i})"></div>`
+    ).join('');
+}
+
+function presGoToSlide(index) {
+    if (index < 0 || index >= presPosts.length) return;
+    presCurrentIndex = index;
+    renderPresSlide();
+}
+
+function togglePresFullscreen() {
+    const wrapper = document.getElementById('client-tab-presentation')?.querySelector('.bg-white');
+    if (!wrapper) return;
+    if (presIsFullscreen) {
+        wrapper.classList.remove('pres-fullscreen');
+        presIsFullscreen = false;
+    } else {
+        wrapper.classList.add('pres-fullscreen');
+        presIsFullscreen = true;
+    }
+}
+
+// Keyboard navigation for presentation
+document.addEventListener('keydown', function(e) {
+    // Only active when presentation tab is visible
+    if (!document.getElementById('client-tab-presentation')?.classList.contains('active')) return;
+    // Don't capture keys when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        presNavigate(-1); // RTL: Right = previous
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        presNavigate(1); // RTL: Left = next
+    } else if (e.key === 'Escape' && presIsFullscreen) {
+        e.preventDefault();
+        togglePresFullscreen();
+    } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        togglePresFullscreen();
+    }
+});

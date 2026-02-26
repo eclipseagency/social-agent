@@ -51,6 +51,7 @@
     <button onclick="showClientTab('calendar')" class="tab-btn" id="tab-calendar">Calendar</button>
     <button onclick="showClientTab('accounts')" class="tab-btn" id="tab-accounts">Accounts</button>
     <button onclick="showClientTab('rules')" class="tab-btn" id="tab-rules">Posting Rules</button>
+    <button onclick="showClientTab('presentation')" class="tab-btn" id="tab-presentation"><i class="fa-solid fa-tv mr-1"></i> Presentation</button>
 </div>
 
 <div id="client-tab-pipeline" class="tab-content active">
@@ -100,6 +101,34 @@
 </div>
 <div id="client-tab-rules" class="tab-content">
     <div id="client-rules-content"></div>
+</div>
+<div id="client-tab-presentation" class="tab-content">
+    <div class="bg-white rounded-xl shadow-sm p-3 sm:p-6">
+        <!-- Toolbar -->
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+            <button onclick="changePresMonth(-1)" class="bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300 transition"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="pres-month-label" class="bg-white px-4 py-1 rounded-lg font-semibold text-sm"></span>
+            <button onclick="changePresMonth(1)" class="bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300 transition"><i class="fa-solid fa-chevron-right"></i></button>
+            <span class="flex-1"></span>
+            <span id="pres-slide-counter" class="text-sm text-gray-500 font-semibold"></span>
+            <button onclick="togglePresFullscreen()" class="bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300 transition" title="Fullscreen (F)"><i class="fa-solid fa-expand"></i></button>
+        </div>
+        <!-- Slide viewport -->
+        <div class="pres-viewport" id="pres-viewport">
+            <button class="pres-nav-arrow pres-nav-prev" onclick="presNavigate(-1)" id="pres-prev-btn" title="Previous (→)"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="pres-slide-container" id="pres-slide-container" dir="rtl">
+                <div id="pres-slide-content"></div>
+                <div id="pres-empty-state" class="hidden text-center py-16 text-gray-400">
+                    <i class="fa-solid fa-rectangle-list text-5xl mb-4 block"></i>
+                    <p class="text-lg font-semibold">No posts this month</p>
+                    <p class="text-sm mt-1">Switch to another month or create new posts</p>
+                </div>
+            </div>
+            <button class="pres-nav-arrow pres-nav-next" onclick="presNavigate(1)" id="pres-next-btn" title="Next (←)"><i class="fa-solid fa-chevron-left"></i></button>
+        </div>
+        <!-- Dot navigation -->
+        <div class="flex justify-center mt-3 flex-wrap gap-1" id="pres-dots"></div>
+    </div>
 </div>
 {% endblock %}
 
