@@ -45,68 +45,45 @@
             <p id="user-job-title" class="text-slate-500 text-xs hidden"></p>
             <span id="user-role-badge" class="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 mb-4"></span>
 
-            <!-- Main Navigation — 6 items (reordered: My Tasks → Calendar → Clients → New Post → Tasks → Settings) -->
+            <!-- Main Navigation — Workflow steps -->
+            <p class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider px-3 mb-1">Workflow</p>
             <nav class="space-y-1">
-                <a href="/"
-                   class="sidebar-link {% if active_page == 'overview' %}active{% endif %}">
-                    <i class="fa-solid fa-user-check w-5 text-center"></i> My Tasks
-                </a>
-                <a href="/calendar"
-                   class="sidebar-link {% if active_page == 'calendar' %}active{% endif %}">
-                    <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendar
-                </a>
                 <a href="/clients" data-nav-perm="viewClients"
                    class="sidebar-link {% if active_page == 'clients' %}active{% endif %}">
                     <i class="fa-solid fa-users w-5 text-center"></i> Clients
                 </a>
-                <a href="/new-post" data-nav-perm="createPost"
-                   class="sidebar-link {% if active_page == 'new-post' %}active{% endif %}">
-                    <i class="fa-solid fa-pen-to-square w-5 text-center"></i> New Post
+                <a href="/calendar"
+                   class="sidebar-link {% if active_page == 'calendar' %}active{% endif %}">
+                    <i class="fa-solid fa-calendar-days w-5 text-center"></i> Content Calendar
                 </a>
-                <a href="/tasks" data-nav-perm="createPost"
-                   class="sidebar-link {% if active_page == 'tasks' %}active{% endif %}">
-                    <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Tasks
+                <a href="/"
+                   class="sidebar-link {% if active_page == 'overview' %}active{% endif %}">
+                    <i class="fa-solid fa-clipboard-check w-5 text-center"></i> My Tasks
                 </a>
-                <a href="/settings"
-                   class="sidebar-link {% if active_page == 'settings' %}active{% endif %}">
-                    <i class="fa-solid fa-gear w-5 text-center"></i> Settings
+                <a href="/notifications"
+                   class="sidebar-link relative {% if active_page == 'notifications' %}active{% endif %}">
+                    <i class="fa-solid fa-bell w-5 text-center"></i> Notifications <span id="sidebar-notif-badge" class="notif-badge hidden">0</span>
                 </a>
             </nav>
 
-            <!-- More section — collapsible -->
+            <!-- Admin section — collapsible -->
             <div class="mt-4">
-                <button onclick="document.getElementById('sidebar-more').classList.toggle('hidden')" class="flex items-center justify-between w-full text-slate-500 text-xs font-semibold uppercase tracking-wider px-3 py-2 hover:text-slate-300 transition">
-                    <span>More</span>
+                <button onclick="document.getElementById('sidebar-more').classList.toggle('hidden')" class="flex items-center justify-between w-full text-slate-500 text-[10px] font-semibold uppercase tracking-wider px-3 py-2 hover:text-slate-300 transition">
+                    <span>Admin</span>
                     <i class="fa-solid fa-chevron-down text-[10px]"></i>
                 </button>
                 <div id="sidebar-more" class="space-y-1 hidden">
-                    <a href="/pipeline" data-nav-perm="viewAll"
-                       class="sidebar-link {% if active_page == 'pipeline' %}active{% endif %}">
-                        <i class="fa-solid fa-arrows-spin w-5 text-center"></i> Pipeline
+                    <a href="/team" id="users-nav" data-nav-perm="manageTeam"
+                       class="sidebar-link {% if active_page == 'team' %}active{% endif %}">
+                        <i class="fa-solid fa-user-gear w-5 text-center"></i> Team
                     </a>
                     <a href="/analytics" data-nav-perm="viewAll"
                        class="sidebar-link {% if active_page == 'analytics' %}active{% endif %}">
                         <i class="fa-solid fa-chart-bar w-5 text-center"></i> Analytics
                     </a>
-                    <a href="/scheduled" data-nav-perm="viewAll"
-                       class="sidebar-link {% if active_page == 'scheduled' %}active{% endif %}">
-                        <i class="fa-solid fa-clock w-5 text-center"></i> Scheduled
-                    </a>
-                    <a href="/team" id="users-nav" data-nav-perm="manageTeam"
-                       class="sidebar-link {% if active_page == 'team' %}active{% endif %}">
-                        <i class="fa-solid fa-user-gear w-5 text-center"></i> Team
-                    </a>
-                    <a href="/briefs" data-nav-perm="viewAll"
-                       class="sidebar-link {% if active_page == 'briefs' %}active{% endif %}">
-                        <i class="fa-solid fa-file-lines w-5 text-center"></i> Briefs
-                    </a>
-                    <a href="/reports" data-nav-perm="viewAll"
-                       class="sidebar-link {% if active_page == 'reports' %}active{% endif %}">
-                        <i class="fa-solid fa-chart-bar w-5 text-center"></i> Reports
-                    </a>
-                    <a href="/notifications"
-                       class="sidebar-link relative {% if active_page == 'notifications' %}active{% endif %}">
-                        <i class="fa-solid fa-bell w-5 text-center"></i> Notifications <span id="sidebar-notif-badge" class="notif-badge hidden">0</span>
+                    <a href="/settings"
+                       class="sidebar-link {% if active_page == 'settings' %}active{% endif %}">
+                        <i class="fa-solid fa-gear w-5 text-center"></i> Settings
                     </a>
                 </div>
             </div>
@@ -129,33 +106,30 @@
 
     <!-- Mobile Bottom Nav Bar -->
     <nav class="bottom-nav">
-        <a href="/" class="bottom-nav-item {% if active_page == 'overview' %}active{% endif %}">
-            <div class="bottom-nav-icon">
-                <i class="fa-solid fa-user-check"></i>
-            </div>
-            <span>My Tasks</span>
-        </a>
-        <a href="/calendar" class="bottom-nav-item {% if active_page == 'calendar' %}active{% endif %}">
-            <div class="bottom-nav-icon">
-                <i class="fa-solid fa-calendar"></i>
-            </div>
-            <span>Calendar</span>
-        </a>
-        <a href="/new-post" class="bottom-nav-create" data-nav-perm="createPost">
-            <i class="fa-solid fa-plus"></i>
-        </a>
         <a href="/clients" class="bottom-nav-item {% if active_page == 'clients' %}active{% endif %}" data-nav-perm="viewClients">
             <div class="bottom-nav-icon">
                 <i class="fa-solid fa-users"></i>
             </div>
             <span>Clients</span>
         </a>
-        <button onclick="toggleMobileMenu()" class="bottom-nav-item">
+        <a href="/calendar" class="bottom-nav-item {% if active_page == 'calendar' %}active{% endif %}">
             <div class="bottom-nav-icon">
-                <i class="fa-solid fa-grip-lines"></i>
+                <i class="fa-solid fa-calendar-days"></i>
             </div>
-            <span>More</span>
-        </button>
+            <span>Calendar</span>
+        </a>
+        <a href="/" class="bottom-nav-item {% if active_page == 'overview' %}active{% endif %}">
+            <div class="bottom-nav-icon">
+                <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <span>Tasks</span>
+        </a>
+        <a href="/notifications" class="bottom-nav-item {% if active_page == 'notifications' %}active{% endif %}">
+            <div class="bottom-nav-icon">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <span>Alerts</span>
+        </a>
     </nav>
 
     <!-- Toast Container -->

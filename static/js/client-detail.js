@@ -328,7 +328,7 @@ async function submitCreatePost(workflowStatus) {
         brief_notes: notes,
         scheduled_at: scheduledAt,
         workflow_status: workflowStatus,
-        user_id: currentUser?.id || 1,
+        created_by_id: currentUser?.id || 1,
     };
 
     let postId;
@@ -347,9 +347,9 @@ async function submitCreatePost(workflowStatus) {
         }
     } else {
         // Create new post
-        const res = await apiFetch(`${API_URL}/posts`, { method: 'POST', body: postData });
+        const res = await apiFetch(`${API_URL}/clients/${clientId}/posts`, { method: 'POST', body: postData });
         if (!res || res.error) { showToast('Failed to create post', 'error'); return; }
-        postId = res.id || res.post_id;
+        postId = res.id;
     }
 
     // Step 2: Upload reference images if any
