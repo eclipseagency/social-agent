@@ -15,202 +15,147 @@
     </div>
 </div>
 
-<!-- Team Assignments -->
-<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-    <h3 class="font-semibold text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-users text-indigo-600"></i> Team Assignments</h3>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="client-assignments-grid">
-        <div>
-            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-user-tie text-green-500 mr-1"></i>Manager</label>
-            <select id="ca-manager" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
-        </div>
-        <div>
-            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-pen-nib text-yellow-500 mr-1"></i>Copywriter</label>
-            <select id="ca-writer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
-        </div>
-        <div>
-            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-paintbrush text-purple-500 mr-1"></i>Designer</label>
-            <select id="ca-designer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
-        </div>
-        <div>
-            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-bullhorn text-blue-500 mr-1"></i>SM Specialist</label>
-            <select id="ca-sm" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
-        </div>
-        <div>
-            <label class="block text-xs text-gray-500 mb-1"><i class="fa-solid fa-film text-red-500 mr-1"></i>Motion Editor</label>
-            <select id="ca-motion" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- None --</option></select>
-        </div>
+<!-- Calendar (main content) -->
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-6">
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+        <select id="client-cal-status-filter" onchange="applyClientStatusFilter()" class="border rounded-lg px-3 py-1 text-sm">
+            <option value="">All Statuses</option>
+            <option value="Needs Design">Needs Design</option>
+            <option value="Needs Caption">Needs Caption</option>
+            <option value="Design Review">Design Review</option>
+            <option value="Ready">Ready</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Posted">Posted</option>
+        </select>
+        <button onclick="changeClientMonth(-1)" class="bg-gray-200 px-3 py-1 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
+        <span id="client-calendar-month" class="bg-white px-4 py-1 rounded-lg font-semibold text-sm"></span>
+        <button onclick="changeClientMonth(1)" class="bg-gray-200 px-3 py-1 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
-    <button onclick="saveClientAssignments()" class="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
-        <i class="fa-solid fa-save mr-1"></i> Save Assignments
-    </button>
-</div>
-
-<!-- Sub-tabs -->
-<div class="flex gap-2 mb-6 flex-wrap">
-    <button onclick="showClientTab('pipeline')" class="tab-btn active" id="tab-pipeline">Pipeline</button>
-    <button onclick="showClientTab('calendar')" class="tab-btn" id="tab-calendar">Calendar</button>
-    <button onclick="showClientTab('accounts')" class="tab-btn" id="tab-accounts">Accounts</button>
-    <button onclick="showClientTab('rules')" class="tab-btn" id="tab-rules">Posting Rules</button>
-    <button onclick="showClientTab('presentation')" class="tab-btn" id="tab-presentation"><i class="fa-solid fa-tv mr-1"></i> Presentation</button>
-</div>
-
-<div id="client-tab-pipeline" class="tab-content active">
-    <div class="kanban-board" id="client-pipeline-board"></div>
-</div>
-<div id="client-tab-calendar" class="tab-content">
-    <div class="bg-white rounded-xl shadow-sm p-3 sm:p-6">
-        <div class="flex flex-wrap items-center gap-2 mb-3">
-            <select id="client-cal-status-filter" onchange="applyClientStatusFilter()" class="border rounded-lg px-3 py-1 text-sm">
-                <option value="">All Statuses</option>
-                <option value="Needs Design">Needs Design</option>
-                <option value="Needs Caption">Needs Caption</option>
-                <option value="Design Review">Design Review</option>
-                <option value="Ready">Ready</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Posted">Posted</option>
-            </select>
-            <button onclick="changeClientMonth(-1)" class="bg-gray-200 px-3 py-1 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
-            <span id="client-calendar-month" class="bg-white px-4 py-1 rounded-lg font-semibold text-sm"></span>
-            <button onclick="changeClientMonth(1)" class="bg-gray-200 px-3 py-1 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-        <!-- Status legend -->
-        <div class="cal-status-legend mb-3">
-            <span class="legend-item"><span class="legend-dot" style="background:#f97316"></span> Needs Design</span>
-            <span class="legend-item"><span class="legend-dot" style="background:#eab308"></span> Needs Caption</span>
-            <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span> Design Review</span>
-            <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> Ready</span>
-            <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> Scheduled</span>
-            <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span> Posted</span>
-        </div>
-        <div class="grid grid-cols-7 gap-1 mb-2">
-            <div class="text-center font-semibold text-gray-600 py-1 text-xs">Sun</div>
-            <div class="text-center font-semibold text-gray-600 py-1 text-xs">Mon</div>
-            <div class="text-center font-semibold text-gray-600 py-1 text-xs">Tue</div>
-            <div class="text-center font-semibold text-gray-600 py-1 text-xs">Wed</div>
-            <div class="text-center font-semibold text-gray-600 py-1 text-xs">Thu</div>
-            <div class="text-center font-semibold text-gray-600 py-1 text-xs">Fri</div>
-            <div class="text-center font-semibold text-gray-600 py-1 text-xs">Sat</div>
-        </div>
-        <div id="client-calendar-grid" class="grid grid-cols-7 gap-1"></div>
+    <!-- Status legend -->
+    <div class="cal-status-legend mb-3">
+        <span class="legend-item"><span class="legend-dot" style="background:#f97316"></span> Needs Design</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#eab308"></span> Needs Caption</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span> Design Review</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> Ready</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> Scheduled</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span> Posted</span>
     </div>
-    <input type="file" id="client-cal-file-input" multiple accept="image/*,video/*" class="hidden">
-</div>
-<div id="client-tab-accounts" class="tab-content">
-    <div id="client-accounts-list" class="space-y-2"></div>
-    <button onclick="showAddAccountModal()" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-plus mr-1"></i> Link Account</button>
-</div>
-<div id="client-tab-rules" class="tab-content">
-    <div id="client-rules-content"></div>
-</div>
-<div id="client-tab-presentation" class="tab-content">
-    <div class="bg-white rounded-xl shadow-sm p-3 sm:p-6">
-        <!-- Toolbar -->
-        <div class="flex flex-wrap items-center gap-2 mb-4">
-            <button onclick="changePresMonth(-1)" class="bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300 transition"><i class="fa-solid fa-chevron-left"></i></button>
-            <span id="pres-month-label" class="bg-white px-4 py-1 rounded-lg font-semibold text-sm"></span>
-            <button onclick="changePresMonth(1)" class="bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300 transition"><i class="fa-solid fa-chevron-right"></i></button>
-            <span class="flex-1"></span>
-            <span id="pres-slide-counter" class="text-sm text-gray-500 font-semibold"></span>
-            <button onclick="togglePresFullscreen()" class="bg-gray-200 px-3 py-1 rounded-lg hover:bg-gray-300 transition" title="Fullscreen (F)"><i class="fa-solid fa-expand"></i></button>
-        </div>
-        <!-- Slide viewport -->
-        <div class="pres-viewport" id="pres-viewport">
-            <button class="pres-nav-arrow pres-nav-prev" onclick="presNavigate(-1)" id="pres-prev-btn" title="Previous (→)"><i class="fa-solid fa-chevron-right"></i></button>
-            <div class="pres-slide-container" id="pres-slide-container" dir="rtl">
-                <div id="pres-slide-content"></div>
-                <div id="pres-empty-state" class="hidden text-center py-16 text-gray-400">
-                    <i class="fa-solid fa-rectangle-list text-5xl mb-4 block"></i>
-                    <p class="text-lg font-semibold">No posts this month</p>
-                    <p class="text-sm mt-1">Switch to another month or create new posts</p>
-                </div>
-            </div>
-            <button class="pres-nav-arrow pres-nav-next" onclick="presNavigate(1)" id="pres-next-btn" title="Next (←)"><i class="fa-solid fa-chevron-left"></i></button>
-        </div>
-        <!-- Dot navigation -->
-        <div class="flex justify-center mt-3 flex-wrap gap-1" id="pres-dots"></div>
+    <div class="grid grid-cols-7 gap-1 mb-2">
+        <div class="text-center font-semibold text-gray-600 py-1 text-xs">Sun</div>
+        <div class="text-center font-semibold text-gray-600 py-1 text-xs">Mon</div>
+        <div class="text-center font-semibold text-gray-600 py-1 text-xs">Tue</div>
+        <div class="text-center font-semibold text-gray-600 py-1 text-xs">Wed</div>
+        <div class="text-center font-semibold text-gray-600 py-1 text-xs">Thu</div>
+        <div class="text-center font-semibold text-gray-600 py-1 text-xs">Fri</div>
+        <div class="text-center font-semibold text-gray-600 py-1 text-xs">Sat</div>
     </div>
+    <div id="client-calendar-grid" class="grid grid-cols-7 gap-1"></div>
 </div>
+<input type="file" id="client-cal-file-input" multiple accept="image/*,video/*" class="hidden">
 {% endblock %}
 
 {% block modals %}
-<!-- Day Posts Modal -->
-<div id="client-day-posts-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) hideClientDayPostsModal()">
-    <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[600px] max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold" id="client-day-posts-title">Posts</h3>
-            <button onclick="hideClientDayPostsModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+<!-- A. Create Post Modal (split-view) -->
+<div id="create-post-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) closeCreatePostModal()">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h3 class="text-lg font-bold" id="create-post-title">Create Post</h3>
+            <button onclick="closeCreatePostModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
         </div>
-        <div id="client-day-posts-list" class="space-y-3"></div>
-    </div>
-</div>
-
-<!-- Post Detail Modal -->
-<div id="client-post-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50" onclick="if(event.target===this) closeClientPostDetail()">
-    <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[700px] max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold" id="client-detail-title">Post Brief</h3>
-            <button onclick="closeClientPostDetail()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-        </div>
-        <div class="flex flex-wrap gap-2 mb-4" id="client-detail-meta"></div>
-        <div class="brief-section" id="client-detail-topic-section">
-            <div class="brief-section-title"><i class="fa-solid fa-pen-fancy mr-1"></i> Text on Design</div>
-            <div class="brief-section-content" id="client-detail-topic"></div>
-        </div>
-        <div class="brief-section" id="client-detail-notes-section">
-            <div class="brief-section-title"><i class="fa-solid fa-paintbrush mr-1"></i> Notes for Designer</div>
-            <div class="brief-section-content" id="client-detail-notes"></div>
-        </div>
-        <div class="brief-section" id="client-detail-references-section">
-            <div class="brief-section-title"><i class="fa-solid fa-images mr-1"></i> Design References</div>
-            <div class="design-gallery" id="client-detail-references"></div>
-        </div>
-        <div class="brief-section" id="client-detail-designs-section">
-            <div class="brief-section-title"><i class="fa-solid fa-palette mr-1"></i> Design Output</div>
-            <div class="design-gallery mb-2" id="client-detail-designs"></div>
-            <div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500" id="client-detail-upload-zone"
-                 onclick="document.getElementById('client-detail-design-input').click()"
-                 ondragover="event.preventDefault(); this.classList.add('dragover')"
-                 ondragleave="this.classList.remove('dragover')"
-                 ondrop="handleClientDetailDesignDrop(event)">
-                <i class="fa-solid fa-cloud-arrow-up text-2xl mb-1 block text-indigo-400"></i>
-                Drop designs here or click to upload
+        <div class="flex-1 overflow-y-auto">
+            <div class="create-post-split">
+                <!-- Left: Form -->
+                <div class="create-post-form p-4 space-y-3">
+                    <input type="hidden" id="cp-edit-id" value="">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+                            <input type="date" id="cp-date" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Platform</label>
+                            <select id="cp-platform" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="updateSlidePreview()">
+                                <option value="instagram">Instagram</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="facebook">Facebook</option>
+                                <option value="tiktok">TikTok</option>
+                                <option value="x">X (Twitter)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Post Type</label>
+                            <select id="cp-post-type" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="updateSlidePreview()">
+                                <option value="post">Post</option>
+                                <option value="story">Story</option>
+                                <option value="reel">Reel</option>
+                                <option value="video">Video</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Time</label>
+                            <input type="time" id="cp-time" class="w-full border rounded-lg px-3 py-2 text-sm" value="12:00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Tone of Voice / Text on Design</label>
+                        <textarea id="cp-tov" class="w-full border rounded-lg px-3 py-2 text-sm" rows="3" placeholder="Write the text that goes on the design..." oninput="updateSlidePreview()"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Caption</label>
+                        <textarea id="cp-caption" class="w-full border rounded-lg px-3 py-2 text-sm" rows="3" placeholder="Write the post caption..." oninput="updateSlidePreview()"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Notes for Designer</label>
+                        <textarea id="cp-notes" class="w-full border rounded-lg px-3 py-2 text-sm" rows="2" placeholder="Design instructions, dimensions..." oninput="updateSlidePreview()"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Reference Images</label>
+                        <input type="file" id="cp-ref-input" multiple accept="image/*" class="hidden" onchange="previewRefImages(this.files)">
+                        <div class="upload-zone p-3 rounded-lg text-center cursor-pointer text-sm text-gray-500" onclick="document.getElementById('cp-ref-input').click()">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl mb-1 block text-indigo-400"></i>
+                            Drop references or click to upload
+                        </div>
+                        <div id="cp-ref-previews" class="flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+                </div>
+                <!-- Right: Live Slide Preview -->
+                <div class="create-post-preview p-4 bg-gray-50">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Live Preview</div>
+                    <div id="cp-slide-preview" class="bg-white rounded-xl shadow-sm p-4">
+                        <p class="text-gray-400 text-sm text-center py-8">Start typing to see preview...</p>
+                    </div>
+                </div>
             </div>
-            <input type="file" id="client-detail-design-input" multiple accept="image/*" class="hidden" onchange="uploadClientDetailDesign(this.files)">
         </div>
-        <div class="brief-section" id="client-detail-caption-section">
-            <div class="brief-section-title"><i class="fa-solid fa-message mr-1"></i> Caption</div>
-            <textarea id="client-detail-caption" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="Write caption..."></textarea>
-            <button id="client-detail-caption-save-btn" onclick="saveClientCaption()" class="mt-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
-                <i class="fa-solid fa-save mr-1"></i> Save Caption
-            </button>
+        <div class="flex justify-end gap-2 p-4 border-t">
+            <button onclick="closeCreatePostModal()" class="px-4 py-2 rounded-lg text-sm bg-gray-200 hover:bg-gray-300">Cancel</button>
+            <button onclick="submitCreatePost('draft')" class="px-4 py-2 rounded-lg text-sm bg-gray-600 text-white hover:bg-gray-700"><i class="fa-solid fa-save mr-1"></i> Save Draft</button>
+            <button onclick="submitCreatePost('in_design')" class="px-4 py-2 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-700"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
         </div>
-        <div class="brief-section" id="client-detail-tov-section">
-            <div class="brief-section-title"><i class="fa-solid fa-bullhorn mr-1"></i> Tone of Voice</div>
-            <div class="brief-section-content" id="client-detail-tov"></div>
-        </div>
-        <div class="brief-section" id="client-detail-assignments-section">
-            <div class="brief-section-title"><i class="fa-solid fa-users mr-1"></i> Assignments</div>
-            <div class="brief-section-content text-sm" id="client-detail-assignments"></div>
-        </div>
-        <div class="flex flex-wrap gap-2 mt-4" id="client-detail-actions"></div>
     </div>
 </div>
 
-<div id="add-account-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) hideAddAccountModal()">
-    <div class="bg-white rounded-xl p-6 w-full sm:w-[450px] max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-        <h3 class="text-lg font-bold mb-4">Link New Account</h3>
-        <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Platform *</label>
-            <select id="account-platform" class="w-full border rounded-lg px-4 py-3 text-sm" onchange="updateAccountFields()">
-                <option value="">Select Platform</option><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option>
-            </select>
-        </div>
-        <div class="mb-4"><label class="block text-gray-700 mb-2 text-sm">Account Name</label><input type="text" id="account-name" class="w-full border rounded-lg px-4 py-3 text-sm"></div>
-        <div class="mb-4" id="account-token-field"><label class="block text-gray-700 mb-2 text-sm">Access Token *</label><textarea id="account-token" class="w-full border rounded-lg px-4 py-3 h-20 text-xs"></textarea></div>
-        <div class="mb-4" id="account-id-field"><label class="block text-gray-700 mb-2 text-sm">Account ID / Page ID</label><input type="text" id="account-id" class="w-full border rounded-lg px-4 py-3"></div>
-        <div class="bg-blue-50 p-3 rounded-lg mb-4 text-sm" id="platform-help">Select a platform first</div>
-        <div class="flex gap-4">
-            <button onclick="saveAccount()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg">Link Account</button>
-            <button onclick="hideAddAccountModal()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg">Cancel</button>
+<!-- B. Post Slide Detail Modal -->
+<div id="post-slide-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) closePostSlideModal()">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center p-4 border-b" id="post-slide-header"></div>
+        <div class="flex-1 overflow-y-auto p-4" id="post-slide-body"></div>
+        <div class="flex flex-wrap gap-2 p-4 border-t" id="post-slide-actions"></div>
+    </div>
+</div>
+
+<!-- C. Schedule Picker Mini-Modal -->
+<div id="schedule-picker-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-[60] p-4" onclick="if(event.target===this) closeSchedulePicker()">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+        <h3 class="text-lg font-bold mb-4"><i class="fa-solid fa-calendar-check text-blue-600 mr-2"></i>Schedule Post</h3>
+        <input type="hidden" id="sp-post-id">
+        <label class="block text-sm font-medium text-gray-600 mb-2">Date & Time</label>
+        <input type="datetime-local" id="sp-datetime" class="w-full border rounded-lg px-4 py-3 text-sm mb-4">
+        <div class="flex gap-2">
+            <button onclick="confirmSchedulePost()" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-check mr-1"></i> Schedule</button>
+            <button onclick="closeSchedulePicker()" class="flex-1 bg-gray-200 px-4 py-2 rounded-lg text-sm hover:bg-gray-300">Cancel</button>
         </div>
     </div>
 </div>

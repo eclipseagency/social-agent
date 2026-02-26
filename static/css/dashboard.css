@@ -671,3 +671,56 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     .pres-images-grid img.pres-ref-img { width: 100px; height: 80px; }
     .pres-images-grid img.pres-design-img { width: 140px; height: 110px; }
 }
+
+/* ===== Create Post Split Modal ===== */
+.create-post-split {
+    display: flex;
+    min-height: 400px;
+}
+.create-post-form {
+    flex: 1;
+    min-width: 0;
+    border-right: 1px solid #e2e8f0;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+.create-post-preview {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+@media (max-width: 768px) {
+    .create-post-split { flex-direction: column; }
+    .create-post-form { border-right: none; border-bottom: 1px solid #e2e8f0; max-height: none; }
+    .create-post-preview { max-height: 300px; }
+}
+
+/* Day cell hover + add button */
+.cal-day-clickable { cursor: pointer; transition: background 0.15s, box-shadow 0.15s; }
+.cal-day-clickable:hover { background: #f5f3ff !important; box-shadow: 0 2px 8px rgba(99,102,241,0.1); }
+.cal-add-btn {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #6366f1; background: transparent;
+    border: 1px solid transparent; cursor: pointer;
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+}
+.cal-day-clickable:hover .cal-add-btn { opacity: 1; }
+.cal-add-btn:hover { background: #e0e7ff; border-color: #6366f1; }
+
+/* Post slide modal sizing */
+#post-slide-modal .pres-tov-block { font-size: 18px; }
+#post-slide-modal .pres-caption-block { font-size: 14px; }
+#post-slide-modal .pres-notes-block { font-size: 13px; }
+
+/* Dark mode for new modals */
+.dark #create-post-modal > div { background: #16213e !important; }
+.dark .create-post-form { border-right-color: #374151; }
+.dark .create-post-preview { background: #1e293b !important; }
+.dark .create-post-preview .bg-white { background: #16213e !important; }
+.dark #post-slide-modal > div { background: #16213e !important; }
+.dark #schedule-picker-modal .bg-white { background: #16213e !important; }
+.dark .cal-day-clickable:hover { background: #1e1b4b !important; }
+.dark .cal-add-btn { color: #818cf8; }
+.dark .cal-add-btn:hover { background: #312e81; border-color: #818cf8; }
