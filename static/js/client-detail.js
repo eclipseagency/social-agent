@@ -14,9 +14,9 @@ function pageInit() {
 
 async function loadClientDetail() {
     clientData = await fetch(API_URL + '/clients/' + clientId).then(r => r.json());
-    if (!clientData || clientData.error) { document.getElementById('client-title').textContent = 'Client Not Found'; return; }
+    if (!clientData || clientData.error) { document.getElementById('client-title').textContent = 'Account Not Found'; return; }
 
-    document.getElementById('client-title').innerHTML = `<i class="fa-solid fa-user text-indigo-600 mr-2"></i>${esc(clientData.name)}`;
+    document.getElementById('client-title').innerHTML = `<i class="fa-solid fa-building text-indigo-600 mr-2"></i>${esc(clientData.name)}`;
     document.getElementById('cd-name').textContent = clientData.name || '-';
     document.getElementById('cd-company').textContent = clientData.company || '-';
     document.getElementById('cd-email').textContent = clientData.email || '-';
