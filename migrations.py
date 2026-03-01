@@ -222,6 +222,11 @@ def run_migrations():
         _migration_22_client_website_logo(db)
         set_schema_version(db, 22)
 
+    if version < 23:
+        print("Running migration 23: Create billing/invoices tables...")
+        _migration_23_billing(db)
+        set_schema_version(db, 23)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -561,6 +566,29 @@ def _migration_22_client_website_logo(db):
         db.execute("ALTER TABLE clients ADD COLUMN website TEXT DEFAULT ''")
     if not column_exists(db, 'clients', 'logo_url'):
         db.execute("ALTER TABLE clients ADD COLUMN logo_url TEXT DEFAULT ''")
+    db.commit()
+
+
+def _migration_23_billing(db):
+    """Add billing fields to clients and create invoices table."""
+    if not column_exists(db, 'clients', 'monthly_value'):
+        db.execute("ALTER TABLE clients ADD COLUMN monthly_value REAL DEFAULT 0")
+    if not column_exists(db, 'clients', 'billing_start_date'):
+        db.execute("ALTER TABLE clients ADD COLUMN billing_start_date TEXT DEFAULT ''")
+    if not table_exists(db, 'invoices'):
+        db.execute("""
+            CREATE TABLE invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_id INTEGER NOT NULL REFERENCES clients(id),
+                amount REAL NOT NULL DEFAULT 0,
+                month TEXT NOT NULL,
+                invoice_sent INTEGER DEFAULT 0,
+                paid INTEGER DEFAULT 0,
+                paid_at TEXT DEFAULT '',
+                notes TEXT DEFAULT '',
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
     db.commit()
 
 

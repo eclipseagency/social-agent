@@ -73,6 +73,11 @@ def reports():
     return render_template('dashboard/reports.html', active_page='reports')
 
 
+@dashboard_bp.route('/billing')
+def billing():
+    return render_template('dashboard/billing.html', active_page='billing')
+
+
 @dashboard_bp.route('/login')
 def login_page():
     return render_template('auth/login.html')

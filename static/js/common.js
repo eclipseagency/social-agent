@@ -169,6 +169,8 @@ function checkAuth() {
             if (currentUser.role !== 'admin') {
                 const usersNav = document.getElementById('users-nav');
                 if (usersNav) usersNav.classList.add('hidden');
+                const billingNav = document.getElementById('billing-nav');
+                if (billingNav) billingNav.classList.add('hidden');
             }
             // Role-based nav filtering
             document.querySelectorAll('[data-nav-perm]').forEach(el => {

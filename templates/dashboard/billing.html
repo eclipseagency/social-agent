@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-file-invoice-dollar text-indigo-600 mr-2"></i>Billing</h2>
+    <button onclick="generateInvoices()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm w-full sm:w-auto"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Invoices</button>
+</div>
+
+<!-- Month Selector -->
+<div class="flex items-center gap-3 mb-6">
+    <button onclick="changeMonth(-1)" class="bg-white border rounded-lg px-3 py-2 hover:bg-gray-50 text-sm"><i class="fa-solid fa-chevron-left"></i></button>
+    <span id="month-display" class="text-lg font-semibold min-w-[160px] text-center"></span>
+    <button onclick="changeMonth(1)" class="bg-white border rounded-lg px-3 py-2 hover:bg-gray-50 text-sm"><i class="fa-solid fa-chevron-right"></i></button>
+</div>
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-500 mb-1">Total Revenue</p>
+        <p id="sum-revenue" class="text-xl font-bold text-gray-800">$0</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-500 mb-1">Paid</p>
+        <p id="sum-paid" class="text-xl font-bold text-green-600">$0</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-500 mb-1">Unpaid</p>
+        <p id="sum-unpaid" class="text-xl font-bold text-red-500">$0</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-500 mb-1">Invoices Sent</p>
+        <p id="sum-sent" class="text-xl font-bold text-blue-600">0</p>
+    </div>
+</div>
+
+<!-- Billing Table -->
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="w-full min-w-[800px]">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Account</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Monthly Value</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Billing Start</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600">Invoice Sent</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600">Paid</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Paid Date</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Notes</th>
+            </tr>
+        </thead>
+        <tbody id="billing-table"></tbody>
+    </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/billing.js"></script>
+{% endblock %}
