@@ -736,14 +736,14 @@ async function openPostSlideView(postId) {
             if (slide.text && slide.text.trim()) {
                 body += `<div class="pres-tov-block" style="direction:rtl;font-size:18px;padding:16px 18px;margin-bottom:8px">`;
                 body += `<div class="pres-tov-label">Slide ${i + 1}</div>`;
-                body += `<div>${esc(slide.text)}</div>`;
+                body += `<div>${esc(slide.text).replace(/\n/g, '<br>')}</div>`;
                 body += '</div>';
             }
         });
     } else if (post.topic) {
         body += '<div class="pres-tov-block" style="direction:rtl">';
         body += '<div class="pres-tov-label">Text on Design / Topic</div>';
-        body += `<div>${esc(post.topic)}</div>`;
+        body += `<div>${esc(post.topic).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
     }
 
@@ -825,11 +825,11 @@ async function openPostSlideView(postId) {
         }
     }
 
-    // Caption
-    if (post.caption) {
+    // Caption (hidden for stories — only text on design matters)
+    if (post.caption && post.post_type !== 'story') {
         body += '<div class="pres-caption-block" style="direction:rtl">';
         body += '<div class="pres-caption-label">Caption</div>';
-        body += `<div>${esc(post.caption)}</div>`;
+        body += `<div>${esc(post.caption).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
     }
 
@@ -837,7 +837,7 @@ async function openPostSlideView(postId) {
     if (post.brief_notes) {
         body += '<div class="pres-notes-block" style="direction:rtl">';
         body += '<div class="pres-notes-label">Notes for Designer</div>';
-        body += `<div>${esc(post.brief_notes)}</div>`;
+        body += `<div>${esc(post.brief_notes).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
     }
 
@@ -852,6 +852,20 @@ async function openPostSlideView(postId) {
 function closePostSlideModal() {
     document.getElementById('post-slide-modal').classList.add('hidden');
     slideViewPostId = null;
+}
+
+async function deletePostFromSlide(postId) {
+    if (!confirm('Are you sure you want to delete this post? This cannot be undone.')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+    if (res && res.success) {
+        showToast('Post deleted', 'success');
+        closePostSlideModal();
+        if (typeof loadClientCalendar === 'function') loadClientCalendar();
+        if (typeof loadCalendar === 'function') loadCalendar();
+        if (typeof loadClientPosts === 'function') loadClientPosts();
+    } else {
+        showToast(res?.error || 'Delete failed', 'error');
+    }
 }
 
 function buildPostSlideActions(post) {
@@ -886,6 +900,11 @@ function buildPostSlideActions(post) {
     // Approved: moderator/admin can schedule
     if (wf === 'approved' && canDo('schedule')) {
         actions += `<button onclick="openSchedulePicker(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>`;
+    }
+
+    // Delete button — for admin/managers on non-posted posts
+    if (wf !== 'posted' && canDo('createPost')) {
+        actions += `<button onclick="deletePostFromSlide(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-trash mr-1"></i> Delete</button>`;
     }
 
     return actions;
