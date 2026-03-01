@@ -217,6 +217,11 @@ def run_migrations():
         _migration_21_client_slugs(db)
         set_schema_version(db, 21)
 
+    if version < 22:
+        print("Running migration 22: Add website and logo_url to clients...")
+        _migration_22_client_website_logo(db)
+        set_schema_version(db, 22)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -547,6 +552,15 @@ def _migration_21_client_slugs(db):
             counter += 1
         existing_slugs.add(slug)
         db.execute("UPDATE clients SET slug=? WHERE id=?", (slug, c['id']))
+    db.commit()
+
+
+def _migration_22_client_website_logo(db):
+    """Add website and logo_url columns to clients."""
+    if not column_exists(db, 'clients', 'website'):
+        db.execute("ALTER TABLE clients ADD COLUMN website TEXT DEFAULT ''")
+    if not column_exists(db, 'clients', 'logo_url'):
+        db.execute("ALTER TABLE clients ADD COLUMN logo_url TEXT DEFAULT ''")
     db.commit()
 
 

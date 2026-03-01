@@ -25,6 +25,16 @@ async function loadClientDetail() {
     document.getElementById('cd-company').textContent = clientData.company || '-';
     document.getElementById('cd-email').textContent = clientData.email || '-';
 
+    // Show logo in header if available
+    const logoHeader = document.getElementById('client-logo-header');
+    const logoHeaderImg = document.getElementById('client-logo-header-img');
+    if (clientData.logo_url && logoHeader && logoHeaderImg) {
+        logoHeaderImg.src = clientData.logo_url;
+        logoHeader.classList.remove('hidden');
+    } else if (logoHeader) {
+        logoHeader.classList.add('hidden');
+    }
+
     // Show brief and content requirements
     renderBriefSection();
 
@@ -1064,12 +1074,23 @@ async function clientReturnToCopywriter(postId) {
 // ========== EDIT ACCOUNT ==========
 
 let editBriefFileUrl = '';
+let _editWebsiteTimer = null;
 
 async function openEditClientModal() {
     if (!clientData) return;
     document.getElementById('ec-name').value = clientData.name || '';
     document.getElementById('ec-company').value = clientData.company || '';
     document.getElementById('ec-email').value = clientData.email || '';
+    document.getElementById('ec-website').value = clientData.website || '';
+    document.getElementById('ec-logo-url').value = clientData.logo_url || '';
+    // Show logo preview if exists
+    if (clientData.logo_url) {
+        document.getElementById('ec-logo-preview-img').src = clientData.logo_url;
+        document.getElementById('ec-logo-preview').classList.remove('hidden');
+    } else {
+        document.getElementById('ec-logo-preview').classList.add('hidden');
+    }
+    document.getElementById('ec-logo-spinner').classList.add('hidden');
     document.getElementById('ec-brief-text').value = clientData.brief_text || '';
     document.getElementById('ec-brief-url').value = clientData.brief_url || '';
     // Populate content requirement rows
@@ -1136,6 +1157,44 @@ async function onEditBriefFileSelected(files) {
     }
 }
 
+function onEditWebsiteInput() {
+    clearTimeout(_editWebsiteTimer);
+    const url = document.getElementById('ec-website').value.trim();
+    if (!url || url.length < 5) {
+        document.getElementById('ec-logo-preview').classList.add('hidden');
+        document.getElementById('ec-logo-spinner').classList.add('hidden');
+        document.getElementById('ec-logo-url').value = '';
+        return;
+    }
+    _editWebsiteTimer = setTimeout(() => fetchLogoForField(url, 'ec-logo-url', 'ec-logo-preview', 'ec-logo-preview-img', 'ec-logo-spinner'), 800);
+}
+
+async function fetchLogoForField(url, hiddenId, previewId, imgId, spinnerId) {
+    document.getElementById(spinnerId).classList.remove('hidden');
+    document.getElementById(previewId).classList.add('hidden');
+    try {
+        const res = await fetch(API_URL + '/fetch-logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (data.success && data.logo_url) {
+            document.getElementById(hiddenId).value = data.logo_url;
+            const img = document.getElementById(imgId);
+            img.src = data.logo_url;
+            img.onerror = () => {
+                document.getElementById(previewId).classList.add('hidden');
+                document.getElementById(hiddenId).value = '';
+            };
+            document.getElementById(previewId).classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error('Logo fetch failed:', e);
+    }
+    document.getElementById(spinnerId).classList.add('hidden');
+}
+
 function addEditReqRow(platforms, type, count) {
     // Backward compat: old data has `platform` (string), new has `platforms` (array)
     const selected = Array.isArray(platforms) ? platforms : (platforms ? [platforms] : []);
@@ -1183,6 +1242,8 @@ async function saveClientEdit() {
         name,
         company: document.getElementById('ec-company').value.trim(),
         email: document.getElementById('ec-email').value.trim(),
+        website: document.getElementById('ec-website').value.trim(),
+        logo_url: document.getElementById('ec-logo-url').value.trim(),
         brief_text: document.getElementById('ec-brief-text').value.trim(),
         brief_url: document.getElementById('ec-brief-url').value.trim(),
         brief_file_url: editBriefFileUrl,

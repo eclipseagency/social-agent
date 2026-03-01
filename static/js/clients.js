@@ -1,4 +1,6 @@
 // Accounts (clients) page JS
+let _websiteTimer = null;
+
 function pageInit() {
     loadClients();
     // Add default requirement row
@@ -18,9 +20,12 @@ async function loadClients() {
                 const reqSummary = reqs.length > 0
                     ? reqs.map(r => { const p = r.platforms || (r.platform ? [r.platform] : []); return `${r.count} ${r.type}/${p.join('+')}`; }).join(', ')
                     : 'No requirements set';
+                const avatarHtml = c.logo_url
+                    ? `<img src="${esc(c.logo_url)}" class="w-10 h-10 rounded-full object-contain border bg-white" alt="" onerror="this.outerHTML='<div class=\\'w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg\\'>${esc(c.name?.charAt(0) || '?')}</div>'">`
+                    : `<div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">${esc(c.name?.charAt(0) || '?')}</div>`;
                 return `<div class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition cursor-pointer" onclick="window.location='/clients/${c.slug || c.id}'">
                     <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">${esc(c.name?.charAt(0) || '?')}</div>
+                        ${avatarHtml}
                         <div>
                             <h3 class="font-semibold">${esc(c.name)}</h3>
                             <p class="text-xs text-gray-500">${esc(c.company) || 'No company'}</p>
@@ -67,6 +72,10 @@ function hideAddClientModal() {
     document.getElementById('client-brief-file').value = '';
     document.getElementById('client-brief-file-url').value = '';
     document.getElementById('client-brief-file-name').textContent = '';
+    document.getElementById('client-website').value = '';
+    document.getElementById('client-logo-url').value = '';
+    document.getElementById('client-logo-preview').classList.add('hidden');
+    document.getElementById('client-logo-spinner').classList.add('hidden');
     document.getElementById('content-req-rows').innerHTML = '';
     addContentReqRow();
 }
@@ -144,7 +153,9 @@ async function addClient() {
         brief_text: document.getElementById('client-brief').value.trim(),
         brief_url: document.getElementById('client-brief-url').value.trim(),
         brief_file_url: document.getElementById('client-brief-file-url').value.trim(),
-        content_requirements: collectContentRequirements()
+        content_requirements: collectContentRequirements(),
+        website: document.getElementById('client-website').value.trim(),
+        logo_url: document.getElementById('client-logo-url').value.trim()
     };
     if (!data.name) { alert('Enter account name'); return; }
     try {
@@ -170,4 +181,42 @@ function filterClientsTable() {
     document.querySelectorAll('#client-cards > div').forEach(card => {
         card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
+}
+
+function onWebsiteInput() {
+    clearTimeout(_websiteTimer);
+    const url = document.getElementById('client-website').value.trim();
+    if (!url || url.length < 5) {
+        document.getElementById('client-logo-preview').classList.add('hidden');
+        document.getElementById('client-logo-spinner').classList.add('hidden');
+        document.getElementById('client-logo-url').value = '';
+        return;
+    }
+    _websiteTimer = setTimeout(() => fetchLogoForField(url, 'client-logo-url', 'client-logo-preview', 'client-logo-preview-img', 'client-logo-spinner'), 800);
+}
+
+async function fetchLogoForField(url, hiddenId, previewId, imgId, spinnerId) {
+    document.getElementById(spinnerId).classList.remove('hidden');
+    document.getElementById(previewId).classList.add('hidden');
+    try {
+        const res = await fetch(API_URL + '/fetch-logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (data.success && data.logo_url) {
+            document.getElementById(hiddenId).value = data.logo_url;
+            const img = document.getElementById(imgId);
+            img.src = data.logo_url;
+            img.onerror = () => {
+                document.getElementById(previewId).classList.add('hidden');
+                document.getElementById(hiddenId).value = '';
+            };
+            document.getElementById(previewId).classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error('Logo fetch failed:', e);
+    }
+    document.getElementById(spinnerId).classList.add('hidden');
 }

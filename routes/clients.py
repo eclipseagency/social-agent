@@ -1,5 +1,9 @@
+import os
 import re
+import uuid
+import requests as http_requests
 from datetime import datetime, timedelta
+from urllib.parse import urljoin, urlparse
 from flask import Blueprint, request, jsonify
 from models import get_db, dict_from_row, dicts_from_rows
 
@@ -133,12 +137,14 @@ def create_client():
     brief_url = data.get('brief_url', '').strip()
     brief_file_url = data.get('brief_file_url', '').strip()
     content_requirements = data.get('content_requirements', '').strip()
+    website = data.get('website', '').strip()
+    logo_url = data.get('logo_url', '').strip()
 
     db = get_db()
     slug = _slugify(name, db)
     cursor = db.execute(
-        "INSERT INTO clients (name, email, company, brief_text, brief_url, brief_file_url, content_requirements, slug) VALUES (?,?,?,?,?,?,?,?)",
-        (name, email or None, company or None, brief_text, brief_url or None, brief_file_url or None, content_requirements, slug)
+        "INSERT INTO clients (name, email, company, brief_text, brief_url, brief_file_url, content_requirements, slug, website, logo_url) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (name, email or None, company or None, brief_text, brief_url or None, brief_file_url or None, content_requirements, slug, website, logo_url)
     )
     db.commit()
     client_id = cursor.lastrowid
@@ -157,7 +163,8 @@ def update_client(client_id):
 
     updatable = ['name', 'email', 'company', 'color', 'brief_text', 'brief_url', 'brief_file_url',
                  'content_requirements', 'assigned_writer_id', 'assigned_designer_id',
-                 'assigned_sm_id', 'assigned_motion_id', 'assigned_manager_id']
+                 'assigned_sm_id', 'assigned_motion_id', 'assigned_manager_id',
+                 'website', 'logo_url']
     fields = []
     params = []
     for field in updatable:
@@ -381,3 +388,113 @@ def client_coverage(client_id):
 
     db.close()
     return jsonify({'coverage': coverage})
+
+
+@clients_bp.route('/api/fetch-logo', methods=['POST'])
+def fetch_logo():
+    """Fetch a company logo from a website URL."""
+    data = request.json or {}
+    url = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+
+    # Ensure URL has a scheme
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc or parsed.path.split('/')[0]
+    except Exception:
+        return jsonify({'error': 'Invalid URL'}), 400
+
+    logo_src = None
+
+    # Try fetching the page and parsing for logo tags
+    try:
+        resp = http_requests.get(url, timeout=10, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        resp.raise_for_status()
+        html = resp.text
+
+        # Priority 1: apple-touch-icon
+        import re as _re
+        match = _re.search(r'<link[^>]*rel=["\']apple-touch-icon["\'][^>]*href=["\']([^"\']+)["\']', html, _re.IGNORECASE)
+        if not match:
+            match = _re.search(r'<link[^>]*href=["\']([^"\']+)["\'][^>]*rel=["\']apple-touch-icon["\']', html, _re.IGNORECASE)
+        if match:
+            logo_src = match.group(1)
+
+        # Priority 2: og:image
+        if not logo_src:
+            match = _re.search(r'<meta[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']', html, _re.IGNORECASE)
+            if not match:
+                match = _re.search(r'<meta[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:image["\']', html, _re.IGNORECASE)
+            if match:
+                logo_src = match.group(1)
+
+        # Priority 3: PNG favicon
+        if not logo_src:
+            match = _re.search(r'<link[^>]*rel=["\']icon["\'][^>]*href=["\']([^"\']+\.png[^"\']*)["\']', html, _re.IGNORECASE)
+            if not match:
+                match = _re.search(r'<link[^>]*href=["\']([^"\']+\.png[^"\']*)["\'][^>]*rel=["\']icon["\']', html, _re.IGNORECASE)
+            if match:
+                logo_src = match.group(1)
+
+        # Priority 4: any favicon
+        if not logo_src:
+            match = _re.search(r'<link[^>]*rel=["\'](?:shortcut )?icon["\'][^>]*href=["\']([^"\']+)["\']', html, _re.IGNORECASE)
+            if not match:
+                match = _re.search(r'<link[^>]*href=["\']([^"\']+)["\'][^>]*rel=["\'](?:shortcut )?icon["\']', html, _re.IGNORECASE)
+            if match:
+                logo_src = match.group(1)
+
+    except Exception:
+        pass
+
+    # Resolve relative URL
+    if logo_src and not logo_src.startswith(('http://', 'https://', '//')):
+        logo_src = urljoin(url, logo_src)
+    elif logo_src and logo_src.startswith('//'):
+        logo_src = 'https:' + logo_src
+
+    # Fallback: Google Favicon API
+    if not logo_src:
+        logo_src = f'https://www.google.com/s2/favicons?domain={domain}&sz=128'
+
+    # Download the logo image and save locally
+    try:
+        img_resp = http_requests.get(logo_src, timeout=10, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        img_resp.raise_for_status()
+
+        content_type = img_resp.headers.get('Content-Type', '')
+        if 'png' in content_type:
+            ext = '.png'
+        elif 'svg' in content_type:
+            ext = '.svg'
+        elif 'gif' in content_type:
+            ext = '.gif'
+        elif 'webp' in content_type:
+            ext = '.webp'
+        elif 'ico' in content_type or 'x-icon' in content_type:
+            ext = '.ico'
+        else:
+            ext = '.png'
+
+        logos_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads', 'logos')
+        os.makedirs(logos_dir, exist_ok=True)
+
+        filename = f"{uuid.uuid4().hex[:12]}{ext}"
+        filepath = os.path.join(logos_dir, filename)
+        with open(filepath, 'wb') as f:
+            f.write(img_resp.content)
+
+        return jsonify({'success': True, 'logo_url': f'/uploads/logos/{filename}'})
+
+    except Exception:
+        # If download fails, return Google fallback as direct URL
+        fallback = f'https://www.google.com/s2/favicons?domain={domain}&sz=128'
+        return jsonify({'success': True, 'logo_url': fallback})
