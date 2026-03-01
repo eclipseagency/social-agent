@@ -1,7 +1,8 @@
 import json
 from datetime import datetime
 from flask import Blueprint, jsonify, request
-from models import get_db, dicts_from_rows
+from models import get_db, dict_from_row, dicts_from_rows
+from routes.auth import require_login
 
 analytics_bp = Blueprint('analytics', __name__)
 
@@ -32,82 +33,270 @@ def get_stats():
 
 @analytics_bp.route('/api/analytics', methods=['GET'])
 def get_analytics():
+    """Comprehensive analytics with real engagement data, date range, and client filtering."""
     db = get_db()
+    client_id = request.args.get('client_id', '')
+    period = request.args.get('period', '30')  # days: 7, 30, 90, all
 
-    # Total posts
-    total = db.execute("SELECT COUNT(*) as c FROM scheduled_posts").fetchone()['c']
-    posted = db.execute("SELECT COUNT(*) as c FROM scheduled_posts WHERE status='posted'").fetchone()['c']
-    failed = db.execute("SELECT COUNT(*) as c FROM scheduled_posts WHERE status='failed'").fetchone()['c']
+    # Build date filter
+    if period == 'all':
+        date_filter = ''
+        date_params = []
+    else:
+        days = int(period)
+        date_filter = f"AND COALESCE(sp.scheduled_at, sp.created_at) >= datetime('now', '-{days} days')"
+        date_params = []
+
+    client_filter = ''
+    client_params = []
+    if client_id:
+        client_filter = 'AND sp.client_id = ?'
+        client_params = [int(client_id)]
+
+    params = client_params
+
+    # === CONTENT METRICS ===
+    total = db.execute(f"SELECT COUNT(*) as c FROM scheduled_posts sp WHERE 1=1 {date_filter} {client_filter}", params).fetchone()['c']
+    posted = db.execute(f"SELECT COUNT(*) as c FROM scheduled_posts sp WHERE sp.status='posted' {date_filter} {client_filter}", params).fetchone()['c']
+    failed = db.execute(f"SELECT COUNT(*) as c FROM scheduled_posts sp WHERE sp.status='failed' {date_filter} {client_filter}", params).fetchone()['c']
+    in_progress = db.execute(f"SELECT COUNT(*) as c FROM scheduled_posts sp WHERE sp.workflow_status NOT IN ('posted','draft') {date_filter} {client_filter}", params).fetchone()['c']
     success_rate = round((posted / total * 100) if total > 0 else 0, 1)
 
-    # Posts per day (last 30 days)
-    posts_per_day = dicts_from_rows(db.execute("""
-        SELECT DATE(COALESCE(scheduled_at, created_at)) as date, COUNT(*) as count
-        FROM scheduled_posts
-        WHERE COALESCE(scheduled_at, created_at) >= datetime('now', '-30 days')
-        GROUP BY date
-        ORDER BY date
-    """).fetchall())
+    # === ENGAGEMENT METRICS (from post_insights) ===
+    engagement_query = f"""
+        SELECT
+            COALESCE(SUM(pi.impressions), 0) as total_impressions,
+            COALESCE(SUM(pi.reach), 0) as total_reach,
+            COALESCE(SUM(pi.likes), 0) as total_likes,
+            COALESCE(SUM(pi.comments), 0) as total_comments,
+            COALESCE(SUM(pi.shares), 0) as total_shares,
+            COALESCE(SUM(pi.saves), 0) as total_saves,
+            COALESCE(SUM(pi.clicks), 0) as total_clicks,
+            COALESCE(SUM(pi.video_views), 0) as total_video_views,
+            COALESCE(AVG(pi.engagement_rate), 0) as avg_engagement_rate,
+            COUNT(DISTINCT pi.post_id) as posts_with_insights
+        FROM post_insights pi
+        JOIN scheduled_posts sp ON pi.post_id = sp.id
+        WHERE 1=1 {date_filter} {client_filter}
+    """
+    eng = dict_from_row(db.execute(engagement_query, params).fetchone()) or {}
 
-    # Platform distribution
-    platform_distribution = dicts_from_rows(db.execute("""
-        SELECT platforms as platform, COUNT(*) as count
-        FROM scheduled_posts
-        GROUP BY platforms
-        ORDER BY count DESC
-    """).fetchall())
+    # === POSTS PER DAY ===
+    posts_per_day = dicts_from_rows(db.execute(f"""
+        SELECT DATE(COALESCE(sp.scheduled_at, sp.created_at)) as date, COUNT(*) as count
+        FROM scheduled_posts sp
+        WHERE 1=1 {date_filter} {client_filter}
+        GROUP BY date ORDER BY date
+    """, params).fetchall())
 
-    # Hourly distribution
-    hourly_distribution = dicts_from_rows(db.execute("""
-        SELECT CAST(strftime('%H', COALESCE(scheduled_at, created_at)) AS INTEGER) as hour, COUNT(*) as count
-        FROM scheduled_posts
-        GROUP BY hour
-        ORDER BY hour
-    """).fetchall())
+    # === ENGAGEMENT PER DAY ===
+    engagement_per_day = dicts_from_rows(db.execute(f"""
+        SELECT DATE(COALESCE(sp.scheduled_at, sp.created_at)) as date,
+               SUM(pi.impressions) as impressions,
+               SUM(pi.reach) as reach,
+               SUM(pi.likes) as likes,
+               SUM(pi.comments) as comments
+        FROM post_insights pi
+        JOIN scheduled_posts sp ON pi.post_id = sp.id
+        WHERE 1=1 {date_filter} {client_filter}
+        GROUP BY date ORDER BY date
+    """, params).fetchall())
 
-    # Top clients
-    top_clients = dicts_from_rows(db.execute("""
-        SELECT c.name, COUNT(sp.id) as posts
+    # === PLATFORM DISTRIBUTION ===
+    platform_distribution = dicts_from_rows(db.execute(f"""
+        SELECT sp.platforms as platform, COUNT(*) as count
+        FROM scheduled_posts sp
+        WHERE 1=1 {date_filter} {client_filter}
+        GROUP BY sp.platforms ORDER BY count DESC
+    """, params).fetchall())
+
+    # === PLATFORM ENGAGEMENT ===
+    platform_engagement = dicts_from_rows(db.execute(f"""
+        SELECT pi.platform,
+               SUM(pi.impressions) as impressions,
+               SUM(pi.reach) as reach,
+               SUM(pi.likes) as likes,
+               SUM(pi.comments) as comments,
+               SUM(pi.shares) as shares,
+               AVG(pi.engagement_rate) as avg_engagement_rate,
+               COUNT(*) as posts
+        FROM post_insights pi
+        JOIN scheduled_posts sp ON pi.post_id = sp.id
+        WHERE 1=1 {date_filter} {client_filter}
+        GROUP BY pi.platform ORDER BY impressions DESC
+    """, params).fetchall())
+
+    # === CONTENT TYPE PERFORMANCE ===
+    content_type_stats = dicts_from_rows(db.execute(f"""
+        SELECT sp.post_type as type, COUNT(*) as count,
+               COALESCE(AVG(pi.engagement_rate), 0) as avg_engagement,
+               COALESCE(SUM(pi.impressions), 0) as impressions,
+               COALESCE(SUM(pi.likes), 0) as likes
+        FROM scheduled_posts sp
+        LEFT JOIN post_insights pi ON sp.id = pi.post_id
+        WHERE sp.post_type IS NOT NULL {date_filter} {client_filter}
+        GROUP BY sp.post_type ORDER BY count DESC
+    """, params).fetchall())
+
+    # === BEST POSTING HOURS ===
+    hourly_distribution = dicts_from_rows(db.execute(f"""
+        SELECT CAST(strftime('%H', COALESCE(sp.scheduled_at, sp.created_at)) AS INTEGER) as hour,
+               COUNT(*) as count,
+               COALESCE(AVG(pi.engagement_rate), 0) as avg_engagement
+        FROM scheduled_posts sp
+        LEFT JOIN post_insights pi ON sp.id = pi.post_id
+        WHERE 1=1 {date_filter} {client_filter}
+        GROUP BY hour ORDER BY hour
+    """, params).fetchall())
+
+    # === TOP CLIENTS BY ENGAGEMENT ===
+    top_clients = dicts_from_rows(db.execute(f"""
+        SELECT c.id, c.name, c.color, COUNT(sp.id) as posts,
+               COALESCE(SUM(pi.impressions), 0) as impressions,
+               COALESCE(SUM(pi.reach), 0) as reach,
+               COALESCE(SUM(pi.likes), 0) as likes,
+               COALESCE(SUM(pi.comments), 0) as comments,
+               COALESCE(AVG(pi.engagement_rate), 0) as avg_engagement_rate
         FROM scheduled_posts sp
         JOIN clients c ON sp.client_id = c.id
-        GROUP BY sp.client_id
-        ORDER BY posts DESC
-        LIMIT 5
+        LEFT JOIN post_insights pi ON sp.id = pi.post_id
+        WHERE 1=1 {date_filter}
+        GROUP BY sp.client_id ORDER BY impressions DESC, posts DESC
+        LIMIT 10
     """).fetchall())
 
+    # === TOP PERFORMING POSTS ===
+    top_posts = dicts_from_rows(db.execute(f"""
+        SELECT sp.id, sp.topic, sp.caption, sp.post_type, sp.platforms,
+               sp.scheduled_at, sp.design_output_urls, c.name as client_name,
+               pi.impressions, pi.reach, pi.likes, pi.comments, pi.shares,
+               pi.saves, pi.engagement_rate, pi.video_views
+        FROM post_insights pi
+        JOIN scheduled_posts sp ON pi.post_id = sp.id
+        LEFT JOIN clients c ON sp.client_id = c.id
+        WHERE 1=1 {date_filter} {client_filter}
+        ORDER BY pi.engagement_rate DESC, pi.impressions DESC
+        LIMIT 10
+    """, params).fetchall())
+
+    # === WORKFLOW STATS ===
+    workflow_breakdown = dicts_from_rows(db.execute(f"""
+        SELECT sp.workflow_status as status, COUNT(*) as count
+        FROM scheduled_posts sp
+        WHERE 1=1 {date_filter} {client_filter}
+        GROUP BY sp.workflow_status ORDER BY count DESC
+    """, params).fetchall())
+
+    # === TEAM PERFORMANCE ===
+    team_performance = dicts_from_rows(db.execute(f"""
+        SELECT u.username, u.role,
+               COUNT(DISTINCT wh.post_id) as actions,
+               COUNT(DISTINCT CASE WHEN wh.to_status = 'approved' THEN wh.post_id END) as approvals,
+               COUNT(DISTINCT CASE WHEN wh.to_status = 'posted' THEN wh.post_id END) as published
+        FROM workflow_history wh
+        JOIN users u ON wh.user_id = u.id
+        WHERE 1=1 {date_filter.replace('sp.scheduled_at', 'wh.created_at').replace('sp.created_at', 'wh.created_at')}
+        GROUP BY wh.user_id ORDER BY actions DESC
+    """).fetchall())
+
+    # === AVG TURNAROUND TIME (draft to posted) ===
+    turnaround = dict_from_row(db.execute(f"""
+        SELECT AVG(
+            JULIANDAY(wh_posted.created_at) - JULIANDAY(sp.created_at)
+        ) as avg_days
+        FROM scheduled_posts sp
+        JOIN workflow_history wh_posted ON sp.id = wh_posted.post_id AND wh_posted.to_status = 'posted'
+        WHERE sp.status = 'posted' {date_filter} {client_filter}
+    """, params).fetchone())
+
     db.close()
+
     return jsonify({
+        # Content metrics
         'total_posts': total,
         'posted': posted,
         'failed': failed,
+        'in_progress': in_progress,
         'success_rate': success_rate,
+        # Engagement totals
+        'engagement': {
+            'impressions': eng.get('total_impressions', 0),
+            'reach': eng.get('total_reach', 0),
+            'likes': eng.get('total_likes', 0),
+            'comments': eng.get('total_comments', 0),
+            'shares': eng.get('total_shares', 0),
+            'saves': eng.get('total_saves', 0),
+            'clicks': eng.get('total_clicks', 0),
+            'video_views': eng.get('total_video_views', 0),
+            'avg_engagement_rate': round(eng.get('avg_engagement_rate', 0), 2),
+            'posts_with_insights': eng.get('posts_with_insights', 0),
+        },
+        # Charts data
         'posts_per_day': posts_per_day,
+        'engagement_per_day': engagement_per_day,
         'platform_distribution': platform_distribution,
+        'platform_engagement': platform_engagement,
+        'content_type_stats': content_type_stats,
         'hourly_distribution': hourly_distribution,
-        'top_clients': top_clients
+        # Tables
+        'top_clients': top_clients,
+        'top_posts': top_posts,
+        'workflow_breakdown': workflow_breakdown,
+        'team_performance': team_performance,
+        'avg_turnaround_days': round(turnaround.get('avg_days', 0) or 0, 1),
     })
 
 
+# === INSIGHTS SYNC ===
+
+@analytics_bp.route('/api/insights/sync', methods=['POST'])
+@require_login
+def sync_insights():
+    """Trigger a sync of engagement metrics from platform APIs."""
+    from services.insights import sync_all_recent_insights
+    try:
+        result = sync_all_recent_insights()
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@analytics_bp.route('/api/posts/<int:post_id>/insights', methods=['GET'])
+def get_post_insights(post_id):
+    """Get stored insights for a specific post."""
+    db = get_db()
+    insights = dicts_from_rows(db.execute(
+        "SELECT * FROM post_insights WHERE post_id=?", (post_id,)
+    ).fetchall())
+    db.close()
+    return jsonify(insights)
+
+
+@analytics_bp.route('/api/posts/<int:post_id>/insights/sync', methods=['POST'])
+@require_login
+def sync_single_post_insights(post_id):
+    """Fetch latest insights for a single post."""
+    from services.insights import sync_post_insights
+    try:
+        result = sync_post_insights(post_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+# === USER STATS ===
+
 @analytics_bp.route('/api/users/stats', methods=['GET'])
 def user_stats():
-    """Return monthly performance stats for all users.
-
-    For each user, based on role:
-    - sm_specialist: posts created this month, required from assigned clients
-    - designer: designs completed (post/story), required from assigned clients
-    - motion_designer: designs completed (video/reel), required from assigned clients
-    - moderator: posts approved + scheduled this month
-    """
+    """Return monthly performance stats for all users."""
     db = get_db()
     now = datetime.now()
     month_start = now.strftime('%Y-%m-01')
-    month_end = now.strftime('%Y-%m-') + str(now.day).zfill(2) + 'T23:59:59'
 
     users = dicts_from_rows(db.execute(
         "SELECT id, username, role FROM users WHERE is_active=1"
     ).fetchall())
 
-    # Pre-load all clients with their content_requirements and assignments
     clients = dicts_from_rows(db.execute(
         "SELECT id, content_requirements, assigned_designer_id, assigned_motion_id, assigned_sm_id, assigned_writer_id FROM clients"
     ).fetchall())
@@ -120,14 +309,10 @@ def user_stats():
         stats = {'completed': 0, 'required': 0, 'label': ''}
 
         if role == 'sm_specialist':
-            # Count posts created by this SMM this month
-            row = db.execute("""
-                SELECT COUNT(*) as c FROM scheduled_posts
-                WHERE created_by_id=? AND created_at >= ?
-            """, (uid, month_start)).fetchone()
+            row = db.execute(
+                "SELECT COUNT(*) as c FROM scheduled_posts WHERE created_by_id=? AND created_at >= ?",
+                (uid, month_start)).fetchone()
             stats['completed'] = row['c']
-
-            # Required: sum all content reqs from clients assigned to this SMM
             for c in clients:
                 if c.get('assigned_sm_id') == uid or c.get('assigned_writer_id') == uid:
                     reqs = _parse_reqs(c.get('content_requirements'))
@@ -135,25 +320,17 @@ def user_stats():
             stats['label'] = 'posts created'
 
         elif role == 'designer':
-            # Count designs completed: workflow_history transitions from in_design -> approved by this user
             row = db.execute("""
                 SELECT COUNT(*) as c FROM workflow_history
-                WHERE user_id=? AND from_status='in_design' AND to_status='approved'
-                AND created_at >= ?
+                WHERE user_id=? AND from_status='in_design' AND to_status='approved' AND created_at >= ?
             """, (uid, month_start)).fetchone()
             stats['completed'] = row['c']
-
-            # Also count posts assigned to them that have design_output_urls (past in_design)
             row2 = db.execute("""
                 SELECT COUNT(*) as c FROM scheduled_posts
-                WHERE assigned_designer_id=?
-                AND design_output_urls IS NOT NULL AND design_output_urls != ''
-                AND post_type IN ('post', 'story')
-                AND created_at >= ?
+                WHERE assigned_designer_id=? AND design_output_urls IS NOT NULL AND design_output_urls != ''
+                AND post_type IN ('post', 'story') AND created_at >= ?
             """, (uid, month_start)).fetchone()
             stats['completed'] = max(stats['completed'], row2['c'])
-
-            # Required: sum post/story reqs from assigned clients
             for c in clients:
                 if c.get('assigned_designer_id') == uid:
                     reqs = _parse_reqs(c.get('content_requirements'))
@@ -161,24 +338,17 @@ def user_stats():
             stats['label'] = 'designs uploaded'
 
         elif role == 'motion_designer':
-            # Count motion designs completed
             row = db.execute("""
                 SELECT COUNT(*) as c FROM workflow_history
-                WHERE user_id=? AND from_status='in_design' AND to_status='approved'
-                AND created_at >= ?
+                WHERE user_id=? AND from_status='in_design' AND to_status='approved' AND created_at >= ?
             """, (uid, month_start)).fetchone()
             stats['completed'] = row['c']
-
             row2 = db.execute("""
                 SELECT COUNT(*) as c FROM scheduled_posts
-                WHERE assigned_motion_id=?
-                AND design_output_urls IS NOT NULL AND design_output_urls != ''
-                AND post_type IN ('video', 'reel')
-                AND created_at >= ?
+                WHERE assigned_motion_id=? AND design_output_urls IS NOT NULL AND design_output_urls != ''
+                AND post_type IN ('video', 'reel') AND created_at >= ?
             """, (uid, month_start)).fetchone()
             stats['completed'] = max(stats['completed'], row2['c'])
-
-            # Required: sum video/reel reqs from assigned clients
             for c in clients:
                 if c.get('assigned_motion_id') == uid:
                     reqs = _parse_reqs(c.get('content_requirements'))
@@ -186,25 +356,19 @@ def user_stats():
             stats['label'] = 'motion designs'
 
         elif role == 'moderator':
-            # Count posts approved or scheduled by this moderator this month
             row = db.execute("""
                 SELECT COUNT(*) as c FROM workflow_history
-                WHERE user_id=? AND to_status IN ('approved', 'scheduled')
-                AND created_at >= ?
+                WHERE user_id=? AND to_status IN ('approved', 'scheduled') AND created_at >= ?
             """, (uid, month_start)).fetchone()
             stats['completed'] = row['c']
-
-            # Required: total posts in approved or later this month
             row2 = db.execute("""
                 SELECT COUNT(*) as c FROM scheduled_posts
-                WHERE workflow_status IN ('approved', 'scheduled', 'posted')
-                AND created_at >= ?
+                WHERE workflow_status IN ('approved', 'scheduled', 'posted') AND created_at >= ?
             """, (month_start,)).fetchone()
             stats['required'] = row2['c']
             stats['label'] = 'posts approved'
 
         elif role == 'admin':
-            # Total posts and accounts for admin overview
             row = db.execute("SELECT COUNT(*) as c FROM scheduled_posts WHERE created_at >= ?", (month_start,)).fetchone()
             stats['completed'] = row['c']
             stats['required'] = 0
@@ -217,7 +381,6 @@ def user_stats():
 
 
 def _parse_reqs(json_str):
-    """Parse content_requirements JSON safely."""
     if not json_str:
         return []
     try:

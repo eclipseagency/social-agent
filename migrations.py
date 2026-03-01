@@ -227,6 +227,11 @@ def run_migrations():
         _migration_23_billing(db)
         set_schema_version(db, 23)
 
+    if version < 24:
+        print("Running migration 24: Create post_insights table...")
+        _migration_24_post_insights(db)
+        set_schema_version(db, 24)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -589,6 +594,36 @@ def _migration_23_billing(db):
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+    db.commit()
+
+
+def _migration_24_post_insights(db):
+    """Create post_insights table for storing real engagement metrics from platform APIs."""
+    if not table_exists(db, 'post_insights'):
+        db.execute("""
+            CREATE TABLE post_insights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL REFERENCES scheduled_posts(id) ON DELETE CASCADE,
+                platform TEXT NOT NULL,
+                external_post_id TEXT DEFAULT '',
+                impressions INTEGER DEFAULT 0,
+                reach INTEGER DEFAULT 0,
+                likes INTEGER DEFAULT 0,
+                comments INTEGER DEFAULT 0,
+                shares INTEGER DEFAULT 0,
+                saves INTEGER DEFAULT 0,
+                clicks INTEGER DEFAULT 0,
+                engagement_rate REAL DEFAULT 0,
+                video_views INTEGER DEFAULT 0,
+                followers_gained INTEGER DEFAULT 0,
+                raw_data TEXT DEFAULT '{}',
+                fetched_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(post_id, platform)
+            )
+        """)
+    # Also add external_post_id to post_logs if not there
+    if not column_exists(db, 'post_logs', 'external_post_id'):
+        db.execute("ALTER TABLE post_logs ADD COLUMN external_post_id TEXT DEFAULT ''")
     db.commit()
 
 

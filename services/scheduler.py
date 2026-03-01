@@ -54,9 +54,10 @@ def publish_post(post):
                 result = {'success': False, 'error': str(e)}
 
         # Log the result
+        external_id = result.get('post_id', '') or result.get('id', '') or ''
         db.execute(
-            "INSERT INTO post_logs (post_id, platform, status, response) VALUES (?,?,?,?)",
-            (post_id, platform, 'success' if result.get('success') else 'failed', str(result))
+            "INSERT INTO post_logs (post_id, platform, status, response, external_post_id) VALUES (?,?,?,?,?)",
+            (post_id, platform, 'success' if result.get('success') else 'failed', str(result), str(external_id))
         )
         results[platform] = result
 
