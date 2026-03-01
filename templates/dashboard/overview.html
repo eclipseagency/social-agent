@@ -153,7 +153,9 @@ async function loadMyWork() {
 
 async function loadCoverageAlerts() {
     try {
-        const data = await fetch(API_URL + '/clients/overview').then(r => r.json());
+        let overviewUrl = API_URL + '/clients/overview';
+        if (currentUser) overviewUrl += `?user_id=${currentUser.id}&role=${currentUser.role || ''}`;
+        const data = await fetch(overviewUrl).then(r => r.json());
         const container = document.getElementById('coverage-alerts');
         if (!data || !data.alerts || data.alerts.length === 0) { container.innerHTML = ''; return; }
         container.innerHTML = data.alerts.map(a => `

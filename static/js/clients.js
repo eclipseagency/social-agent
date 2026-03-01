@@ -3,7 +3,9 @@ function pageInit() { loadClients(); }
 
 async function loadClients() {
     try {
-        const clients = await fetch(API_URL + '/clients').then(r => r.json());
+        let clientsUrl = API_URL + '/clients';
+        if (currentUser) clientsUrl += `?user_id=${currentUser.id}&role=${currentUser.role || ''}`;
+        const clients = await fetch(clientsUrl).then(r => r.json());
         // Cards view
         const cardsEl = document.getElementById('client-cards');
         if (cardsEl) {

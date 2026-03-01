@@ -8,7 +8,9 @@ function pageInit() {
 }
 
 async function loadTaskFilterDropdowns() {
-    const clients = await fetch(API_URL + '/clients').then(r => r.json());
+    let clientsUrl = API_URL + '/clients';
+    if (currentUser) clientsUrl += `?user_id=${currentUser.id}&role=${currentUser.role || ''}`;
+    const clients = await fetch(clientsUrl).then(r => r.json());
     const users = await fetch(API_URL + '/users').then(r => r.json());
     const assigneeSelect = document.getElementById('task-filter-assignee');
     const clientSelect = document.getElementById('task-filter-client');

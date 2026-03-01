@@ -255,7 +255,9 @@ async function loadNotificationCount() {
 
 // === Dropdown Loaders ===
 async function loadClientsDropdown(selectId = 'post-client') {
-    const clients = await fetch(API_URL + '/clients').then(r => r.json());
+    let url = API_URL + '/clients';
+    if (currentUser) url += `?user_id=${currentUser.id}&role=${currentUser.role || ''}`;
+    const clients = await fetch(url).then(r => r.json());
     const el = document.getElementById(selectId);
     if (el) el.innerHTML = clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     return clients;

@@ -7,7 +7,9 @@ function pageInit() {
 }
 
 async function loadPipelineFilterDropdowns() {
-    const clients = await fetch(API_URL + '/clients').then(r => r.json());
+    let clientsUrl = API_URL + '/clients';
+    if (currentUser) clientsUrl += `?user_id=${currentUser.id}&role=${currentUser.role || ''}`;
+    const clients = await fetch(clientsUrl).then(r => r.json());
     const users = await fetch(API_URL + '/users').then(r => r.json());
     const clientSelect = document.getElementById('pipeline-filter-client');
     const assigneeSelect = document.getElementById('pipeline-filter-assignee');

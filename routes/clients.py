@@ -26,7 +26,10 @@ def _slugify(name, db, exclude_id=None):
 @clients_bp.route('/api/clients', methods=['GET'])
 def list_clients():
     db = get_db()
-    clients = dicts_from_rows(db.execute("""
+    user_id = request.args.get('user_id')
+    role = request.args.get('role', '')
+
+    base = """
         SELECT c.*,
                u_writer.username as assigned_writer_name,
                u_designer.username as assigned_designer_name,
@@ -39,8 +42,21 @@ def list_clients():
         LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
         LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
         LEFT JOIN users u_manager ON c.assigned_manager_id = u_manager.id
+    """
+
+    # Admin and moderator see all clients; others see only assigned
+    if user_id and role not in ('admin', 'moderator'):
+        query = base + """
+        WHERE (c.assigned_writer_id = ? OR c.assigned_designer_id = ?
+               OR c.assigned_sm_id = ? OR c.assigned_motion_id = ?
+               OR c.assigned_manager_id = ?)
         ORDER BY c.id DESC
-    """).fetchall())
+        """
+        clients = dicts_from_rows(db.execute(query,
+            (user_id, user_id, user_id, user_id, user_id)).fetchall())
+    else:
+        clients = dicts_from_rows(db.execute(base + " ORDER BY c.id DESC").fetchall())
+
     db.close()
     return jsonify(clients)
 
@@ -214,7 +230,10 @@ def delete_account(account_id):
 def clients_overview():
     """Return all clients with coverage data and pipeline stats."""
     db = get_db()
-    clients = dicts_from_rows(db.execute("""
+    user_id = request.args.get('user_id')
+    role = request.args.get('role', '')
+
+    base = """
         SELECT c.*,
                u_writer.username as assigned_writer_name,
                u_designer.username as assigned_designer_name,
@@ -227,8 +246,19 @@ def clients_overview():
         LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
         LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
         LEFT JOIN users u_manager ON c.assigned_manager_id = u_manager.id
+    """
+
+    if user_id and role not in ('admin', 'moderator'):
+        query = base + """
+        WHERE (c.assigned_writer_id = ? OR c.assigned_designer_id = ?
+               OR c.assigned_sm_id = ? OR c.assigned_motion_id = ?
+               OR c.assigned_manager_id = ?)
         ORDER BY c.id DESC
-    """).fetchall())
+        """
+        clients = dicts_from_rows(db.execute(query,
+            (user_id, user_id, user_id, user_id, user_id)).fetchall())
+    else:
+        clients = dicts_from_rows(db.execute(base + " ORDER BY c.id DESC").fetchall())
 
     today = datetime.now().date()
     this_week_start = today - timedelta(days=today.weekday())
