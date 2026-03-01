@@ -467,6 +467,12 @@ async function openPostDetail(postId) {
         saveCaptionBtn.style.display = canEditCaption ? '' : 'none';
     }
 
+    // Stories don't need a caption — hide caption section, keep only Text on Design
+    if (post.post_type === 'story') {
+        const captionSec = document.getElementById('detail-caption-section');
+        if (captionSec) captionSec.style.display = 'none';
+    }
+
     // Show/hide design upload zone — ONLY when post is in_design AND user can upload designs
     const uploadZone = document.getElementById('detail-upload-zone');
     if (uploadZone) {
