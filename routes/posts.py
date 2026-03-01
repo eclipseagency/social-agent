@@ -762,10 +762,20 @@ def transition_post(post_id):
         db.close()
         return jsonify({'error': f'Cannot transition from {old_status} to {new_status}. Allowed: {allowed}'}), 400
 
-    # Validate requirements
+    # Validate requirements — if post has no designer, try to inherit from client
     if new_status == 'in_design' and not post.get('assigned_designer_id'):
-        db.close()
-        return jsonify({'error': 'Designer must be assigned before moving to design'}), 400
+        client = dict_from_row(db.execute(
+            "SELECT assigned_designer_id FROM clients WHERE id=?",
+            (post.get('client_id'),)
+        ).fetchone()) if post.get('client_id') else None
+        client_designer = client.get('assigned_designer_id') if client else None
+        if client_designer:
+            db.execute("UPDATE scheduled_posts SET assigned_designer_id=? WHERE id=?",
+                       (client_designer, post_id))
+            post['assigned_designer_id'] = client_designer
+        else:
+            db.close()
+            return jsonify({'error': 'Designer must be assigned before moving to design'}), 400
 
     if old_status == 'pending_review' and new_status == 'draft' and not comment:
         db.close()
