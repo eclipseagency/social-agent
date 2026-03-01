@@ -183,6 +183,32 @@ function filterClientsTable() {
     });
 }
 
+async function bulkFetchLogos() {
+    const btn = document.getElementById('bulk-logo-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Fetching...';
+    try {
+        const res = await fetch(API_URL + '/clients/bulk-fetch-logos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            const ok = data.results.filter(r => r.status === 'ok').length;
+            const noLogo = data.results.filter(r => r.status === 'no_logo').length;
+            const errors = data.results.filter(r => r.status === 'error').length;
+            showToast(`Logos fetched: ${ok} updated, ${noLogo + errors} skipped`, ok > 0 ? 'success' : 'info');
+            loadClients();
+        } else {
+            showToast('Failed to fetch logos', 'error');
+        }
+    } catch (e) {
+        showToast('Connection error', 'error');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-image mr-1"></i> Fetch All Logos';
+}
+
 function onWebsiteInput() {
     clearTimeout(_websiteTimer);
     const url = document.getElementById('client-website').value.trim();

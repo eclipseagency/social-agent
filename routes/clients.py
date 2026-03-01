@@ -390,15 +390,11 @@ def client_coverage(client_id):
     return jsonify({'coverage': coverage})
 
 
-@clients_bp.route('/api/fetch-logo', methods=['POST'])
-def fetch_logo():
-    """Fetch a company logo from a website URL."""
-    data = request.json or {}
-    url = (data.get('url') or '').strip()
+def _fetch_logo_from_url(url):
+    """Fetch a logo from a website URL. Returns local path or None."""
     if not url:
-        return jsonify({'error': 'URL required'}), 400
+        return None
 
-    # Ensure URL has a scheme
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
 
@@ -406,7 +402,7 @@ def fetch_logo():
         parsed = urlparse(url)
         domain = parsed.netloc or parsed.path.split('/')[0]
     except Exception:
-        return jsonify({'error': 'Invalid URL'}), 400
+        return None
 
     logo_src = None
 
@@ -419,34 +415,33 @@ def fetch_logo():
         html = resp.text
 
         # Priority 1: apple-touch-icon
-        import re as _re
-        match = _re.search(r'<link[^>]*rel=["\']apple-touch-icon["\'][^>]*href=["\']([^"\']+)["\']', html, _re.IGNORECASE)
+        match = re.search(r'<link[^>]*rel=["\']apple-touch-icon["\'][^>]*href=["\']([^"\']+)["\']', html, re.IGNORECASE)
         if not match:
-            match = _re.search(r'<link[^>]*href=["\']([^"\']+)["\'][^>]*rel=["\']apple-touch-icon["\']', html, _re.IGNORECASE)
+            match = re.search(r'<link[^>]*href=["\']([^"\']+)["\'][^>]*rel=["\']apple-touch-icon["\']', html, re.IGNORECASE)
         if match:
             logo_src = match.group(1)
 
         # Priority 2: og:image
         if not logo_src:
-            match = _re.search(r'<meta[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']', html, _re.IGNORECASE)
+            match = re.search(r'<meta[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']', html, re.IGNORECASE)
             if not match:
-                match = _re.search(r'<meta[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:image["\']', html, _re.IGNORECASE)
+                match = re.search(r'<meta[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:image["\']', html, re.IGNORECASE)
             if match:
                 logo_src = match.group(1)
 
         # Priority 3: PNG favicon
         if not logo_src:
-            match = _re.search(r'<link[^>]*rel=["\']icon["\'][^>]*href=["\']([^"\']+\.png[^"\']*)["\']', html, _re.IGNORECASE)
+            match = re.search(r'<link[^>]*rel=["\']icon["\'][^>]*href=["\']([^"\']+\.png[^"\']*)["\']', html, re.IGNORECASE)
             if not match:
-                match = _re.search(r'<link[^>]*href=["\']([^"\']+\.png[^"\']*)["\'][^>]*rel=["\']icon["\']', html, _re.IGNORECASE)
+                match = re.search(r'<link[^>]*href=["\']([^"\']+\.png[^"\']*)["\'][^>]*rel=["\']icon["\']', html, re.IGNORECASE)
             if match:
                 logo_src = match.group(1)
 
         # Priority 4: any favicon
         if not logo_src:
-            match = _re.search(r'<link[^>]*rel=["\'](?:shortcut )?icon["\'][^>]*href=["\']([^"\']+)["\']', html, _re.IGNORECASE)
+            match = re.search(r'<link[^>]*rel=["\'](?:shortcut )?icon["\'][^>]*href=["\']([^"\']+)["\']', html, re.IGNORECASE)
             if not match:
-                match = _re.search(r'<link[^>]*href=["\']([^"\']+)["\'][^>]*rel=["\'](?:shortcut )?icon["\']', html, _re.IGNORECASE)
+                match = re.search(r'<link[^>]*href=["\']([^"\']+)["\'][^>]*rel=["\'](?:shortcut )?icon["\']', html, re.IGNORECASE)
             if match:
                 logo_src = match.group(1)
 
@@ -492,9 +487,47 @@ def fetch_logo():
         with open(filepath, 'wb') as f:
             f.write(img_resp.content)
 
-        return jsonify({'success': True, 'logo_url': f'/uploads/logos/{filename}'})
+        return f'/uploads/logos/{filename}'
 
     except Exception:
-        # If download fails, return Google fallback as direct URL
         fallback = f'https://www.google.com/s2/favicons?domain={domain}&sz=128'
-        return jsonify({'success': True, 'logo_url': fallback})
+        return fallback
+
+
+@clients_bp.route('/api/fetch-logo', methods=['POST'])
+def fetch_logo():
+    """Fetch a company logo from a website URL."""
+    data = request.json or {}
+    url = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+
+    logo_url = _fetch_logo_from_url(url)
+    if logo_url:
+        return jsonify({'success': True, 'logo_url': logo_url})
+    return jsonify({'error': 'Could not fetch logo'}), 400
+
+
+@clients_bp.route('/api/clients/bulk-fetch-logos', methods=['POST'])
+def bulk_fetch_logos():
+    """Fetch logos for all clients that have a website set."""
+    db = get_db()
+    clients = dicts_from_rows(db.execute(
+        "SELECT id, name, website, logo_url FROM clients WHERE website IS NOT NULL AND website != ''"
+    ).fetchall())
+
+    results = []
+    for client in clients:
+        try:
+            logo_url = _fetch_logo_from_url(client['website'])
+            if logo_url:
+                db.execute("UPDATE clients SET logo_url=? WHERE id=?", (logo_url, client['id']))
+                db.commit()
+                results.append({'id': client['id'], 'name': client['name'], 'logo_url': logo_url, 'status': 'ok'})
+            else:
+                results.append({'id': client['id'], 'name': client['name'], 'status': 'no_logo'})
+        except Exception as e:
+            results.append({'id': client['id'], 'name': client['name'], 'status': 'error', 'error': str(e)})
+
+    db.close()
+    return jsonify({'success': True, 'results': results})
