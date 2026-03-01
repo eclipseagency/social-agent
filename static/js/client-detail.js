@@ -286,7 +286,7 @@ function renderClientCalendar() {
                 </button>` : ''}
             </div>
             ${filtered.slice(0, 3).map(p => renderCalendarMiniCard(p)).join('')}
-            ${filtered.length > 3 ? `<div class="text-[10px] text-indigo-600 font-semibold text-center cursor-pointer" onclick="event.stopPropagation(); openPostSlideView(${filtered[3].id})">+${filtered.length - 3} more</div>` : ''}
+            ${filtered.length > 3 ? `<div class="text-[10px] text-indigo-600 font-semibold text-center cursor-pointer" onclick="event.stopPropagation(); showClientDayPosts('${dateStr}')">+${filtered.length - 3} more</div>` : ''}
         </div>`;
     }
     document.getElementById('client-calendar-grid').innerHTML = html;
@@ -295,6 +295,40 @@ function renderClientCalendar() {
 function changeClientMonth(delta) {
     clientMonth.setMonth(clientMonth.getMonth() + delta);
     loadClientCalendar();
+}
+
+// ========== DAY POSTS MODAL ==========
+
+function showClientDayPosts(dateStr) {
+    const posts = filterClientByStatus(getClientDayPosts(dateStr));
+    const dayName = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    let html = `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="client-day-posts-modal" onclick="if(event.target===this) this.remove()">
+        <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[600px] max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-calendar-day text-indigo-600 mr-2"></i>${esc(dayName)}</h3>
+                <button onclick="document.getElementById('client-day-posts-modal').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-3">`;
+    if (posts.length === 0) {
+        html += '<p class="text-gray-500 text-center py-8">No posts</p>';
+    } else {
+        posts.forEach(p => {
+            const status = getPostStatus(p);
+            const color = getStatusColor(status);
+            html += `<div class="border-l-4 rounded-xl p-4 hover:shadow-md transition cursor-pointer bg-white" style="border-left-color:${color}" onclick="document.getElementById('client-day-posts-modal').remove(); openPostSlideView(${p.id});">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center gap-2">
+                        ${getPlatformIcon(p.platforms)} ${getContentTypeIcon(p.post_type)}
+                        <div><p class="font-semibold text-sm">${esc(getTopicPreview(p.topic, 60) || 'Untitled')}</p><p class="text-xs text-gray-400">${esc(p.client_name || '')}</p></div>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold text-white" style="background:${color}">${status}</span>
+                </div>
+                <div class="text-xs text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>${(p.scheduled_at || p.created_at || '').replace('T', ' ')}</div>
+            </div>`;
+        });
+    }
+    html += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
 }
 
 // ========== DAY CELL CLICK ==========
