@@ -301,7 +301,7 @@ async function openPostDetail(postId) {
             ).join('');
             topicDisplay.style.display = '';
         } else if (post.topic) {
-            topicDisplay.textContent = post.topic;
+            topicDisplay.innerHTML = esc(post.topic).replace(/\n/g, '<br>');
             topicDisplay.style.display = '';
         } else {
             topicSection.style.display = 'none';
