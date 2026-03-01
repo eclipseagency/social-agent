@@ -46,6 +46,7 @@ function getPlatformIcon(platform) {
     if (platform === 'instagram') return '<i class="fa-brands fa-instagram text-pink-500"></i>';
     if (platform === 'linkedin') return '<i class="fa-brands fa-linkedin text-blue-600"></i>';
     if (platform === 'facebook') return '<i class="fa-brands fa-facebook text-blue-500"></i>';
+    if (platform === 'web') return '<i class="fa-solid fa-globe text-green-500"></i>';
     return '<i class="fa-solid fa-share-nodes"></i>';
 }
 
@@ -53,11 +54,12 @@ function getPlatformBgClass(platform) {
     if (platform === 'instagram') return 'bg-pink-100 text-pink-800';
     if (platform === 'linkedin') return 'bg-blue-100 text-blue-800';
     if (platform === 'facebook') return 'bg-indigo-100 text-indigo-800';
+    if (platform === 'web') return 'bg-green-100 text-green-800';
     return 'bg-gray-100';
 }
 
 function getPlatformName(platform) {
-    return ({ instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook' })[platform] || platform;
+    return ({ instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook', web: 'Web' })[platform] || platform;
 }
 
 function getOfficialPlatformIcon(platform) {
