@@ -19,6 +19,9 @@
     </div>
 </div>
 
+<!-- Overdue Alert Banner (populated by JS) -->
+<div id="overdue-alert-banner" class="hidden overdue-alert-banner mb-4"></div>
+
 <!-- Status Color Legend -->
 <div class="cal-status-legend mb-4 bg-white rounded-lg px-4 py-2 shadow-sm">
     <span class="legend-item"><span class="legend-dot" style="background:#f97316"></span> Needs Design</span>
@@ -74,7 +77,7 @@
 
         <!-- Text on Design (editable in draft) -->
         <div class="brief-section" id="detail-topic-section">
-            <div class="brief-section-title"><i class="fa-solid fa-pen-fancy mr-1"></i> Text on Design</div>
+            <div class="brief-section-title flex items-center justify-between"><span><i class="fa-solid fa-pen-fancy mr-1"></i> Text on Design</span><button onclick="copyTopicText()" class="text-xs text-gray-400 hover:text-indigo-600 transition" title="Copy text"><i class="fa-solid fa-copy"></i></button></div>
             <div class="brief-section-content" id="detail-topic"></div>
             <textarea id="detail-topic-input" rows="4" class="w-full border rounded-lg p-3 text-sm hidden" placeholder="Enter text that goes on the design..."></textarea>
         </div>
@@ -121,6 +124,9 @@
             <div class="brief-section-title"><i class="fa-solid fa-message mr-1"></i> Caption</div>
             <textarea id="detail-caption" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="Write caption..."></textarea>
             <div class="flex gap-2 mt-2" id="detail-caption-buttons">
+                <button id="btn-copy-caption" onclick="copyCaption()" class="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600">
+                    <i class="fa-solid fa-copy mr-1"></i> Copy
+                </button>
                 <button id="btn-save-caption" onclick="saveCaption()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
                     <i class="fa-solid fa-save mr-1"></i> Save Caption
                 </button>
@@ -141,6 +147,16 @@
         <div class="brief-section" id="detail-assignments-section">
             <div class="brief-section-title"><i class="fa-solid fa-users mr-1"></i> Assignments <span class="text-gray-400 text-[10px] font-normal ml-1">(from client)</span></div>
             <div class="brief-section-content text-sm" id="detail-assignments"></div>
+        </div>
+
+        <!-- Comments / Chat Section -->
+        <div class="brief-section" id="detail-comments-section">
+            <div class="brief-section-title"><i class="fa-solid fa-comments mr-1"></i> Comments</div>
+            <div id="detail-comments-list" class="post-chat-list"></div>
+            <div class="post-chat-input-row">
+                <input type="text" id="detail-comment-input" class="post-chat-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter')sendPostComment()">
+                <button onclick="sendPostComment()" class="post-chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
         </div>
 
         <!-- Save Brief Button (for draft editing) -->

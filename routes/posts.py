@@ -15,7 +15,7 @@ VALID_TRANSITIONS = {
     'draft': ['pending_review', 'in_design'],
     'pending_review': ['in_design', 'draft'],
     'in_design': ['approved', 'draft'],
-    'approved': ['scheduled', 'in_design'],
+    'approved': ['scheduled', 'posted', 'in_design'],
     'scheduled': ['posted', 'approved'],
 }
 
@@ -739,6 +739,10 @@ def transition_post(post_id):
             # SM Specialists can send for review (draft -> pending_review) or schedule (approved -> scheduled)
             if new_status not in ('pending_review', 'scheduled'):
                 return jsonify({'error': 'Permission denied'}), 403
+        elif user_role == 'moderator':
+            # Moderators can mark posts as posted (scheduled/approved -> posted)
+            if new_status not in ('posted',):
+                return jsonify({'error': 'Permission denied'}), 403
         elif user_role == 'manager':
             pass  # Managers have same access as admin for transitions
 
@@ -903,6 +907,16 @@ def transition_post(post_id):
         )
 
     db.commit()
+
+    # Send email notifications (non-blocking, background thread)
+    try:
+        from services.email_service import notify_workflow_change
+        actor = dict_from_row(db.execute("SELECT username FROM users WHERE id=?", (user_id,)).fetchone())
+        actor_name = actor['username'] if actor else 'Someone'
+        notify_workflow_change(post, old_status, new_status, actor_name, db)
+    except Exception:
+        pass  # Email failures should never block workflow
+
     db.close()
     return jsonify({'success': True})
 
@@ -1146,6 +1160,72 @@ def run_scheduler_now():
         return jsonify({'success': True, 'results': results})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+
+# ============ GLOBAL SEARCH ============
+
+@posts_bp.route('/api/search', methods=['GET'])
+@require_login
+def global_search():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify({'posts': [], 'clients': [], 'tasks': []})
+
+    db = get_db()
+    like = f'%{q}%'
+
+    # Search posts (topic, caption, client_name)
+    posts = dicts_from_rows(db.execute("""
+        SELECT sp.id, sp.client_id, sp.topic, sp.caption, sp.post_type, sp.platforms,
+               sp.workflow_status, sp.scheduled_at, c.name as client_name
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        WHERE sp.topic LIKE ? OR sp.caption LIKE ? OR c.name LIKE ?
+        ORDER BY sp.scheduled_at DESC LIMIT 10
+    """, (like, like, like)).fetchall())
+
+    # Search clients (name, company, email)
+    clients = dicts_from_rows(db.execute("""
+        SELECT id, name, company, email
+        FROM clients
+        WHERE name LIKE ? OR company LIKE ? OR email LIKE ?
+        ORDER BY name LIMIT 10
+    """, (like, like, like)).fetchall())
+
+    # Search tasks (title, description)
+    tasks = dicts_from_rows(db.execute("""
+        SELECT t.id, t.title, t.status, t.priority, t.due_date,
+               c.name as client_name
+        FROM tasks t
+        LEFT JOIN clients c ON t.client_id = c.id
+        WHERE t.title LIKE ? OR t.description LIKE ?
+        ORDER BY t.created_at DESC LIMIT 10
+    """, (like, like)).fetchall())
+
+    db.close()
+    return jsonify({'posts': posts, 'clients': clients, 'tasks': tasks})
+
+
+# ============ ACTIVITY TIMELINE ============
+
+@posts_bp.route('/api/activity', methods=['GET'])
+@require_login
+def activity_timeline():
+    limit = min(int(request.args.get('limit', 20)), 50)
+    db = get_db()
+    rows = dicts_from_rows(db.execute("""
+        SELECT wh.id, wh.post_id, wh.from_status, wh.to_status, wh.comment, wh.created_at,
+               u.username as user_name, u.role as user_role,
+               sp.topic, sp.post_type, sp.platforms, c.name as client_name
+        FROM workflow_history wh
+        LEFT JOIN users u ON wh.user_id = u.id
+        LEFT JOIN scheduled_posts sp ON wh.post_id = sp.id
+        LEFT JOIN clients c ON sp.client_id = c.id
+        ORDER BY wh.created_at DESC
+        LIMIT ?
+    """, (limit,)).fetchall())
+    db.close()
+    return jsonify(rows)
 
 
 @posts_bp.route('/api/force-publish-all', methods=['POST'])

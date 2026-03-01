@@ -8,6 +8,18 @@ function esc(str) {
     return div.innerHTML;
 }
 
+function copyToClipboard(text) {
+    if (!text || !text.trim()) { showToast('Nothing to copy', 'error'); return; }
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard', 'success');
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        showToast('Copied to clipboard', 'success');
+    });
+}
+
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -81,11 +93,11 @@ function getOfficialPlatformIcon(platform) {
 // Motion Designer: same as designer but only sees video/reel content. Uploads motion designs.
 // Moderator: approves designs, schedules posts, shares with client. Final approval role.
 const ROLE_PERMISSIONS = {
-    admin:            { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, viewClients: true },
+    admin:            { createPost: true, editCaption: true, uploadDesign: true, uploadRef: true, approve: true, schedule: true, viewAll: true, manageTeam: true, manageClients: true, viewClients: true, markPosted: true },
     sm_specialist:    { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: false, schedule: false, viewAll: true, manageTeam: false, manageClients: false, viewClients: true },
     designer:         { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true },
     motion_designer:  { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true },
-    moderator:        { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: false, schedule: false, viewAll: true, manageTeam: false, manageClients: false, viewClients: true },
+    moderator:        { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: false, schedule: false, viewAll: true, manageTeam: false, manageClients: false, viewClients: true, markPosted: true },
 };
 
 function canDo(action) {
@@ -439,6 +451,14 @@ function getContentTypeIcon(type) {
     return icons[(type || 'post').toLowerCase()] || icons['post'];
 }
 
+function isPostOverdue(post) {
+    const wf = post.workflow_status || 'draft';
+    if (wf === 'posted' || wf === 'scheduled') return false;
+    const sa = post.scheduled_at;
+    if (!sa) return false;
+    return new Date(sa) < new Date();
+}
+
 function renderCalendarMiniCard(post) {
     const status = getPostStatus(post);
     const borderClass = getStatusBorderClass(post);
@@ -450,6 +470,7 @@ function renderCalendarMiniCard(post) {
     const platform = post.platforms || '';
     const contentType = post.post_type || 'post';
     const wf = post.workflow_status || 'draft';
+    const overdue = isPostOverdue(post);
 
     // Show upload hint for designers on in_design posts
     const isDesignerUpload = canDo('uploadDesign') && wf === 'in_design';
@@ -457,9 +478,10 @@ function renderCalendarMiniCard(post) {
     const canDrag = canDo('schedule') || canDo('approve');
     // Use the right click handler depending on which page we're on
     const clickFn = typeof openClientPostDetail === 'function' && typeof clientId !== 'undefined' ? 'openClientPostDetail' : 'openPostDetail';
-    return `<div class="cal-mini-card ${borderClass} ${isDesignerUpload ? 'cal-card-designer-upload' : ''}" data-post-id="${post.id}" ${canDrag ? `draggable="true" ondragstart="onCardDragStart(event, ${post.id})"` : ''}
+    return `<div class="cal-mini-card ${borderClass} ${isDesignerUpload ? 'cal-card-designer-upload' : ''} ${overdue ? 'cal-card-overdue' : ''}" data-post-id="${post.id}" ${canDrag ? `draggable="true" ondragstart="onCardDragStart(event, ${post.id})"` : ''}
                  onclick="${clickFn}(${post.id}); event.stopPropagation();">
         <div class="cal-card-top">
+            ${overdue ? '<span class="cal-overdue-badge"><i class="fa-solid fa-clock"></i> Overdue</span>' : ''}
             ${time ? `<span class="cal-card-time">${esc(time)}</span>` : ''}
             <span class="cal-card-icons">${getPlatformIcon(platform)} ${getContentTypeIcon(contentType)}</span>
             <span class="cal-status-dot" style="background:${getStatusColor(status)}" title="${status}"></span>
@@ -474,6 +496,107 @@ function renderCalendarMiniCard(post) {
         </div>
     </div>`;
 }
+
+// === Global Search ===
+let _searchTimeout = null;
+let _searchResults = null;
+let _searchIndex = -1;
+
+function onGlobalSearch(q, variant) {
+    clearTimeout(_searchTimeout);
+    const panelId = variant === 'mobile' ? 'mobile-search-results' : 'global-search-results';
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    if (q.trim().length < 2) { panel.classList.add('hidden'); panel.innerHTML = ''; _searchResults = null; _searchIndex = -1; return; }
+    _searchTimeout = setTimeout(async () => {
+        const data = await fetch(API_URL + '/search?q=' + encodeURIComponent(q.trim())).then(r => r.json()).catch(() => null);
+        if (!data) return;
+        _searchResults = data;
+        _searchIndex = -1;
+        renderSearchResults(data, panel);
+    }, 300);
+}
+
+function toggleMobileSearch() {
+    const bar = document.getElementById('mobile-search-bar');
+    if (bar) { bar.classList.toggle('hidden'); if (!bar.classList.contains('hidden')) document.getElementById('mobile-search-input')?.focus(); }
+}
+
+function renderSearchResults(data, panel) {
+    const { posts, clients, tasks } = data;
+    if (!posts.length && !clients.length && !tasks.length) {
+        panel.innerHTML = '<div class="search-empty">No results found</div>';
+        panel.classList.remove('hidden');
+        return;
+    }
+    let html = '';
+    if (clients.length) {
+        html += '<div class="search-group-label">Accounts</div>';
+        clients.forEach(c => {
+            html += `<a href="/clients/${c.id}" class="search-item" data-type="client">
+                <i class="fa-solid fa-building text-indigo-400 w-5 text-center"></i>
+                <div class="search-item-text"><div class="search-item-title">${esc(c.name)}</div>${c.company ? `<div class="search-item-sub">${esc(c.company)}</div>` : ''}</div>
+            </a>`;
+        });
+    }
+    if (posts.length) {
+        html += '<div class="search-group-label">Posts</div>';
+        posts.forEach(p => {
+            const topic = getTopicPreview(p.topic, 50);
+            const statusLabel = getPostStatus(p);
+            const color = getStatusColor(statusLabel);
+            html += `<a href="/clients/${getPostClientLink(p)}" class="search-item" data-type="post" data-post-id="${p.id}">
+                <span class="search-status-dot" style="background:${color}"></span>
+                <div class="search-item-text"><div class="search-item-title">${topic ? esc(topic) : esc((p.caption || '').substring(0, 50))}</div>
+                <div class="search-item-sub">${esc(p.client_name || '')} &middot; ${statusLabel} &middot; ${esc(p.post_type || 'post')}</div></div>
+            </a>`;
+        });
+    }
+    if (tasks.length) {
+        html += '<div class="search-group-label">Tasks</div>';
+        tasks.forEach(t => {
+            const pri = t.priority === 'urgent' ? '<span class="text-red-400 text-[10px] font-bold">URGENT</span> ' : '';
+            html += `<a href="/" class="search-item" data-type="task">
+                <i class="fa-solid fa-clipboard-check text-green-400 w-5 text-center"></i>
+                <div class="search-item-text"><div class="search-item-title">${pri}${esc(t.title)}</div>
+                <div class="search-item-sub">${esc(t.client_name || '')} &middot; ${t.status}</div></div>
+            </a>`;
+        });
+    }
+    panel.innerHTML = html;
+    panel.classList.remove('hidden');
+}
+
+function getPostClientLink(post) {
+    return post.client_id || '';
+}
+
+function onSearchKeydown(e, variant) {
+    const panelId = variant === 'mobile' ? 'mobile-search-results' : 'global-search-results';
+    const panel = document.getElementById(panelId);
+    if (!panel || panel.classList.contains('hidden')) return;
+    const items = panel.querySelectorAll('.search-item');
+    if (e.key === 'ArrowDown') { e.preventDefault(); _searchIndex = Math.min(_searchIndex + 1, items.length - 1); highlightSearchItem(items); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _searchIndex = Math.max(_searchIndex - 1, 0); highlightSearchItem(items); }
+    else if (e.key === 'Enter' && _searchIndex >= 0 && items[_searchIndex]) { e.preventDefault(); items[_searchIndex].click(); }
+    else if (e.key === 'Escape') { panel.classList.add('hidden'); _searchIndex = -1; }
+}
+
+function highlightSearchItem(items) {
+    items.forEach((el, i) => el.classList.toggle('search-item-active', i === _searchIndex));
+    if (items[_searchIndex]) items[_searchIndex].scrollIntoView({ block: 'nearest' });
+}
+
+// Close search on outside click
+document.addEventListener('click', function(e) {
+    ['global-search', 'mobile-search'].forEach(prefix => {
+        const panel = document.getElementById(prefix + '-results');
+        const input = document.getElementById(prefix + '-input');
+        if (panel && !panel.contains(e.target) && e.target !== input) {
+            panel.classList.add('hidden');
+        }
+    });
+});
 
 // === Init ===
 document.addEventListener('DOMContentLoaded', function() {

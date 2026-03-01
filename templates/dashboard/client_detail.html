@@ -21,6 +21,11 @@
     </div>
     <!-- Assigned Team -->
     <div id="cd-team" class="flex flex-wrap gap-2 mt-4"></div>
+    <!-- API Status -->
+    <div id="cd-api-status" class="flex flex-wrap gap-2 mt-3 items-center">
+        <button onclick="checkApiStatus()" data-perm="manageClients" class="text-xs text-gray-500 hover:text-indigo-600 transition"><i class="fa-solid fa-signal mr-1"></i>Check API Status</button>
+        <div id="cd-api-results" class="flex flex-wrap gap-2"></div>
+    </div>
     <!-- Brief & Content Requirements (visible to SMM and Designer roles) -->
     <div id="cd-brief-section" class="hidden mt-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -819,3 +819,68 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .dark .cal-day-clickable:hover { background: #1e1b4b !important; }
 .dark .cal-add-btn { color: #818cf8; }
 .dark .cal-add-btn:hover { background: #312e81; border-color: #818cf8; }
+
+/* Global Search */
+#global-search-results {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    max-height: 360px; overflow-y: auto; z-index: 60;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.search-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; padding: 8px 12px 4px; }
+.search-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; text-decoration: none; color: #e2e8f0; transition: background 0.15s; cursor: pointer; }
+.search-item:hover, .search-item-active { background: #334155; }
+.search-item-text { min-width: 0; flex: 1; }
+.search-item-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-item-sub { font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.search-empty { padding: 16px; text-align: center; color: #64748b; font-size: 13px; }
+
+/* Light mode overrides for search */
+body:not(.dark) #global-search-results { background: #fff; border-color: #e2e8f0; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+body:not(.dark) .search-item { color: #1e293b; }
+body:not(.dark) .search-item:hover, body:not(.dark) .search-item-active { background: #f1f5f9; }
+body:not(.dark) .search-group-label { color: #94a3b8; }
+body:not(.dark) .search-item-sub { color: #64748b; }
+#mobile-search-results {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+    max-height: 320px; overflow-y: auto; z-index: 60;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+.dark #mobile-search-bar { background: #1e293b !important; }
+.dark #mobile-search-bar input { background: #0f172a; color: #e2e8f0; border-color: #334155; }
+.dark #mobile-search-results { background: #1e293b; border-color: #334155; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+.dark #mobile-search-results .search-item { color: #e2e8f0; }
+.dark #mobile-search-results .search-item:hover { background: #334155; }
+
+/* WhatsApp-style Post Chat */
+.post-chat-list { max-height: 250px; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.post-chat-msg { display: flex; }
+.post-chat-mine { justify-content: flex-end; }
+.post-chat-other { justify-content: flex-start; }
+.post-chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; position: relative; }
+.post-chat-bubble-mine { background: #dcf8c6; border-bottom-right-radius: 4px; color: #1a1a1a; }
+.post-chat-bubble-other { background: #f0f0f0; border-bottom-left-radius: 4px; color: #1a1a1a; }
+.post-chat-name { font-size: 11px; font-weight: 700; color: #6366f1; margin-bottom: 2px; }
+.post-chat-text { word-break: break-word; }
+.post-chat-time { font-size: 10px; color: #999; text-align: right; margin-top: 2px; }
+.post-chat-input-row { display: flex; gap: 8px; margin-top: 8px; }
+.post-chat-input { flex: 1; border: 1px solid #e2e8f0; border-radius: 20px; padding: 8px 16px; font-size: 13px; outline: none; transition: border-color 0.2s; }
+.post-chat-input:focus { border-color: #6366f1; }
+.post-chat-send { background: #6366f1; color: white; border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+.post-chat-send:hover { background: #4f46e5; }
+.dark .post-chat-bubble-mine { background: #1e4620; color: #e2e8f0; }
+.dark .post-chat-bubble-other { background: #374151; color: #e2e8f0; }
+.dark .post-chat-name { color: #818cf8; }
+.dark .post-chat-time { color: #6b7280; }
+.dark .post-chat-input { background: #1e293b; border-color: #374151; color: #e2e8f0; }
+
+/* Overdue post alerts */
+.cal-card-overdue { border-left: 3px solid #ef4444 !important; animation: overduePulse 2s ease-in-out infinite; }
+.cal-overdue-badge { font-size: 9px; font-weight: 700; color: #ef4444; background: #fef2f2; padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+@keyframes overduePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 50% { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15); } }
+.overdue-alert-banner { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 1px solid #fecaca; border-radius: 10px; padding: 10px 16px; color: #991b1b; font-size: 13px; font-weight: 500; }
+.overdue-alert-banner i { color: #ef4444; }
+.dark .overdue-alert-banner { background: linear-gradient(135deg, #450a0a, #7f1d1d); border-color: #991b1b; color: #fca5a5; }
+.dark .cal-overdue-badge { background: #450a0a; color: #fca5a5; }

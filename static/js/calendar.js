@@ -42,6 +42,7 @@ async function loadCalendar() {
     calendarByDate = data.by_date || {};
     scheduleSlots = (slotsData && slotsData.slots) ? slotsData.slots : {};
     renderCalendar();
+    renderOverdueAlert();
 }
 
 function renderCalendar() {
@@ -109,6 +110,27 @@ function filterByStatus(posts) {
 function applyStatusFilter() {
     activeStatusFilter = document.getElementById('calendar-status-filter')?.value || '';
     renderCalendar();
+}
+
+// ========== OVERDUE ALERTS ==========
+
+function renderOverdueAlert() {
+    const banner = document.getElementById('overdue-alert-banner');
+    if (!banner) return;
+    // Collect all posts from calendarByDate plus calendarPostsData
+    const allPosts = calendarPostsData.length ? calendarPostsData : Object.values(calendarByDate).flat();
+    const overdue = allPosts.filter(p => isPostOverdue(p));
+    if (overdue.length === 0) { banner.classList.add('hidden'); return; }
+    const needsDesign = overdue.filter(p => (p.workflow_status || 'draft') === 'in_design').length;
+    const drafts = overdue.filter(p => ['draft', 'pending_review'].includes(p.workflow_status || 'draft')).length;
+    const approved = overdue.filter(p => (p.workflow_status || 'draft') === 'approved').length;
+    let details = [];
+    if (drafts) details.push(`${drafts} in draft/review`);
+    if (needsDesign) details.push(`${needsDesign} in design`);
+    if (approved) details.push(`${approved} approved but not scheduled`);
+    banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-lg"></i>
+        <span><strong>${overdue.length} overdue post${overdue.length > 1 ? 's' : ''}</strong> past their scheduled time — ${details.join(', ')}</span>`;
+    banner.classList.remove('hidden');
 }
 
 // ========== DRAG & DROP ==========
@@ -464,6 +486,10 @@ async function openPostDetail(postId) {
     if (wf === 'approved' && canDo('schedule')) {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
     }
+    // Mark as Posted — for moderator/admin on scheduled or approved posts
+    if (['scheduled', 'approved'].includes(wf) && canDo('markPosted')) {
+        actions.push(`<button onclick="markAsPosted(${post.id})" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700"><i class="fa-solid fa-check-double mr-1"></i> Mark as Posted</button>`);
+    }
     // Delete button — for admin/managers on non-posted posts
     if (wf !== 'posted' && canDo('createPost')) {
         actions.push(`<button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-trash mr-1"></i> Delete</button>`);
@@ -558,6 +584,7 @@ async function openPostDetail(postId) {
     }
 
     document.getElementById('post-detail-modal').classList.remove('hidden');
+    loadPostComments(post.id);
 }
 
 function closePostDetail() {
@@ -566,6 +593,34 @@ function closePostDetail() {
 }
 
 // ========== SAVE BRIEF FROM DETAIL ==========
+
+function copyCaption() {
+    const caption = document.getElementById('detail-caption')?.value || '';
+    if (!caption.trim()) { showToast('No caption to copy', 'error'); return; }
+    navigator.clipboard.writeText(caption).then(() => {
+        showToast('Caption copied to clipboard', 'success');
+    }).catch(() => {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = caption; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        showToast('Caption copied to clipboard', 'success');
+    });
+}
+
+function copyTopicText() {
+    if (!currentDetailPost) return;
+    const topic = currentDetailPost.topic || '';
+    if (!topic.trim()) { showToast('No text to copy', 'error'); return; }
+    navigator.clipboard.writeText(topic).then(() => {
+        showToast('Text on Design copied to clipboard', 'success');
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = topic; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        showToast('Text on Design copied to clipboard', 'success');
+    });
+}
 
 async function saveBriefFromDetail() {
     if (!currentDetailPost) return;
@@ -764,6 +819,61 @@ async function returnToDesign(postId) {
     }
 }
 
+async function markAsPosted(postId) {
+    if (!confirm('Mark this post as published?')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'posted', user_id: currentUser?.id || 1 }
+    });
+    if (res && res.success) {
+        showToast('Post marked as posted', 'success');
+        loadCalendar();
+        openPostDetail(postId);
+    } else {
+        showToast(res?.error || 'Failed', 'error');
+    }
+}
+
+// ========== POST COMMENTS (Chat) ==========
+
+async function loadPostComments(postId) {
+    const list = document.getElementById('detail-comments-list');
+    if (!list) return;
+    list.innerHTML = '<p class="text-gray-400 text-center text-xs py-2">Loading...</p>';
+    const data = await fetch(`${API_URL}/posts/${postId}/comments`).then(r => r.json()).catch(() => []);
+    if (!data || data.length === 0) {
+        list.innerHTML = '<p class="text-gray-400 text-center text-xs py-3">No comments yet</p>';
+        return;
+    }
+    const myId = currentUser?.id;
+    list.innerHTML = data.map(c => {
+        const isMine = c.user_id === myId;
+        const time = c.created_at ? new Date(c.created_at + (c.created_at.includes('Z') ? '' : 'Z')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const typeIcon = c.comment_type === 'rejection' ? '<i class="fa-solid fa-rotate-left text-red-400 mr-1" title="Rejection"></i>' :
+                         c.comment_type === 'approval' ? '<i class="fa-solid fa-check text-green-400 mr-1" title="Approval"></i>' : '';
+        return `<div class="post-chat-msg ${isMine ? 'post-chat-mine' : 'post-chat-other'}">
+            <div class="post-chat-bubble ${isMine ? 'post-chat-bubble-mine' : 'post-chat-bubble-other'}">
+                ${!isMine ? `<div class="post-chat-name">${esc(c.user_name || 'User')}</div>` : ''}
+                <div class="post-chat-text">${typeIcon}${esc(c.content)}</div>
+                <div class="post-chat-time">${time}</div>
+            </div>
+        </div>`;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+}
+
+async function sendPostComment() {
+    const input = document.getElementById('detail-comment-input');
+    if (!input || !input.value.trim() || !currentDetailPost) return;
+    const content = input.value.trim();
+    input.value = '';
+    await apiFetch(`${API_URL}/posts/${currentDetailPost.id}/comments`, {
+        method: 'POST',
+        body: { content, user_id: currentUser?.id || 1, comment_type: 'comment' }
+    });
+    loadPostComments(currentDetailPost.id);
+}
+
 async function deletePost(postId) {
     if (!confirm('Are you sure you want to delete this post? This cannot be undone.')) return;
     const res = await apiFetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
@@ -779,6 +889,17 @@ async function deletePost(postId) {
 async function schedulePost(postId) {
     const dt = prompt('Schedule date/time (YYYY-MM-DDTHH:MM):');
     if (!dt) return;
+
+    // Validate against posting rules
+    if (currentDetailPost?.client_id) {
+        const check = await apiFetch(`${API_URL}/clients/${currentDetailPost.client_id}/validate-schedule`, {
+            method: 'POST', body: { scheduled_at: dt }
+        });
+        if (check && check.warnings && check.warnings.length > 0) {
+            if (!confirm('Schedule warnings:\n\n' + check.warnings.join('\n') + '\n\nSchedule anyway?')) return;
+        }
+    }
+
     const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
         method: 'POST',
         body: { status: 'scheduled', user_id: currentUser?.id || 1, scheduled_at: dt }

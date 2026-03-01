@@ -230,6 +230,73 @@ def calendar_schedule_slots():
     return jsonify({'slots': slots_by_date, 'month': month, 'year': year})
 
 
+@posting_rules_bp.route('/api/clients/<int:client_id>/validate-schedule', methods=['POST'])
+def validate_schedule(client_id):
+    """Check if a proposed schedule datetime complies with posting rules."""
+    data = request.json or {}
+    scheduled_at = data.get('scheduled_at', '')
+    platform = data.get('platform', '')
+    post_type = data.get('post_type', 'post')
+
+    if not scheduled_at:
+        return jsonify({'valid': False, 'warnings': ['No schedule time provided']})
+
+    try:
+        dt = datetime.fromisoformat(scheduled_at.replace('Z', ''))
+    except ValueError:
+        return jsonify({'valid': False, 'warnings': ['Invalid date format']})
+
+    db = get_db()
+    rules = dicts_from_rows(db.execute(
+        "SELECT * FROM client_posting_rules WHERE client_id=? AND is_active=1",
+        (client_id,)
+    ).fetchall())
+
+    # Check how many posts are already scheduled on this day for this client
+    date_str = dt.strftime('%Y-%m-%d')
+    existing_count = db.execute(
+        """SELECT COUNT(*) as cnt FROM scheduled_posts
+           WHERE client_id=? AND scheduled_at LIKE ? AND workflow_status NOT IN ('draft')""",
+        (client_id, f'{date_str}%')
+    ).fetchone()[0]
+
+    db.close()
+
+    warnings = []
+    matched_rule = False
+
+    for rule in rules:
+        try:
+            posting_days = json.loads(rule['posting_days']) if isinstance(rule['posting_days'], str) else rule['posting_days']
+            posting_hours = json.loads(rule['posting_hours']) if isinstance(rule['posting_hours'], str) else rule['posting_hours']
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+        if platform and rule.get('platform') != platform:
+            continue
+
+        weekday = dt.weekday()
+        day_of_month = dt.day
+        dims = cal_mod.monthrange(dt.year, dt.month)[1]
+
+        day_matches = any(matches_day_code(dc, weekday, day_of_month, dims) for dc in posting_days)
+        if day_matches:
+            matched_rule = True
+            # Check time
+            scheduled_time = dt.strftime('%H:%M')
+            if scheduled_time not in posting_hours:
+                warnings.append(f'Time {scheduled_time} is not in the preferred posting hours ({", ".join(posting_hours)})')
+            # Check posts per day limit
+            if rule.get('posts_per_day') and existing_count >= rule['posts_per_day']:
+                warnings.append(f'Daily post limit ({rule["posts_per_day"]}) already reached for this day')
+
+    if rules and not matched_rule:
+        day_name = dt.strftime('%A')
+        warnings.append(f'{day_name} is not a scheduled posting day for this account')
+
+    return jsonify({'valid': len(warnings) == 0, 'warnings': warnings})
+
+
 @posting_rules_bp.route('/api/clients/<int:client_id>/suggest-schedule', methods=['GET'])
 def suggest_schedule(client_id):
     """Auto-suggest next available scheduling slots based on posting rules."""

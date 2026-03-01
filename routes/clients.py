@@ -233,6 +233,103 @@ def delete_account(account_id):
     return jsonify({'success': True})
 
 
+@clients_bp.route('/api/accounts/<int:account_id>/check-status', methods=['GET'])
+def check_account_status(account_id):
+    """Verify if an account's API token is still valid by making a simple API call."""
+    db = get_db()
+    account = dict_from_row(db.execute("SELECT * FROM accounts WHERE id=?", (account_id,)).fetchone())
+    db.close()
+
+    if not account:
+        return jsonify({'error': 'Account not found'}), 404
+
+    platform = account.get('platform', '')
+    token = account.get('access_token', '')
+    acct_id = account.get('account_id', '')
+
+    if not token:
+        return jsonify({'status': 'no_token', 'message': 'No access token configured'})
+
+    try:
+        if platform in ('instagram', 'facebook'):
+            # Meta Graph API debug token or simple me query
+            resp = http_requests.get(
+                f"https://graph.facebook.com/v18.0/{acct_id or 'me'}",
+                params={'access_token': token, 'fields': 'id,name'},
+                timeout=10
+            )
+            data = resp.json()
+            if 'error' in data:
+                err = data['error']
+                return jsonify({
+                    'status': 'error',
+                    'message': err.get('message', 'Token invalid'),
+                    'code': err.get('code'),
+                    'needs_reauth': err.get('code') in (190, 102)
+                })
+            return jsonify({
+                'status': 'active',
+                'message': f'Connected as {data.get("name", acct_id)}',
+                'account_name': data.get('name', '')
+            })
+
+        elif platform == 'linkedin':
+            resp = http_requests.get(
+                'https://api.linkedin.com/v2/userinfo',
+                headers={'Authorization': f'Bearer {token}'},
+                timeout=10
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return jsonify({
+                    'status': 'active',
+                    'message': f'Connected as {data.get("name", "LinkedIn User")}'
+                })
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Token expired or invalid',
+                    'needs_reauth': True
+                })
+
+        else:
+            return jsonify({'status': 'unknown', 'message': f'Status check not supported for {platform}'})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Connection failed: {str(e)}'})
+
+
+@clients_bp.route('/api/clients/<int:client_id>/check-all-accounts', methods=['GET'])
+def check_all_accounts(client_id):
+    """Check status of all accounts for a client."""
+    db = get_db()
+    accounts = dicts_from_rows(db.execute(
+        "SELECT id, platform, account_name, account_id FROM accounts WHERE client_id=?",
+        (client_id,)
+    ).fetchall())
+    db.close()
+
+    results = []
+    for acct in accounts:
+        try:
+            # Call our own check endpoint internally
+            from flask import current_app
+            with current_app.test_request_context():
+                status_resp = check_account_status(acct['id'])
+                status_data = status_resp[0].get_json() if isinstance(status_resp, tuple) else status_resp.get_json()
+        except Exception:
+            status_data = {'status': 'error', 'message': 'Check failed'}
+        results.append({
+            'account_id': acct['id'],
+            'platform': acct['platform'],
+            'account_name': acct.get('account_name', ''),
+            'account_api_id': acct.get('account_id', ''),
+            **status_data
+        })
+
+    return jsonify(results)
+
+
 @clients_bp.route('/api/clients/overview', methods=['GET'])
 def clients_overview():
     """Return all clients with coverage data and pipeline stats."""

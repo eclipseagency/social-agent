@@ -782,7 +782,7 @@ async function openPostSlideView(postId) {
         });
     } else if (post.topic) {
         body += '<div class="pres-tov-block" style="direction:rtl">';
-        body += '<div class="pres-tov-label">Text on Design / Topic</div>';
+        body += `<div class="pres-tov-label" style="display:flex;justify-content:space-between;align-items:center">Text on Design / Topic <button onclick="copyToClipboard(\`${esc(post.topic).replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)" class="text-xs text-indigo-300 hover:text-white" title="Copy"><i class="fa-solid fa-copy"></i></button></div>`;
         body += `<div>${esc(post.topic).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
     }
@@ -868,7 +868,7 @@ async function openPostSlideView(postId) {
     // Caption (hidden for stories/banners/brochures — only text on design matters)
     if (post.caption && !['story', 'banner', 'brochure'].includes(post.post_type)) {
         body += '<div class="pres-caption-block" style="direction:rtl">';
-        body += '<div class="pres-caption-label">Caption</div>';
+        body += `<div class="pres-caption-label" style="display:flex;justify-content:space-between;align-items:center">Caption <button onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(post.caption)}'))" class="text-xs text-green-300 hover:text-white" title="Copy caption"><i class="fa-solid fa-copy"></i></button></div>`;
         body += `<div>${esc(post.caption).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
     }
@@ -881,17 +881,84 @@ async function openPostSlideView(postId) {
         body += '</div>';
     }
 
+    // Comments chat section
+    body += `<div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px"><i class="fa-solid fa-comments text-indigo-500 mr-1"></i> Comments</div>
+        <div id="slide-comments-list" class="post-chat-list"></div>
+        <div class="post-chat-input-row">
+            <input type="text" id="slide-comment-input" class="post-chat-input" placeholder="Write a comment..." onkeydown="if(event.key==='Enter')sendSlideComment()">
+            <button onclick="sendSlideComment()" class="post-chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>`;
+
     document.getElementById('post-slide-body').innerHTML = body;
 
     // Role-based action buttons
     document.getElementById('post-slide-actions').innerHTML = buildPostSlideActions(post);
 
     document.getElementById('post-slide-modal').classList.remove('hidden');
+    loadSlideComments(post.id);
 }
 
 function closePostSlideModal() {
     document.getElementById('post-slide-modal').classList.add('hidden');
     slideViewPostId = null;
+}
+
+// ========== SLIDE COMMENTS (Chat) ==========
+
+async function loadSlideComments(postId) {
+    const list = document.getElementById('slide-comments-list');
+    if (!list) return;
+    list.innerHTML = '<p class="text-gray-400 text-center text-xs py-2">Loading...</p>';
+    const data = await fetch(`${API_URL}/posts/${postId}/comments`).then(r => r.json()).catch(() => []);
+    if (!data || data.length === 0) {
+        list.innerHTML = '<p class="text-gray-400 text-center text-xs py-3">No comments yet</p>';
+        return;
+    }
+    const myId = currentUser?.id;
+    list.innerHTML = data.map(c => {
+        const isMine = c.user_id === myId;
+        const time = c.created_at ? new Date(c.created_at + (c.created_at.includes('Z') ? '' : 'Z')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const typeIcon = c.comment_type === 'rejection' ? '<i class="fa-solid fa-rotate-left text-red-400 mr-1"></i>' :
+                         c.comment_type === 'approval' ? '<i class="fa-solid fa-check text-green-400 mr-1"></i>' : '';
+        return `<div class="post-chat-msg ${isMine ? 'post-chat-mine' : 'post-chat-other'}">
+            <div class="post-chat-bubble ${isMine ? 'post-chat-bubble-mine' : 'post-chat-bubble-other'}">
+                ${!isMine ? `<div class="post-chat-name">${esc(c.user_name || 'User')}</div>` : ''}
+                <div class="post-chat-text">${typeIcon}${esc(c.content)}</div>
+                <div class="post-chat-time">${time}</div>
+            </div>
+        </div>`;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+}
+
+async function sendSlideComment() {
+    const input = document.getElementById('slide-comment-input');
+    if (!input || !input.value.trim() || !slideViewPostId) return;
+    const content = input.value.trim();
+    input.value = '';
+    await apiFetch(`${API_URL}/posts/${slideViewPostId}/comments`, {
+        method: 'POST',
+        body: { content, user_id: currentUser?.id || 1, comment_type: 'comment' }
+    });
+    loadSlideComments(slideViewPostId);
+}
+
+async function clientMarkAsPosted(postId) {
+    if (!confirm('Mark this post as published?')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'posted', user_id: currentUser?.id || 1 }
+    });
+    if (res && res.success) {
+        showToast('Post marked as posted', 'success');
+        closePostSlideModal();
+        if (typeof loadClientCalendar === 'function') loadClientCalendar();
+        if (typeof loadClientPosts === 'function') loadClientPosts();
+    } else {
+        showToast(res?.error || 'Failed', 'error');
+    }
 }
 
 async function deletePostFromSlide(postId) {
@@ -944,6 +1011,11 @@ function buildPostSlideActions(post) {
     // Approved: moderator/admin can schedule
     if (wf === 'approved' && canDo('schedule')) {
         actions += `<button onclick="openSchedulePicker(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>`;
+    }
+
+    // Mark as Posted — for moderator/admin on scheduled or approved posts
+    if (['scheduled', 'approved'].includes(wf) && canDo('markPosted')) {
+        actions += `<button onclick="clientMarkAsPosted(${post.id})" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700"><i class="fa-solid fa-check-double mr-1"></i> Mark as Posted</button>`;
     }
 
     // Delete button — for admin/managers on non-posted posts
@@ -1022,6 +1094,17 @@ async function confirmSchedulePost() {
     const postId = document.getElementById('sp-post-id').value;
     const dt = document.getElementById('sp-datetime').value;
     if (!dt) { showToast('Please select a date and time', 'error'); return; }
+
+    // Validate against posting rules
+    if (typeof clientId !== 'undefined' && clientId) {
+        const check = await apiFetch(`${API_URL}/clients/${clientId}/validate-schedule`, {
+            method: 'POST', body: { scheduled_at: dt }
+        });
+        if (check && check.warnings && check.warnings.length > 0) {
+            const proceed = confirm('Schedule warnings:\n\n' + check.warnings.join('\n') + '\n\nSchedule anyway?');
+            if (!proceed) return;
+        }
+    }
 
     const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
         method: 'POST',
@@ -1150,6 +1233,33 @@ async function clientReturnToCopywriter(postId) {
 
 let editBriefFileUrl = '';
 let _editWebsiteTimer = null;
+
+// ========== API STATUS CHECK ==========
+
+async function checkApiStatus() {
+    if (!clientId) return;
+    const container = document.getElementById('cd-api-results');
+    if (!container) return;
+    container.innerHTML = '<span class="text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Checking...</span>';
+    const data = await fetch(`${API_URL}/clients/${clientId}/check-all-accounts`).then(r => r.json()).catch(() => []);
+    if (!data || data.length === 0) {
+        container.innerHTML = '<span class="text-xs text-gray-400">No connected accounts</span>';
+        return;
+    }
+    container.innerHTML = data.map(a => {
+        const icon = a.status === 'active' ? 'fa-circle-check text-green-500' :
+                     a.status === 'error' ? 'fa-circle-xmark text-red-500' :
+                     'fa-circle-question text-yellow-500';
+        const bg = a.status === 'active' ? 'bg-green-50 border-green-200' :
+                   a.status === 'error' ? 'bg-red-50 border-red-200' :
+                   'bg-yellow-50 border-yellow-200';
+        return `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${bg}" title="${esc(a.message || '')}">
+            <i class="fa-solid ${icon}"></i>
+            ${getPlatformIcon(a.platform)} ${esc(a.account_name || a.platform)}
+            ${a.needs_reauth ? '<span class="text-red-500 ml-1 font-bold">Reconnect</span>' : ''}
+        </span>`;
+    }).join('');
+}
 
 async function openEditClientModal() {
     if (!clientData) return;
