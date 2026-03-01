@@ -57,6 +57,20 @@ def upload_video_file():
         return jsonify({'error': str(e)}), 500
 
 
+@upload_bp.route('/api/upload-brief-file', methods=['POST'])
+def upload_brief_file():
+    """Upload a PDF or document file for a client brief."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    try:
+        result = upload_image(file, folder='social_agent/briefs')
+        return jsonify({'success': True, 'url': result['url'], 'filename': result['filename']})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @upload_bp.route('/api/upload-design-reference', methods=['POST'])
 def upload_design_reference():
     """Upload design reference images for content briefs."""

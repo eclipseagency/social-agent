@@ -16,9 +16,20 @@
     <!-- Brief & Content Requirements (visible to SMM and Designer roles) -->
     <div id="cd-brief-section" class="hidden mt-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg">
-                <p class="text-indigo-600 text-xs font-semibold mb-1"><i class="fa-solid fa-file-lines mr-1"></i>Account Brief</p>
-                <p class="text-sm text-gray-700 whitespace-pre-line" id="cd-brief-text">-</p>
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg relative">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-indigo-600 text-xs font-semibold"><i class="fa-solid fa-file-lines mr-1"></i>Account Brief</p>
+                    <button id="cd-brief-toggle" onclick="toggleBriefExpand()" class="text-indigo-500 hover:text-indigo-700 text-xs font-medium hidden">
+                        <i class="fa-solid fa-chevron-down mr-1" id="cd-brief-toggle-icon"></i><span id="cd-brief-toggle-text">Show more</span>
+                    </button>
+                </div>
+                <!-- Brief attachments (link / PDF) -->
+                <div id="cd-brief-attachments" class="hidden flex flex-wrap gap-2 mb-3"></div>
+                <!-- Brief text with collapsible container -->
+                <div id="cd-brief-text-wrapper" class="relative overflow-hidden transition-all duration-300" style="max-height: 120px;">
+                    <p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed" id="cd-brief-text">-</p>
+                </div>
+                <div id="cd-brief-fade" class="hidden absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-indigo-50 to-transparent pointer-events-none"></div>
             </div>
             <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg">
                 <p class="text-purple-600 text-xs font-semibold mb-2"><i class="fa-solid fa-list-check mr-1"></i>Content Requirements (per month)</p>

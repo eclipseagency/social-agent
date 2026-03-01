@@ -21,6 +21,7 @@ async function loadClients() {
                         </div>
                     </div>
                     <p class="text-xs text-gray-500 mb-2 line-clamp-2">${c.brief_text ? esc(c.brief_text.substring(0, 100)) + (c.brief_text.length > 100 ? '...' : '') : '<span class="italic">No brief</span>'}</p>
+                    ${(c.brief_url || c.brief_file_url) ? `<div class="flex gap-2 mb-1">${c.brief_url ? '<span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded"><i class="fa-solid fa-link mr-0.5"></i>Link</span>' : ''}${c.brief_file_url ? '<span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded"><i class="fa-solid fa-file-pdf mr-0.5"></i>File</span>' : ''}</div>` : ''}
                     <p class="text-[11px] text-indigo-600">${esc(reqSummary)}</p>
                 </div>`;
             }).join('') || '<div class="col-span-full text-center py-8 text-gray-500">No accounts yet. Click "Add Account" to get started.</div>';
@@ -30,7 +31,7 @@ async function loadClients() {
             <tr class="border-t hover:bg-gray-50">
                 <td class="px-4 sm:px-6 py-4 font-semibold"><a href="/clients/${c.id}" class="text-indigo-600 hover:underline">${esc(c.name)}</a></td>
                 <td class="px-4 sm:px-6 py-4">${esc(c.company) || '-'}</td>
-                <td class="px-4 sm:px-6 py-4 hidden sm:table-cell text-sm text-gray-500">${c.brief_text ? esc(c.brief_text.substring(0, 60)) + (c.brief_text.length > 60 ? '...' : '') : '-'}</td>
+                <td class="px-4 sm:px-6 py-4 hidden sm:table-cell text-sm text-gray-500">${c.brief_text ? esc(c.brief_text.substring(0, 60)) + (c.brief_text.length > 60 ? '...' : '') : '-'}${c.brief_url ? ' <i class="fa-solid fa-link text-indigo-400 text-xs" title="Has link"></i>' : ''}${c.brief_file_url ? ' <i class="fa-solid fa-file-pdf text-indigo-400 text-xs" title="Has file"></i>' : ''}</td>
                 <td class="px-4 sm:px-6 py-4">
                     <a href="/clients/${c.id}" class="text-indigo-600 mr-2" title="View"><i class="fa-solid fa-eye"></i></a>
                     ${canDo('manageClients') ? `<button onclick="event.preventDefault(); deleteClient(${c.id})" class="text-red-600" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
@@ -53,6 +54,10 @@ function hideAddClientModal() {
     document.getElementById('client-company').value = '';
     document.getElementById('client-email').value = '';
     document.getElementById('client-brief').value = '';
+    document.getElementById('client-brief-url').value = '';
+    document.getElementById('client-brief-file').value = '';
+    document.getElementById('client-brief-file-url').value = '';
+    document.getElementById('client-brief-file-name').textContent = '';
     document.getElementById('content-req-rows').innerHTML = getDefaultReqRow();
 }
 
@@ -102,12 +107,34 @@ function collectContentRequirements() {
     return JSON.stringify(reqs);
 }
 
+async function onBriefFileSelected(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    document.getElementById('client-brief-file-name').textContent = 'Uploading...';
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(API_URL + '/upload-brief-file', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success && data.url) {
+            document.getElementById('client-brief-file-url').value = data.url;
+            document.getElementById('client-brief-file-name').textContent = data.filename || file.name;
+        } else {
+            document.getElementById('client-brief-file-name').textContent = 'Upload failed';
+        }
+    } catch (e) {
+        document.getElementById('client-brief-file-name').textContent = 'Upload failed';
+    }
+}
+
 async function addClient() {
     const data = {
         name: document.getElementById('client-name').value.trim(),
         email: document.getElementById('client-email').value.trim(),
         company: document.getElementById('client-company').value.trim(),
         brief_text: document.getElementById('client-brief').value.trim(),
+        brief_url: document.getElementById('client-brief-url').value.trim(),
+        brief_file_url: document.getElementById('client-brief-file-url').value.trim(),
         content_requirements: collectContentRequirements()
     };
     if (!data.name) { alert('Enter account name'); return; }

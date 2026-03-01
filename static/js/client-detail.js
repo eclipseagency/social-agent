@@ -27,16 +27,57 @@ async function loadClientDetail() {
     loadClientCalendar();
 }
 
+let briefExpanded = false;
+
 function renderBriefSection() {
     const section = document.getElementById('cd-brief-section');
     if (!section || !clientData) return;
 
     const hasBrief = clientData.brief_text && clientData.brief_text.trim();
+    const hasBriefUrl = clientData.brief_url && clientData.brief_url.trim();
+    const hasBriefFile = clientData.brief_file_url && clientData.brief_file_url.trim();
     const hasReqs = clientData.content_requirements && clientData.content_requirements.trim();
 
-    if (hasBrief || hasReqs) {
+    if (hasBrief || hasBriefUrl || hasBriefFile || hasReqs) {
         section.classList.remove('hidden');
-        document.getElementById('cd-brief-text').textContent = clientData.brief_text || 'No brief set';
+        document.getElementById('cd-brief-text').textContent = clientData.brief_text || 'No brief text set';
+
+        // Render attachments (link / PDF)
+        const attachEl = document.getElementById('cd-brief-attachments');
+        let attachHtml = '';
+        if (hasBriefUrl) {
+            attachHtml += `<a href="${esc(clientData.brief_url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition">
+                <i class="fa-solid fa-link"></i> Brief Link
+            </a>`;
+        }
+        if (hasBriefFile) {
+            const isPdf = clientData.brief_file_url.toLowerCase().endsWith('.pdf');
+            attachHtml += `<a href="${esc(clientData.brief_file_url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition">
+                <i class="fa-solid ${isPdf ? 'fa-file-pdf' : 'fa-file'}"></i> ${isPdf ? 'View PDF' : 'View File'}
+            </a>`;
+        }
+        if (attachHtml) {
+            attachEl.innerHTML = attachHtml;
+            attachEl.classList.remove('hidden');
+        } else {
+            attachEl.classList.add('hidden');
+        }
+
+        // Check if text is long enough to need expand/collapse
+        requestAnimationFrame(() => {
+            const wrapper = document.getElementById('cd-brief-text-wrapper');
+            const textEl = document.getElementById('cd-brief-text');
+            const toggleBtn = document.getElementById('cd-brief-toggle');
+            const fade = document.getElementById('cd-brief-fade');
+            if (textEl.scrollHeight > 130) {
+                toggleBtn.classList.remove('hidden');
+                fade.classList.remove('hidden');
+            } else {
+                toggleBtn.classList.add('hidden');
+                fade.classList.add('hidden');
+                wrapper.style.maxHeight = 'none';
+            }
+        });
 
         const reqsEl = document.getElementById('cd-content-reqs');
         let reqs = [];
@@ -53,6 +94,26 @@ function renderBriefSection() {
         }
     } else {
         section.classList.add('hidden');
+    }
+}
+
+function toggleBriefExpand() {
+    briefExpanded = !briefExpanded;
+    const wrapper = document.getElementById('cd-brief-text-wrapper');
+    const icon = document.getElementById('cd-brief-toggle-icon');
+    const text = document.getElementById('cd-brief-toggle-text');
+    const fade = document.getElementById('cd-brief-fade');
+
+    if (briefExpanded) {
+        wrapper.style.maxHeight = wrapper.scrollHeight + 'px';
+        icon.className = 'fa-solid fa-chevron-up mr-1';
+        text.textContent = 'Show less';
+        fade.classList.add('hidden');
+    } else {
+        wrapper.style.maxHeight = '120px';
+        icon.className = 'fa-solid fa-chevron-down mr-1';
+        text.textContent = 'Show more';
+        fade.classList.remove('hidden');
     }
 }
 

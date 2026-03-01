@@ -207,6 +207,11 @@ def run_migrations():
         _migration_19_reset_data(db)
         set_schema_version(db, 19)
 
+    if version < 20:
+        print("Running migration 20: Add brief_url and brief_file_url to clients...")
+        _migration_20_client_brief_attachments(db)
+        set_schema_version(db, 20)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -508,6 +513,15 @@ def _migration_19_reset_data(db):
             db.execute(f"DELETE FROM {table}")
     # Clear non-admin users
     db.execute("DELETE FROM users WHERE role != 'admin'")
+    db.commit()
+
+
+def _migration_20_client_brief_attachments(db):
+    """Add brief_url and brief_file_url columns to clients for link/PDF briefs."""
+    if not column_exists(db, 'clients', 'brief_url'):
+        db.execute("ALTER TABLE clients ADD COLUMN brief_url TEXT DEFAULT ''")
+    if not column_exists(db, 'clients', 'brief_file_url'):
+        db.execute("ALTER TABLE clients ADD COLUMN brief_file_url TEXT DEFAULT ''")
     db.commit()
 
 

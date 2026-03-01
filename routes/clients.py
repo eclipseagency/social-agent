@@ -67,12 +67,14 @@ def create_client():
         return jsonify({'error': 'Client name required'}), 400
 
     brief_text = data.get('brief_text', '').strip()
+    brief_url = data.get('brief_url', '').strip()
+    brief_file_url = data.get('brief_file_url', '').strip()
     content_requirements = data.get('content_requirements', '').strip()
 
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO clients (name, email, company, brief_text, content_requirements) VALUES (?,?,?,?,?)",
-        (name, email or None, company or None, brief_text, content_requirements)
+        "INSERT INTO clients (name, email, company, brief_text, brief_url, brief_file_url, content_requirements) VALUES (?,?,?,?,?,?,?)",
+        (name, email or None, company or None, brief_text, brief_url or None, brief_file_url or None, content_requirements)
     )
     db.commit()
     client_id = cursor.lastrowid
@@ -89,8 +91,8 @@ def update_client(client_id):
         db.close()
         return jsonify({'error': 'Client not found'}), 404
 
-    updatable = ['name', 'email', 'company', 'color', 'brief_text', 'content_requirements',
-                 'assigned_writer_id', 'assigned_designer_id',
+    updatable = ['name', 'email', 'company', 'color', 'brief_text', 'brief_url', 'brief_file_url',
+                 'content_requirements', 'assigned_writer_id', 'assigned_designer_id',
                  'assigned_sm_id', 'assigned_motion_id', 'assigned_manager_id']
     fields = []
     params = []
