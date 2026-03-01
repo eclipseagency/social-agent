@@ -401,8 +401,10 @@ function isCarouselSelected() {
 
 function toggleCarouselSlidesUI() {
     const isCarousel = isCarouselSelected();
+    const postType = (document.getElementById('cp-post-type')?.value || 'post').toLowerCase();
     const tovContainer = document.getElementById('cp-tov-container');
     const slidesContainer = document.getElementById('cp-slides-container');
+    const captionContainer = document.getElementById('cp-caption-container');
     if (isCarousel) {
         tovContainer.classList.add('hidden');
         slidesContainer.classList.remove('hidden');
@@ -413,6 +415,10 @@ function toggleCarouselSlidesUI() {
     } else {
         tovContainer.classList.remove('hidden');
         slidesContainer.classList.add('hidden');
+    }
+    // Hide caption for stories — only text on design matters
+    if (captionContainer) {
+        captionContainer.style.display = postType === 'story' ? 'none' : '';
     }
 }
 
