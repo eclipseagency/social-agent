@@ -8,6 +8,7 @@ let clientDraggedPostId = null;
 let clientStatusFilter = '';
 let createPostRefFiles = [];
 let slideViewPostId = null;
+let carouselSlides = [];
 
 function pageInit() {
     loadClientDetail();
@@ -61,7 +62,13 @@ function renderBriefSection() {
 
     if (hasBrief || hasBriefUrl || hasBriefFile || hasReqs) {
         section.classList.remove('hidden');
-        document.getElementById('cd-brief-text').textContent = clientData.brief_text || 'No brief text set';
+        if (clientData.brief_text && clientData.brief_text.trim()) {
+            document.getElementById('cd-brief-text').textContent = clientData.brief_text;
+        } else if (hasBriefFile || hasBriefUrl) {
+            document.getElementById('cd-brief-text').innerHTML = '<span class="text-gray-400 italic"><i class="fa-solid fa-paperclip mr-1"></i>Brief attached below — no text description added</span>';
+        } else {
+            document.getElementById('cd-brief-text').textContent = 'No brief text set';
+        }
 
         // Render attachments (link / PDF)
         const attachEl = document.getElementById('cd-brief-attachments');
@@ -323,6 +330,62 @@ function clearSelectedPlatforms() {
     document.querySelectorAll('#cp-platforms input').forEach(cb => { cb.checked = false; });
 }
 
+// ========== CAROUSEL SLIDES EDITOR ==========
+
+function isCarouselSelected() {
+    return document.getElementById('cp-post-type').value === 'carousel';
+}
+
+function toggleCarouselSlidesUI() {
+    const isCarousel = isCarouselSelected();
+    const tovContainer = document.getElementById('cp-tov-container');
+    const slidesContainer = document.getElementById('cp-slides-container');
+    if (isCarousel) {
+        tovContainer.classList.add('hidden');
+        slidesContainer.classList.remove('hidden');
+        if (carouselSlides.length < 2) {
+            carouselSlides = [{ text: '' }, { text: '' }];
+        }
+        renderCarouselSlides();
+    } else {
+        tovContainer.classList.remove('hidden');
+        slidesContainer.classList.add('hidden');
+    }
+}
+
+function renderCarouselSlides() {
+    const list = document.getElementById('cp-slides-list');
+    list.innerHTML = carouselSlides.map((slide, i) => `
+        <div class="cp-slide-card">
+            <div class="cp-slide-number">Slide ${i + 1}</div>
+            <textarea rows="2" placeholder="Text for slide ${i + 1}..." oninput="onCarouselSlideInput(${i}, this.value)">${esc(slide.text || '')}</textarea>
+            ${carouselSlides.length > 2 ? `<button type="button" class="cp-slide-delete" onclick="removeCarouselSlide(${i})" title="Remove slide"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+        </div>
+    `).join('');
+}
+
+function addCarouselSlide() {
+    carouselSlides.push({ text: '' });
+    renderCarouselSlides();
+    updateSlidePreview();
+}
+
+function removeCarouselSlide(i) {
+    if (carouselSlides.length <= 2) { showToast('Minimum 2 slides required', 'error'); return; }
+    carouselSlides.splice(i, 1);
+    renderCarouselSlides();
+    updateSlidePreview();
+}
+
+function onCarouselSlideInput(i, val) {
+    if (carouselSlides[i]) carouselSlides[i].text = val;
+    updateSlidePreview();
+}
+
+function getCarouselSlidesData() {
+    return JSON.stringify(carouselSlides.map(s => ({ text: s.text || '' })));
+}
+
 // ========== CREATE POST MODAL ==========
 
 function openCreatePostModal(dateStr) {
@@ -336,6 +399,9 @@ function openCreatePostModal(dateStr) {
     document.getElementById('cp-tov').value = '';
     document.getElementById('cp-caption').value = '';
     document.getElementById('cp-notes').value = '';
+    carouselSlides = [];
+    document.getElementById('cp-slides-container').classList.add('hidden');
+    document.getElementById('cp-tov-container').classList.remove('hidden');
     createPostRefFiles = [];
     document.getElementById('cp-ref-previews').innerHTML = '';
     document.getElementById('cp-ref-input').value = '';
@@ -349,14 +415,16 @@ function closeCreatePostModal() {
 }
 
 function updateSlidePreview() {
-    const tov = document.getElementById('cp-tov').value.trim();
+    const isCarousel = isCarouselSelected();
+    const tov = isCarousel ? '' : document.getElementById('cp-tov').value.trim();
     const caption = document.getElementById('cp-caption').value.trim();
     const notes = document.getElementById('cp-notes').value.trim();
     const platforms = getSelectedPlatforms();
     const postType = document.getElementById('cp-post-type').value;
     const date = document.getElementById('cp-date').value;
 
-    if (!tov && !caption && !notes && createPostRefFiles.length === 0 && platforms.length === 0) {
+    const hasSlideContent = isCarousel && carouselSlides.some(s => s.text && s.text.trim());
+    if (!tov && !hasSlideContent && !caption && !notes && createPostRefFiles.length === 0 && platforms.length === 0) {
         document.getElementById('cp-slide-preview').innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Start typing to see preview...</p>';
         return;
     }
@@ -374,8 +442,20 @@ function updateSlidePreview() {
     html += `<span class="pres-badge bg-gray-100 text-gray-700">${getContentTypeIcon(postType)} ${esc(postType)}</span>`;
     html += '</div>';
 
-    // TOV block (indigo gradient)
-    if (tov) {
+    // Carousel: per-slide preview cards
+    if (isCarousel && carouselSlides.length > 0) {
+        carouselSlides.forEach((slide, i) => {
+            if (slide.text && slide.text.trim()) {
+                html += `<div class="pres-tov-block" style="direction:rtl;font-size:16px;padding:14px 16px;margin-bottom:8px">`;
+                html += `<div class="pres-tov-label">Slide ${i + 1}</div>`;
+                html += `<div>${esc(slide.text)}</div>`;
+                html += '</div>';
+            }
+        });
+    }
+
+    // TOV block (indigo gradient) — only for non-carousel
+    if (!isCarousel && tov) {
         html += '<div class="pres-tov-block" style="direction:rtl">';
         html += '<div class="pres-tov-label">Text on Design</div>';
         html += `<div>${esc(tov)}</div>`;
@@ -445,13 +525,23 @@ async function submitCreatePost(workflowStatus) {
     const time = document.getElementById('cp-time').value || '12:00';
     const platforms = getSelectedPlatforms();
     const postType = document.getElementById('cp-post-type').value;
-    const tov = document.getElementById('cp-tov').value.trim();
     const caption = document.getElementById('cp-caption').value.trim();
     const notes = document.getElementById('cp-notes').value.trim();
+    const isCarousel = postType === 'carousel';
 
     if (!date) { showToast('Please select a date', 'error'); return; }
     if (platforms.length === 0) { showToast('Please select at least one platform', 'error'); return; }
-    if (!tov) { showToast('Please enter text on design / TOV', 'error'); return; }
+
+    let topicValue;
+    if (isCarousel) {
+        if (carouselSlides.length < 2) { showToast('Carousel requires at least 2 slides', 'error'); return; }
+        const hasContent = carouselSlides.some(s => s.text && s.text.trim());
+        if (!hasContent) { showToast('Please enter text for at least one slide', 'error'); return; }
+        topicValue = getCarouselSlidesData();
+    } else {
+        topicValue = document.getElementById('cp-tov').value.trim();
+        if (!topicValue) { showToast('Please enter text on design / TOV', 'error'); return; }
+    }
 
     const scheduledAt = date + 'T' + time + ':00';
 
@@ -459,7 +549,7 @@ async function submitCreatePost(workflowStatus) {
         client_id: clientId,
         platforms: platforms.join(','),
         post_type: postType,
-        topic: tov,
+        topic: topicValue,
         caption: caption,
         brief_notes: notes,
         scheduled_at: scheduledAt,
@@ -528,8 +618,18 @@ async function openPostSlideView(postId) {
     // Body — presentation-style content
     let body = '';
 
-    // TOV / Topic block (indigo gradient)
-    if (post.topic) {
+    // TOV / Topic block (indigo gradient) — carousel shows per-slide
+    const topicParsed = parseTopic(post.topic || '');
+    if (topicParsed.isCarousel && topicParsed.slides.length > 0) {
+        topicParsed.slides.forEach((slide, i) => {
+            if (slide.text && slide.text.trim()) {
+                body += `<div class="pres-tov-block" style="direction:rtl;font-size:18px;padding:16px 18px;margin-bottom:8px">`;
+                body += `<div class="pres-tov-label">Slide ${i + 1}</div>`;
+                body += `<div>${esc(slide.text)}</div>`;
+                body += '</div>';
+            }
+        });
+    } else if (post.topic) {
         body += '<div class="pres-tov-block" style="direction:rtl">';
         body += '<div class="pres-tov-label">Text on Design / Topic</div>';
         body += `<div>${esc(post.topic)}</div>`;
@@ -694,7 +794,18 @@ async function editPostInModal(postId) {
     document.getElementById('create-post-title').textContent = 'Edit Post';
     setSelectedPlatforms(post.platforms || '');
     document.getElementById('cp-post-type').value = post.post_type || 'post';
-    document.getElementById('cp-tov').value = post.topic || '';
+
+    // Parse topic: carousel JSON or plain text
+    const topicParsed = parseTopic(post.topic || '');
+    if (topicParsed.isCarousel) {
+        carouselSlides = topicParsed.slides.map(s => ({ text: s.text || '' }));
+        document.getElementById('cp-tov').value = '';
+    } else {
+        carouselSlides = [];
+        document.getElementById('cp-tov').value = post.topic || '';
+    }
+    toggleCarouselSlidesUI();
+
     document.getElementById('cp-caption').value = post.caption || '';
     document.getElementById('cp-notes').value = post.brief_notes || '';
 

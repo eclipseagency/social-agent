@@ -128,7 +128,7 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1">Post Type</label>
-                            <select id="cp-post-type" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="updateSlidePreview()">
+                            <select id="cp-post-type" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="toggleCarouselSlidesUI(); updateSlidePreview()">
                                 <option value="post">Post</option>
                                 <option value="story">Story</option>
                                 <option value="reel">Reel</option>
@@ -141,9 +141,20 @@
                             <input type="time" id="cp-time" class="w-full border rounded-lg px-3 py-2 text-sm" value="12:00">
                         </div>
                     </div>
-                    <div>
+                    <div id="cp-tov-container">
                         <label class="block text-xs font-medium text-gray-500 mb-1">Tone of Voice / Text on Design</label>
                         <textarea id="cp-tov" class="w-full border rounded-lg px-3 py-2 text-sm" rows="3" placeholder="Write the text that goes on the design..." oninput="updateSlidePreview()"></textarea>
+                    </div>
+                    <!-- Carousel Slides Editor (hidden by default) -->
+                    <div id="cp-slides-container" class="hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-medium text-gray-500">Slide Texts</label>
+                            <button type="button" onclick="addCarouselSlide()" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1 rounded-lg font-medium transition">
+                                <i class="fa-solid fa-plus mr-1"></i>Add Slide
+                            </button>
+                        </div>
+                        <div id="cp-slides-list" class="space-y-2"></div>
+                        <p class="text-[11px] text-gray-400 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Minimum 2 slides for a carousel post</p>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">Caption</label>

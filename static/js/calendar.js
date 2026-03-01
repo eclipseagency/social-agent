@@ -208,7 +208,7 @@ function showDayPosts(dateStr, day) {
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center gap-2">
                         ${getPlatformIcon(p.platforms)} ${getContentTypeIcon(p.post_type)}
-                        <div><p class="font-semibold text-sm">${esc(p.topic || 'Untitled')}</p><p class="text-xs text-gray-400">${esc(p.client_name || '')}</p></div>
+                        <div><p class="font-semibold text-sm">${esc(getTopicPreview(p.topic, 60) || 'Untitled')}</p><p class="text-xs text-gray-400">${esc(p.client_name || '')}</p></div>
                     </div>
                     <span class="px-2 py-1 rounded-full text-xs font-semibold text-white" style="background:${color}">${status}</span>
                 </div>
@@ -234,7 +234,7 @@ async function openPostDetail(postId) {
     const wf = post.workflow_status || 'draft';
 
     // Title
-    document.getElementById('detail-title').textContent = post.topic || 'Untitled Post';
+    document.getElementById('detail-title').textContent = getTopicPreview(post.topic, 60) || 'Untitled Post';
 
     // Meta badges
     document.getElementById('detail-meta').innerHTML = `
@@ -286,10 +286,11 @@ async function openPostDetail(postId) {
     const hasEditPerm = canDo('createPost') || canDo('editCaption');
     const isEditable = ['draft', 'needs_caption'].includes(wf) && hasEditPerm;
 
-    // Text on Design (topic)
+    // Text on Design (topic) — handle carousel JSON
     const topicSection = document.getElementById('detail-topic-section');
     const topicDisplay = document.getElementById('detail-topic');
     const topicInput = document.getElementById('detail-topic-input');
+    const topicData = parseTopic(post.topic || '');
     topicSection.style.display = '';
     if (isEditable) {
         topicDisplay.style.display = 'none';
@@ -297,7 +298,12 @@ async function openPostDetail(postId) {
         topicInput.value = post.topic || '';
     } else {
         topicInput.classList.add('hidden');
-        if (post.topic) {
+        if (topicData.isCarousel && topicData.slides.length > 0) {
+            topicDisplay.innerHTML = topicData.slides.map((s, i) =>
+                `<div style="margin-bottom:6px"><strong style="color:#6366f1;font-size:11px;text-transform:uppercase">Slide ${i + 1}</strong><br>${esc(s.text || '')}</div>`
+            ).join('');
+            topicDisplay.style.display = '';
+        } else if (post.topic) {
             topicDisplay.textContent = post.topic;
             topicDisplay.style.display = '';
         } else {

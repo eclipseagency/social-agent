@@ -281,6 +281,34 @@ function updateTime() {
     if (el) el.textContent = new Date().toLocaleString('en-US');
 }
 
+// === Topic Parsing (Carousel Support) ===
+
+function parseTopic(topic) {
+    if (!topic) return { isCarousel: false, slides: [], displayText: '' };
+    try {
+        const parsed = JSON.parse(topic);
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object') {
+            return {
+                isCarousel: true,
+                slides: parsed,
+                displayText: parsed.map((s, i) => `Slide ${i + 1}: ${s.text || ''}`).join(' | ')
+            };
+        }
+    } catch (e) { /* not JSON, plain text */ }
+    return { isCarousel: false, slides: [], displayText: topic };
+}
+
+function getTopicPreview(topic, maxLen = 35) {
+    const { isCarousel, slides, displayText } = parseTopic(topic);
+    if (isCarousel && slides.length > 0) {
+        const first = (slides[0].text || '').trim();
+        const preview = first || `${slides.length} slides`;
+        return preview.length > maxLen ? preview.substring(0, maxLen - 3) + '...' : preview;
+    }
+    if (!displayText) return '';
+    return displayText.length > maxLen ? displayText.substring(0, maxLen - 3) + '...' : displayText;
+}
+
 // === Calendar Shared Helpers ===
 
 function getPostStatus(post) {
@@ -335,8 +363,7 @@ function renderCalendarMiniCard(post) {
     const status = getPostStatus(post);
     const borderClass = getStatusBorderClass(post);
     const time = (post.scheduled_at || '').substring(11, 16) || '';
-    const topic = post.topic || '';
-    const topicPreview = topic.length > 35 ? topic.substring(0, 32) + '...' : topic;
+    const topicPreview = getTopicPreview(post.topic || '', 35);
     const caption = post.caption || '';
     const captionPreview = caption.length > 40 ? caption.substring(0, 40) + '...' : caption;
     const thumbnail = (post.design_output_urls || '').split(',')[0].trim();
