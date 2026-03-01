@@ -159,7 +159,7 @@ async function loadCoverageAlerts() {
         container.innerHTML = data.alerts.map(a => `
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-center gap-3">
                 <i class="fa-solid fa-triangle-exclamation text-yellow-500"></i>
-                <span class="text-sm text-yellow-800">${esc(a)}</span>
+                <span class="text-sm text-yellow-800">${esc(a.message || a)}</span>
             </div>
         `).join('');
     } catch (e) { /* silent - new endpoint may not exist yet */ }
