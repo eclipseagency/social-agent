@@ -16,6 +16,8 @@
         <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-xs">Website</p><p class="font-semibold" id="cd-email">-</p></div>
         <div class="bg-gray-50 p-4 rounded-lg"><p class="text-gray-500 text-xs">Posts This Month</p><p class="font-semibold" id="cd-posts-count">0</p></div>
     </div>
+    <!-- Assigned Team -->
+    <div id="cd-team" class="flex flex-wrap gap-2 mt-4"></div>
     <!-- Brief & Content Requirements (visible to SMM and Designer roles) -->
     <div id="cd-brief-section" class="hidden mt-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -237,6 +239,32 @@
                 <label class="block text-xs font-medium text-gray-500 mb-1">Content Requirements (per month)</label>
                 <div id="ec-content-req-rows" class="space-y-2"></div>
                 <button type="button" onclick="addEditReqRow()" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium"><i class="fa-solid fa-plus mr-1"></i>Add requirement</button>
+            </div>
+            <!-- Assigned Team -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-2"><i class="fa-solid fa-users mr-1"></i>Assigned Team</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-0.5">Writer</label>
+                        <select id="ec-assigned-writer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Unassigned</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-0.5">Designer</label>
+                        <select id="ec-assigned-designer" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Unassigned</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-0.5">SM Specialist</label>
+                        <select id="ec-assigned-sm" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Unassigned</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-0.5">Motion Designer</label>
+                        <select id="ec-assigned-motion" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Unassigned</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-0.5">Manager</label>
+                        <select id="ec-assigned-manager" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">Unassigned</option></select>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="flex justify-end gap-2 p-4 border-t">

@@ -198,6 +198,12 @@ def update_user(user_id):
         if col in data:
             fields.append(f"{col}=?")
             values.append(data[col])
+    if data.get('password'):
+        if len(data['password']) < 6:
+            db.close()
+            return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+        fields.append("password_hash=?")
+        values.append(generate_password_hash(data['password']))
     if not fields:
         db.close()
         return jsonify({'success': False, 'error': 'No fields to update'}), 400

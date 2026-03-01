@@ -24,7 +24,26 @@ async function loadClientDetail() {
     // Show brief and content requirements
     renderBriefSection();
 
+    // Render assigned team badges
+    renderTeamBadges();
+
     loadClientCalendar();
+}
+
+function renderTeamBadges() {
+    const el = document.getElementById('cd-team');
+    if (!el || !clientData) return;
+    const roles = [
+        { key: 'writer', label: 'Writer', color: 'bg-green-100 text-green-700', icon: 'fa-pen-nib' },
+        { key: 'designer', label: 'Designer', color: 'bg-purple-100 text-purple-700', icon: 'fa-palette' },
+        { key: 'sm', label: 'SM Specialist', color: 'bg-pink-100 text-pink-700', icon: 'fa-hashtag' },
+        { key: 'motion', label: 'Motion', color: 'bg-orange-100 text-orange-700', icon: 'fa-film' },
+        { key: 'manager', label: 'Manager', color: 'bg-blue-100 text-blue-700', icon: 'fa-user-tie' },
+    ];
+    const badges = roles
+        .filter(r => clientData[`assigned_${r.key}_name`])
+        .map(r => `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${r.color}"><i class="fa-solid ${r.icon}"></i>${esc(r.label)}: ${esc(clientData[`assigned_${r.key}_name`])}</span>`);
+    el.innerHTML = badges.length ? badges.join('') : '';
 }
 
 let briefExpanded = false;
@@ -832,7 +851,7 @@ async function clientReturnToCopywriter(postId) {
 
 let editBriefFileUrl = '';
 
-function openEditClientModal() {
+async function openEditClientModal() {
     if (!clientData) return;
     document.getElementById('ec-name').value = clientData.name || '';
     document.getElementById('ec-company').value = clientData.company || '';
@@ -861,6 +880,20 @@ function openEditClientModal() {
     document.getElementById('ec-brief-file').value = '';
 
     document.getElementById('edit-client-modal').classList.remove('hidden');
+
+    // Load team dropdowns and pre-select current assignments
+    const teamRoles = [
+        { select: 'ec-assigned-writer', field: 'assigned_writer_id' },
+        { select: 'ec-assigned-designer', field: 'assigned_designer_id' },
+        { select: 'ec-assigned-sm', field: 'assigned_sm_id' },
+        { select: 'ec-assigned-motion', field: 'assigned_motion_id' },
+        { select: 'ec-assigned-manager', field: 'assigned_manager_id' },
+    ];
+    for (const r of teamRoles) {
+        await loadUsersDropdown(r.select);
+        const sel = document.getElementById(r.select);
+        if (sel) sel.value = clientData[r.field] || '';
+    }
 }
 
 function closeEditClientModal() {
@@ -941,6 +974,11 @@ async function saveClientEdit() {
         brief_url: document.getElementById('ec-brief-url').value.trim(),
         brief_file_url: editBriefFileUrl,
         content_requirements: collectEditReqs(),
+        assigned_writer_id: document.getElementById('ec-assigned-writer').value || null,
+        assigned_designer_id: document.getElementById('ec-assigned-designer').value || null,
+        assigned_sm_id: document.getElementById('ec-assigned-sm').value || null,
+        assigned_motion_id: document.getElementById('ec-assigned-motion').value || null,
+        assigned_manager_id: document.getElementById('ec-assigned-manager').value || null,
     };
 
     const res = await apiFetch(`${API_URL}/clients/${clientId}`, { method: 'PUT', body: payload });
