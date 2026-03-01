@@ -20,7 +20,7 @@ async function loadClients() {
                             <p class="text-xs text-gray-500">${esc(c.company) || 'No company'}</p>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mb-2 line-clamp-2">${c.brief_text ? esc(c.brief_text.substring(0, 100)) + (c.brief_text.length > 100 ? '...' : '') : '<span class="italic">No brief</span>'}</p>
+                    <p class="text-xs text-gray-500 mb-2 line-clamp-2">${c.brief_text ? esc(c.brief_text.substring(0, 100)) + (c.brief_text.length > 100 ? '...' : '') : (c.brief_file_url || c.brief_url) ? '<span class="italic text-gray-400"><i class="fa-solid fa-paperclip mr-1"></i>Brief attached</span>' : '<span class="italic">No brief</span>'}</p>
                     ${(c.brief_url || c.brief_file_url) ? `<div class="flex gap-2 mb-1">${c.brief_url ? '<span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded"><i class="fa-solid fa-link mr-0.5"></i>Link</span>' : ''}${c.brief_file_url ? '<span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded"><i class="fa-solid fa-file-pdf mr-0.5"></i>File</span>' : ''}</div>` : ''}
                     <p class="text-[11px] text-indigo-600">${esc(reqSummary)}</p>
                 </div>`;
@@ -31,7 +31,7 @@ async function loadClients() {
             <tr class="border-t hover:bg-gray-50">
                 <td class="px-4 sm:px-6 py-4 font-semibold"><a href="/clients/${c.slug || c.id}" class="text-indigo-600 hover:underline">${esc(c.name)}</a></td>
                 <td class="px-4 sm:px-6 py-4">${esc(c.company) || '-'}</td>
-                <td class="px-4 sm:px-6 py-4 hidden sm:table-cell text-sm text-gray-500">${c.brief_text ? esc(c.brief_text.substring(0, 60)) + (c.brief_text.length > 60 ? '...' : '') : '-'}${c.brief_url ? ' <i class="fa-solid fa-link text-indigo-400 text-xs" title="Has link"></i>' : ''}${c.brief_file_url ? ' <i class="fa-solid fa-file-pdf text-indigo-400 text-xs" title="Has file"></i>' : ''}</td>
+                <td class="px-4 sm:px-6 py-4 hidden sm:table-cell text-sm text-gray-500">${c.brief_text ? esc(c.brief_text.substring(0, 60)) + (c.brief_text.length > 60 ? '...' : '') : (c.brief_file_url || c.brief_url) ? '<span class="italic text-gray-400"><i class="fa-solid fa-paperclip mr-1"></i>Attached</span>' : '-'}${c.brief_url ? ' <i class="fa-solid fa-link text-indigo-400 text-xs" title="Has link"></i>' : ''}${c.brief_file_url ? ' <i class="fa-solid fa-file-pdf text-indigo-400 text-xs" title="Has file"></i>' : ''}</td>
                 <td class="px-4 sm:px-6 py-4">
                     <a href="/clients/${c.slug || c.id}" class="text-indigo-600 mr-2" title="View"><i class="fa-solid fa-eye"></i></a>
                     ${canDo('manageClients') ? `<button onclick="event.preventDefault(); deleteClient(${c.id})" class="text-red-600" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
