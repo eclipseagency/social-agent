@@ -12,7 +12,7 @@ async function loadClients() {
                 const reqSummary = reqs.length > 0
                     ? reqs.map(r => `${r.count} ${r.type}/${r.platform}`).join(', ')
                     : 'No requirements set';
-                return `<div class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition cursor-pointer" onclick="window.location='/clients/${c.id}'">
+                return `<div class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition cursor-pointer" onclick="window.location='/clients/${c.slug || c.id}'">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">${esc(c.name?.charAt(0) || '?')}</div>
                         <div>
@@ -29,11 +29,11 @@ async function loadClients() {
         // Table view
         document.getElementById('clients-table').innerHTML = clients.map(c => `
             <tr class="border-t hover:bg-gray-50">
-                <td class="px-4 sm:px-6 py-4 font-semibold"><a href="/clients/${c.id}" class="text-indigo-600 hover:underline">${esc(c.name)}</a></td>
+                <td class="px-4 sm:px-6 py-4 font-semibold"><a href="/clients/${c.slug || c.id}" class="text-indigo-600 hover:underline">${esc(c.name)}</a></td>
                 <td class="px-4 sm:px-6 py-4">${esc(c.company) || '-'}</td>
                 <td class="px-4 sm:px-6 py-4 hidden sm:table-cell text-sm text-gray-500">${c.brief_text ? esc(c.brief_text.substring(0, 60)) + (c.brief_text.length > 60 ? '...' : '') : '-'}${c.brief_url ? ' <i class="fa-solid fa-link text-indigo-400 text-xs" title="Has link"></i>' : ''}${c.brief_file_url ? ' <i class="fa-solid fa-file-pdf text-indigo-400 text-xs" title="Has file"></i>' : ''}</td>
                 <td class="px-4 sm:px-6 py-4">
-                    <a href="/clients/${c.id}" class="text-indigo-600 mr-2" title="View"><i class="fa-solid fa-eye"></i></a>
+                    <a href="/clients/${c.slug || c.id}" class="text-indigo-600 mr-2" title="View"><i class="fa-solid fa-eye"></i></a>
                     ${canDo('manageClients') ? `<button onclick="event.preventDefault(); deleteClient(${c.id})" class="text-red-600" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
                 </td>
             </tr>

@@ -13,9 +13,9 @@ def clients():
     return render_template('dashboard/clients.html', active_page='clients')
 
 
-@dashboard_bp.route('/clients/<int:client_id>')
-def client_detail(client_id):
-    return render_template('dashboard/client_detail.html', active_page='clients', client_id=client_id)
+@dashboard_bp.route('/clients/<slug>')
+def client_detail(slug):
+    return render_template('dashboard/client_detail.html', active_page='clients', client_slug=slug)
 
 
 @dashboard_bp.route('/new-post')

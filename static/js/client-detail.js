@@ -1,5 +1,6 @@
 // Client detail page JS — Simplified calendar-first workflow
 let clientData = null;
+let clientId = null;
 let clientMonth = new Date();
 let clientPostsData = [];
 let clientCalByDate = {};
@@ -13,7 +14,8 @@ function pageInit() {
 }
 
 async function loadClientDetail() {
-    clientData = await fetch(API_URL + '/clients/' + clientId).then(r => r.json());
+    clientData = await fetch(API_URL + '/clients/by-slug/' + clientSlug).then(r => r.json());
+    if (clientData && !clientData.error) clientId = clientData.id;
     if (!clientData || clientData.error) { document.getElementById('client-title').textContent = 'Account Not Found'; return; }
 
     document.getElementById('client-title').innerHTML = `<i class="fa-solid fa-building text-indigo-600 mr-2"></i>${esc(clientData.name)}`;
@@ -981,10 +983,16 @@ async function saveClientEdit() {
         assigned_manager_id: document.getElementById('ec-assigned-manager').value || null,
     };
 
+    const oldName = clientData?.name || '';
     const res = await apiFetch(`${API_URL}/clients/${clientId}`, { method: 'PUT', body: payload });
     if (res && res.success) {
         showToast('Account updated', 'success');
         closeEditClientModal();
+        // If name changed, slug changed — reload via new slug
+        if (name !== oldName) {
+            const updated = await fetch(API_URL + '/clients/' + clientId).then(r => r.json());
+            if (updated && updated.slug) { window.location.href = '/clients/' + updated.slug; return; }
+        }
         loadClientDetail();
     }
 }

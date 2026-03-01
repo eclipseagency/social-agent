@@ -1,8 +1,26 @@
+import re
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from models import get_db, dict_from_row, dicts_from_rows
 
 clients_bp = Blueprint('clients', __name__)
+
+
+def _slugify(name, db, exclude_id=None):
+    """Generate a unique slug from a client name."""
+    base = re.sub(r'[^a-z0-9]+', '-', (name or '').lower()).strip('-') or 'client'
+    slug = base
+    counter = 2
+    while True:
+        q = "SELECT id FROM clients WHERE slug=?"
+        params = [slug]
+        if exclude_id is not None:
+            q += " AND id!=?"
+            params.append(exclude_id)
+        if not db.execute(q, params).fetchone():
+            return slug
+        slug = f"{base}-{counter}"
+        counter += 1
 
 
 @clients_bp.route('/api/clients', methods=['GET'])
@@ -56,6 +74,35 @@ def get_client(client_id):
     return jsonify(client)
 
 
+@clients_bp.route('/api/clients/by-slug/<slug>', methods=['GET'])
+def get_client_by_slug(slug):
+    db = get_db()
+    client = dict_from_row(db.execute("""
+        SELECT c.*,
+               u_writer.username as assigned_writer_name,
+               u_designer.username as assigned_designer_name,
+               u_sm.username as assigned_sm_name,
+               u_motion.username as assigned_motion_name,
+               u_manager.username as assigned_manager_name
+        FROM clients c
+        LEFT JOIN users u_writer ON c.assigned_writer_id = u_writer.id
+        LEFT JOIN users u_designer ON c.assigned_designer_id = u_designer.id
+        LEFT JOIN users u_sm ON c.assigned_sm_id = u_sm.id
+        LEFT JOIN users u_motion ON c.assigned_motion_id = u_motion.id
+        LEFT JOIN users u_manager ON c.assigned_manager_id = u_manager.id
+        WHERE c.slug=?
+    """, (slug,)).fetchone())
+    if not client:
+        db.close()
+        return jsonify({'error': 'Client not found'}), 404
+    accounts = dicts_from_rows(db.execute(
+        "SELECT * FROM accounts WHERE client_id=?", (client['id'],)
+    ).fetchall())
+    db.close()
+    client['accounts'] = accounts
+    return jsonify(client)
+
+
 @clients_bp.route('/api/clients', methods=['POST'])
 def create_client():
     data = request.json or {}
@@ -72,14 +119,15 @@ def create_client():
     content_requirements = data.get('content_requirements', '').strip()
 
     db = get_db()
+    slug = _slugify(name, db)
     cursor = db.execute(
-        "INSERT INTO clients (name, email, company, brief_text, brief_url, brief_file_url, content_requirements) VALUES (?,?,?,?,?,?,?)",
-        (name, email or None, company or None, brief_text, brief_url or None, brief_file_url or None, content_requirements)
+        "INSERT INTO clients (name, email, company, brief_text, brief_url, brief_file_url, content_requirements, slug) VALUES (?,?,?,?,?,?,?,?)",
+        (name, email or None, company or None, brief_text, brief_url or None, brief_file_url or None, content_requirements, slug)
     )
     db.commit()
     client_id = cursor.lastrowid
     db.close()
-    return jsonify({'success': True, 'id': client_id})
+    return jsonify({'success': True, 'id': client_id, 'slug': slug})
 
 
 @clients_bp.route('/api/clients/<int:client_id>', methods=['PUT'])
@@ -104,6 +152,12 @@ def update_client(client_id):
             if field.endswith('_id') and (val == '' or val is None):
                 val = None
             params.append(val)
+
+    # Regenerate slug if name changed
+    if 'name' in data and data['name'].strip():
+        new_slug = _slugify(data['name'].strip(), db, exclude_id=client_id)
+        fields.append("slug=?")
+        params.append(new_slug)
 
     if fields:
         params.append(client_id)

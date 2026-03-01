@@ -212,6 +212,11 @@ def run_migrations():
         _migration_20_client_brief_attachments(db)
         set_schema_version(db, 20)
 
+    if version < 21:
+        print("Running migration 21: Add slug column to clients...")
+        _migration_21_client_slugs(db)
+        set_schema_version(db, 21)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -522,6 +527,26 @@ def _migration_20_client_brief_attachments(db):
         db.execute("ALTER TABLE clients ADD COLUMN brief_url TEXT DEFAULT ''")
     if not column_exists(db, 'clients', 'brief_file_url'):
         db.execute("ALTER TABLE clients ADD COLUMN brief_file_url TEXT DEFAULT ''")
+    db.commit()
+
+
+def _migration_21_client_slugs(db):
+    """Add slug column to clients and generate slugs for existing rows."""
+    import re
+    if not column_exists(db, 'clients', 'slug'):
+        db.execute("ALTER TABLE clients ADD COLUMN slug TEXT")
+    # Generate slugs for existing clients
+    clients = db.execute("SELECT id, name FROM clients").fetchall()
+    existing_slugs = set()
+    for c in clients:
+        base = re.sub(r'[^a-z0-9]+', '-', (c['name'] or '').lower()).strip('-') or f"client-{c['id']}"
+        slug = base
+        counter = 2
+        while slug in existing_slugs:
+            slug = f"{base}-{counter}"
+            counter += 1
+        existing_slugs.add(slug)
+        db.execute("UPDATE clients SET slug=? WHERE id=?", (slug, c['id']))
     db.commit()
 
 
