@@ -135,6 +135,62 @@ def _publish_to_platform(platform, account, image_urls, caption, is_story, post_
     return {'success': False, 'error': f'Unknown platform: {platform}'}
 
 
+def send_post_reminders():
+    """Create reminder notifications for posts scheduled within the next 4 hours."""
+    from datetime import timedelta
+    db = get_db()
+    now = datetime.utcnow()
+    reminder_window = now + timedelta(hours=4)
+    now_str = now.strftime('%Y-%m-%dT%H:%M')
+    window_str = reminder_window.strftime('%Y-%m-%dT%H:%M')
+
+    # Find scheduled posts due within 4 hours that haven't been reminded yet
+    posts = dicts_from_rows(db.execute("""
+        SELECT sp.id, sp.topic, sp.client_id, sp.scheduled_at,
+               sp.assigned_sm_id, sp.created_by_id, sp.assigned_manager_id,
+               c.name as client_name
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        WHERE sp.status='pending'
+          AND sp.workflow_status='scheduled'
+          AND sp.scheduled_at > ?
+          AND sp.scheduled_at <= ?
+    """, (now_str, window_str)).fetchall())
+
+    created = 0
+    for post in posts:
+        topic = post.get('topic', 'Untitled')
+        client_name = post.get('client_name', '')
+        sched_time = (post.get('scheduled_at') or '')[:16].replace('T', ' ')
+        msg = f'{client_name}: "{topic}" is scheduled at {sched_time}'
+
+        # Notify relevant users (SM, creator, manager) — skip if already reminded
+        notify_users = set()
+        for uid_key in ('assigned_sm_id', 'created_by_id', 'assigned_manager_id'):
+            uid = post.get(uid_key)
+            if uid:
+                notify_users.add(uid)
+
+        for uid in notify_users:
+            # Check if reminder already sent for this post+user
+            existing = db.execute(
+                "SELECT id FROM notifications WHERE user_id=? AND type='post_reminder' AND reference_id=?",
+                (uid, post['id'])
+            ).fetchone()
+            if not existing:
+                db.execute(
+                    """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+                       VALUES (?,?,?,?,?,?)""",
+                    (uid, 'post_reminder', 'Post Due Soon', msg, 'post', post['id'])
+                )
+                created += 1
+
+    if created:
+        db.commit()
+    db.close()
+    return created
+
+
 def run_scheduler():
     """Check for posts that are due and publish them."""
     db = get_db()

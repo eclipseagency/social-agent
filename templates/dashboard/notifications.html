@@ -15,18 +15,29 @@ async function loadNotifications() {
     const notifs = await fetch(API_URL + '/notifications?user_id=' + currentUser.id).then(r => r.json());
     const container = document.getElementById('notifications-list');
     if (!notifs || notifs.length === 0) { container.innerHTML = '<p class="text-gray-500 text-center py-8">No notifications</p>'; return; }
-    container.innerHTML = notifs.map(n => `
+    container.innerHTML = notifs.map(n => {
+        const iconMap = {
+            task_assigned: { bg: 'bg-purple-100 text-purple-600', icon: 'fa-clipboard-list' },
+            design_assigned: { bg: 'bg-pink-100 text-pink-600', icon: 'fa-palette' },
+            pending_review: { bg: 'bg-yellow-100 text-yellow-600', icon: 'fa-clock-rotate-left' },
+            design_review_ready: { bg: 'bg-violet-100 text-violet-600', icon: 'fa-magnifying-glass' },
+            post_approved: { bg: 'bg-green-100 text-green-600', icon: 'fa-circle-check' },
+            post_scheduled: { bg: 'bg-blue-100 text-blue-600', icon: 'fa-calendar-check' },
+            post_reminder: { bg: 'bg-orange-100 text-orange-600', icon: 'fa-clock' },
+        };
+        const style = iconMap[n.type] || { bg: 'bg-indigo-100 text-indigo-600', icon: 'fa-bell' };
+        return `
         <div class="bg-white rounded-xl shadow-sm p-4 flex items-start gap-3 ${n.is_read ? 'opacity-60' : 'border-l-4 border-indigo-500'} cursor-pointer hover:shadow-md transition" onclick="handleNotifClick(${n.id}, '${n.reference_type || ''}', ${n.reference_id || 0})">
-            <div class="w-10 h-10 rounded-full ${n.type === 'task_assigned' ? 'bg-purple-100 text-purple-600' : n.type === 'design_assigned' ? 'bg-pink-100 text-pink-600' : 'bg-indigo-100 text-indigo-600'} flex items-center justify-center flex-shrink-0">
-                <i class="fa-solid ${n.type === 'task_assigned' ? 'fa-clipboard-list' : n.type === 'design_assigned' ? 'fa-palette' : 'fa-bell'}"></i>
+            <div class="w-10 h-10 rounded-full ${style.bg} flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid ${style.icon}"></i>
             </div>
             <div class="flex-1">
                 <p class="font-semibold text-sm">${esc(n.title)}</p>
                 <p class="text-gray-500 text-xs mt-1">${esc(n.message)}</p>
                 <p class="text-gray-400 text-xs mt-2">${n.created_at || ''}</p>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 async function handleNotifClick(notifId, refType, refId) {

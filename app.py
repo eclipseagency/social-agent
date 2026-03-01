@@ -75,13 +75,19 @@ def serve_uploads(filename):
 
 # APScheduler - check for due posts every 60 seconds
 def scheduled_job():
-    from services.scheduler import run_scheduler
+    from services.scheduler import run_scheduler, send_post_reminders
     try:
         results = run_scheduler()
         if results:
             print(f"[Scheduler] Published {len(results)} posts")
     except Exception as e:
         print(f"[Scheduler] Error: {e}")
+    try:
+        reminders = send_post_reminders()
+        if reminders:
+            print(f"[Scheduler] Sent {reminders} post reminders")
+    except Exception as e:
+        print(f"[Scheduler] Reminder error: {e}")
 
 
 scheduler = BackgroundScheduler()
