@@ -279,9 +279,9 @@ async function openPostDetail(postId) {
         }
     }
 
-    // Editable mode for draft/needs_caption — only for roles that can create/edit
+    // Editable mode — allow editing content at any stage before posted
     const hasEditPerm = canDo('createPost') || canDo('editCaption');
-    const isEditable = ['draft', 'needs_caption'].includes(wf) && hasEditPerm;
+    const isEditable = wf !== 'posted' && hasEditPerm;
 
     // Text on Design (topic) — handle carousel JSON
     const topicSection = document.getElementById('detail-topic-section');
@@ -381,10 +381,10 @@ async function openPostDetail(postId) {
         designsSection.style.display = '';
     }
 
-    // Caption — read-only unless user can edit captions AND post not yet approved/published
+    // Caption — editable at any stage before posted
     const captionEl = document.getElementById('detail-caption');
     captionEl.value = post.caption || '';
-    const canEditCaption = canDo('editCaption') && !['approved', 'scheduled', 'posted'].includes(wf);
+    const canEditCaption = canDo('editCaption') && wf !== 'posted';
     captionEl.readOnly = !canEditCaption;
     captionEl.style.opacity = canEditCaption ? '1' : '0.7';
 
@@ -424,10 +424,10 @@ async function openPostDetail(postId) {
         assignSection.style.display = 'none';
     }
 
-    // Save Brief button — only for roles that can create posts
+    // Save button — visible when content is editable
     const saveBriefSection = document.getElementById('detail-save-brief-section');
     if (saveBriefSection) {
-        saveBriefSection.classList.toggle('hidden', !(isEditable && canDo('createPost')));
+        saveBriefSection.classList.toggle('hidden', !isEditable);
     }
 
     // Workflow action buttons — filtered by role permissions
