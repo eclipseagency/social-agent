@@ -471,8 +471,8 @@ async function openPostDetail(postId) {
         saveCaptionBtn.style.display = canEditCaption ? '' : 'none';
     }
 
-    // Stories don't need a caption — hide caption section, keep only Text on Design
-    if (post.post_type === 'story') {
+    // Stories/banners/brochures don't need a caption — only Text on Design
+    if (['story', 'banner', 'brochure'].includes(post.post_type)) {
         const captionSec = document.getElementById('detail-caption-section');
         if (captionSec) captionSec.style.display = 'none';
     }

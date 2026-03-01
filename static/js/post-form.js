@@ -43,10 +43,10 @@ function onPostTypeChange() {
         document.getElementById('platform-linkedin').disabled = false;
         if (storyFeatures) storyFeatures.classList.add('hidden');
     }
-    // Hide caption for stories — only text on design matters
+    // Hide caption for stories/banners/brochures — only text on design matters
     const captionContainer = document.getElementById('new-post-caption-container');
     if (captionContainer) {
-        captionContainer.style.display = currentPostType === 'story' ? 'none' : '';
+        captionContainer.style.display = ['story', 'banner', 'brochure'].includes(currentPostType) ? 'none' : '';
     }
     updatePreview();
 }

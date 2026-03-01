@@ -416,9 +416,9 @@ function toggleCarouselSlidesUI() {
         tovContainer.classList.remove('hidden');
         slidesContainer.classList.add('hidden');
     }
-    // Hide caption for stories — only text on design matters
+    // Hide caption for stories/banners/brochures — only text on design matters
     if (captionContainer) {
-        captionContainer.style.display = postType === 'story' ? 'none' : '';
+        captionContainer.style.display = ['story', 'banner', 'brochure'].includes(postType) ? 'none' : '';
     }
 }
 
@@ -831,8 +831,8 @@ async function openPostSlideView(postId) {
         }
     }
 
-    // Caption (hidden for stories — only text on design matters)
-    if (post.caption && post.post_type !== 'story') {
+    // Caption (hidden for stories/banners/brochures — only text on design matters)
+    if (post.caption && !['story', 'banner', 'brochure'].includes(post.post_type)) {
         body += '<div class="pres-caption-block" style="direction:rtl">';
         body += '<div class="pres-caption-label">Caption</div>';
         body += `<div>${esc(post.caption).replace(/\n/g, '<br>')}</div>`;
