@@ -277,6 +277,41 @@ async function loadUsersDropdown(selectId, roleFilter = '') {
     return users;
 }
 
+// === Content Requirements Helpers ===
+
+function buildReqPlatformToggles(selected) {
+    const list = Array.isArray(selected) ? selected : (selected ? [selected] : []);
+    const platforms = [
+        { val: 'instagram', icon: 'fa-brands fa-instagram', label: 'IG' },
+        { val: 'facebook', icon: 'fa-brands fa-facebook', label: 'FB' },
+        { val: 'linkedin', icon: 'fa-brands fa-linkedin', label: 'LI' },
+        { val: 'tiktok', icon: 'fa-brands fa-tiktok', label: 'TT' },
+        { val: 'x', icon: 'fa-brands fa-x-twitter', label: 'X' },
+    ];
+    return platforms.map(p =>
+        `<label class="cr-plat-toggle cursor-pointer select-none">
+            <input type="checkbox" value="${p.val}" class="hidden cr-plat-cb" ${list.includes(p.val) ? 'checked' : ''}>
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold border transition
+                ${list.includes(p.val) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-50 text-gray-500 border-gray-200'}">
+                <i class="${p.icon}"></i>${p.label}
+            </span>
+        </label>`
+    ).join('');
+}
+
+function initReqPlatformToggles(container) {
+    container.querySelectorAll('.cr-plat-cb').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const span = this.nextElementSibling;
+            if (this.checked) {
+                span.className = span.className.replace('bg-gray-50 text-gray-500 border-gray-200', 'bg-indigo-600 text-white border-indigo-600');
+            } else {
+                span.className = span.className.replace('bg-indigo-600 text-white border-indigo-600', 'bg-gray-50 text-gray-500 border-gray-200');
+            }
+        });
+    });
+}
+
 // === Time Display ===
 function updateTime() {
     const el = document.getElementById('current-time');
