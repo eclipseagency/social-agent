@@ -76,7 +76,7 @@ function renderCalendar() {
                 </span>
             </div>
             ${daySlots.length > 0 ? `<div class="cal-schedule-slots mb-1" onclick="showDaySlots('${dateStr}'); event.stopPropagation();">${daySlots.slice(0, 4).map(s => {
-                const typeIcon = s.content_type === 'story' ? '📱' : s.content_type === 'video' ? '🎬' : s.content_type === 'reel' ? '🎞' : '📷';
+                const typeIcon = s.content_type === 'story' ? '📱' : s.content_type === 'video' ? '🎬' : s.content_type === 'reel' ? '🎞' : s.content_type === 'banner' ? '🖼' : s.content_type === 'brochure' ? '📖' : '📷';
                 const chipClass = s.filled ? 'cal-slot-chip cal-slot-filled' : 'cal-slot-chip cal-slot-needs-content';
                 const label = s.filled ? esc(s.client_name?.substring(0, 6) || '') : 'Need Content';
                 return `<div class="${chipClass}" style="border-left-color:${s.client_color || '#6366f1'}" title="${esc(s.client_name)} — ${s.content_type} — ${s.platform} @ ${s.time}${!s.filled ? ' — NEEDS CONTENT' : ''}">${typeIcon} ${label}</div>`;
@@ -770,8 +770,8 @@ function showDaySlots(dateStr) {
 
     const dayName = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-    const typeIcons = { post: '📷 Post', story: '📱 Story', video: '🎬 Video', reel: '🎞 Reel' };
-    const typeColors = { post: 'bg-blue-100 text-blue-800', story: 'bg-pink-100 text-pink-800', video: 'bg-red-100 text-red-800', reel: 'bg-purple-100 text-purple-800' };
+    const typeIcons = { post: '📷 Post', story: '📱 Story', video: '🎬 Video', reel: '🎞 Reel', banner: '🖼 Banner', brochure: '📖 Brochure' };
+    const typeColors = { post: 'bg-blue-100 text-blue-800', story: 'bg-pink-100 text-pink-800', video: 'bg-red-100 text-red-800', reel: 'bg-purple-100 text-purple-800', banner: 'bg-teal-100 text-teal-800', brochure: 'bg-amber-100 text-amber-800' };
 
     let html = `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="slots-modal" onclick="if(event.target===this) this.remove()">
         <div class="bg-white rounded-xl p-6 w-[95%] sm:w-[550px] max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">

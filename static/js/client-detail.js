@@ -225,11 +225,11 @@ async function loadClientCalendar() {
             clientCalByDate[date] = clientCalByDate[date].filter(p => ['video', 'reel'].includes((p.post_type || '').toLowerCase()));
         }
     }
-    // Designer only sees post/story/carousel (image-based)
+    // Designer only sees image-based types
     if (currentUser?.role === 'designer') {
-        clientPostsData = clientPostsData.filter(p => ['post', 'story', 'carousel'].includes((p.post_type || '').toLowerCase()));
+        clientPostsData = clientPostsData.filter(p => ['post', 'story', 'carousel', 'banner', 'brochure'].includes((p.post_type || '').toLowerCase()));
         for (const date in clientCalByDate) {
-            clientCalByDate[date] = clientCalByDate[date].filter(p => ['post', 'story', 'carousel'].includes((p.post_type || '').toLowerCase()));
+            clientCalByDate[date] = clientCalByDate[date].filter(p => ['post', 'story', 'carousel', 'banner', 'brochure'].includes((p.post_type || '').toLowerCase()));
         }
     }
 
@@ -810,7 +810,7 @@ async function openPostSlideView(postId) {
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
         const isDesigner = currentUser?.role === 'designer';
-        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel'].includes(postType));
+        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'banner', 'brochure'].includes(postType));
 
         if (showUpload) {
             body += `<div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500 mb-4" id="psd-upload-zone"
@@ -893,7 +893,7 @@ function buildPostSlideActions(post) {
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
         const isDesigner = currentUser?.role === 'designer';
-        const showActions = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel'].includes(postType));
+        const showActions = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'banner', 'brochure'].includes(postType));
 
         if (showActions) {
             actions += `<button onclick="document.getElementById('psd-design-input')?.click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`;

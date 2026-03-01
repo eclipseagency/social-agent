@@ -428,7 +428,9 @@ function getContentTypeIcon(type) {
         'story': '<i class="fa-solid fa-mobile-screen text-pink-500" title="Story"></i>',
         'reel': '<i class="fa-solid fa-film text-purple-500" title="Reel"></i>',
         'video': '<i class="fa-solid fa-video text-red-500" title="Video"></i>',
-        'carousel': '<i class="fa-solid fa-images text-indigo-500" title="Carousel"></i>'
+        'carousel': '<i class="fa-solid fa-images text-indigo-500" title="Carousel"></i>',
+        'banner': '<i class="fa-solid fa-panorama text-teal-500" title="Banner"></i>',
+        'brochure': '<i class="fa-solid fa-book-open text-amber-500" title="Brochure"></i>'
     };
     return icons[(type || 'post').toLowerCase()] || icons['post'];
 }
