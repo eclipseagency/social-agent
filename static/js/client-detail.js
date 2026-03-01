@@ -839,7 +839,16 @@ function openEditClientModal() {
     document.getElementById('ec-email').value = clientData.email || '';
     document.getElementById('ec-brief-text').value = clientData.brief_text || '';
     document.getElementById('ec-brief-url').value = clientData.brief_url || '';
-    document.getElementById('ec-content-reqs').value = clientData.content_requirements || '';
+    // Populate content requirement rows
+    const reqContainer = document.getElementById('ec-content-req-rows');
+    reqContainer.innerHTML = '';
+    let reqs = [];
+    try { reqs = JSON.parse(clientData.content_requirements || '[]'); } catch (e) {}
+    if (reqs.length > 0) {
+        reqs.forEach(r => addEditReqRow(r.platform, r.type, r.count));
+    } else {
+        addEditReqRow();
+    }
     editBriefFileUrl = clientData.brief_file_url || '';
 
     const fileCurrentEl = document.getElementById('ec-brief-file-current');
@@ -880,6 +889,46 @@ async function onEditBriefFileSelected(files) {
     }
 }
 
+function addEditReqRow(platform, type, count) {
+    const container = document.getElementById('ec-content-req-rows');
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 flex-wrap ec-req-row';
+    div.innerHTML = `
+        <select class="cr-platform border rounded-lg px-2 py-1 text-sm">
+            <option value="instagram" ${platform==='instagram'?'selected':''}>Instagram</option>
+            <option value="facebook" ${platform==='facebook'?'selected':''}>Facebook</option>
+            <option value="linkedin" ${platform==='linkedin'?'selected':''}>LinkedIn</option>
+            <option value="tiktok" ${platform==='tiktok'?'selected':''}>TikTok</option>
+            <option value="x" ${platform==='x'?'selected':''}>X</option>
+        </select>
+        <select class="cr-type border rounded-lg px-2 py-1 text-sm">
+            <option value="post" ${type==='post'?'selected':''}>Post</option>
+            <option value="story" ${type==='story'?'selected':''}>Story</option>
+            <option value="reel" ${type==='reel'?'selected':''}>Reel</option>
+            <option value="video" ${type==='video'?'selected':''}>Video</option>
+            <option value="carousel" ${type==='carousel'?'selected':''}>Carousel</option>
+        </select>
+        <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="${count||1}" placeholder="#">
+        <span class="text-xs text-gray-400">/ month</span>
+        <button onclick="this.closest('.ec-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
+    `;
+    container.appendChild(div);
+}
+
+function collectEditReqs() {
+    const rows = document.querySelectorAll('.ec-req-row');
+    const reqs = [];
+    rows.forEach(row => {
+        const platform = row.querySelector('.cr-platform')?.value;
+        const type = row.querySelector('.cr-type')?.value;
+        const count = parseInt(row.querySelector('.cr-count')?.value) || 0;
+        if (platform && type && count > 0) {
+            reqs.push({ platform, type, count });
+        }
+    });
+    return JSON.stringify(reqs);
+}
+
 async function saveClientEdit() {
     const name = document.getElementById('ec-name').value.trim();
     if (!name) { showToast('Name is required', 'error'); return; }
@@ -891,7 +940,7 @@ async function saveClientEdit() {
         brief_text: document.getElementById('ec-brief-text').value.trim(),
         brief_url: document.getElementById('ec-brief-url').value.trim(),
         brief_file_url: editBriefFileUrl,
-        content_requirements: document.getElementById('ec-content-reqs').value.trim(),
+        content_requirements: collectEditReqs(),
     };
 
     const res = await apiFetch(`${API_URL}/clients/${clientId}`, { method: 'PUT', body: payload });
