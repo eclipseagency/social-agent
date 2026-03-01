@@ -332,6 +332,41 @@ def upload_reference(post_id):
     return jsonify({'success': True, 'urls': urls, 'errors': errors})
 
 
+# ============ REMOVE DESIGN SLIDE ============
+
+@posts_bp.route('/api/posts/<int:post_id>/remove-design-slide', methods=['POST'])
+@require_role('designer', 'motion_designer', 'admin')
+def remove_design_slide(post_id):
+    """Remove a single design slide by index from design_output_urls."""
+    data = request.json or {}
+    slide_index = data.get('slide_index')
+
+    if slide_index is None:
+        return jsonify({'error': 'slide_index required'}), 400
+
+    db = get_db()
+    post = dict_from_row(db.execute("SELECT * FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+    if not post:
+        db.close()
+        return jsonify({'error': 'Post not found'}), 404
+
+    urls = [u.strip() for u in (post.get('design_output_urls', '') or '').split(',') if u.strip()]
+    if slide_index < 0 or slide_index >= len(urls):
+        db.close()
+        return jsonify({'error': 'Invalid slide index'}), 400
+
+    urls.pop(slide_index)
+    new_urls = ','.join(urls)
+
+    db.execute(
+        "UPDATE scheduled_posts SET design_output_urls=?, updated_at=datetime('now') WHERE id=?",
+        (new_urls, post_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({'success': True, 'remaining': len(urls)})
+
+
 # ============ PIPELINE BOARD ============
 
 @posts_bp.route('/api/pipeline', methods=['GET'])
@@ -770,6 +805,14 @@ def transition_post(post_id):
         update_params.append(data['scheduled_at'])
         update_fields.append("status=?")
         update_params.append('pending')
+
+    # Copy design_output_urls to image_url if empty (so scheduler can publish them)
+    if new_status == 'scheduled':
+        current_image_url = (post.get('image_url', '') or '').strip()
+        design_urls = (post.get('design_output_urls', '') or '').strip()
+        if not current_image_url and design_urls:
+            update_fields.append("image_url=?")
+            update_params.append(design_urls)
 
     if old_status == 'design_review' and new_status in ('in_design', 'draft'):
         update_fields.append("revision_count=revision_count+1")

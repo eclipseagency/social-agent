@@ -135,11 +135,11 @@ async function loadClientCalendar() {
             clientCalByDate[date] = clientCalByDate[date].filter(p => ['video', 'reel'].includes((p.post_type || '').toLowerCase()));
         }
     }
-    // Designer only sees post/story (image-based)
+    // Designer only sees post/story/carousel (image-based)
     if (currentUser?.role === 'designer') {
-        clientPostsData = clientPostsData.filter(p => ['post', 'story'].includes((p.post_type || '').toLowerCase()));
+        clientPostsData = clientPostsData.filter(p => ['post', 'story', 'carousel'].includes((p.post_type || '').toLowerCase()));
         for (const date in clientCalByDate) {
-            clientCalByDate[date] = clientCalByDate[date].filter(p => ['post', 'story'].includes((p.post_type || '').toLowerCase()));
+            clientCalByDate[date] = clientCalByDate[date].filter(p => ['post', 'story', 'carousel'].includes((p.post_type || '').toLowerCase()));
         }
     }
 
@@ -530,13 +530,46 @@ async function openPostSlideView(postId) {
     // Design output
     const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
     if (designUrls.length) {
-        body += '<div class="pres-images-grid">';
-        body += '<div class="pres-img-label">Design Output</div>';
-        designUrls.forEach(u => {
-            const url = u.trim();
-            body += `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
-        });
-        body += '</div>';
+        const isCarousel = (post.post_type || '').toLowerCase() === 'carousel' && designUrls.length > 1;
+        if (isCarousel) {
+            // Carousel viewer with navigation
+            body += `<div class="pres-img-label" style="margin-bottom:8px">Design Output</div>`;
+            body += `<div class="carousel-preview" id="psd-carousel" style="border-radius:12px;margin-bottom:8px">`;
+            designUrls.forEach((u, i) => {
+                const url = u.trim();
+                body += `<img src="${url}" alt="Slide ${i+1}" data-slide="${i}" style="display:${i===0?'block':'none'};cursor:pointer" onclick="window.open('${url}','_blank')">`;
+            });
+            body += `<div class="carousel-nav prev" onclick="event.stopPropagation();carouselNav(-1)"><i class="fa-solid fa-chevron-left"></i></div>`;
+            body += `<div class="carousel-nav next" onclick="event.stopPropagation();carouselNav(1)"><i class="fa-solid fa-chevron-right"></i></div>`;
+            body += `<div class="carousel-dots" id="psd-carousel-dots">`;
+            designUrls.forEach((u, i) => {
+                body += `<div class="carousel-dot ${i===0?'active':''}" onclick="event.stopPropagation();carouselGoTo(${i})"></div>`;
+            });
+            body += `</div>`;
+            body += `</div>`;
+            body += `<div class="text-center text-xs text-gray-500 mb-2" id="psd-carousel-counter">Slide 1 of ${designUrls.length}</div>`;
+            // Thumbnail strip
+            const canDeleteSlide = canDo('uploadDesign') && wf === 'in_design';
+            body += `<div class="flex flex-wrap gap-2 mb-4" id="psd-carousel-thumbs">`;
+            designUrls.forEach((u, i) => {
+                const url = u.trim();
+                body += `<div class="relative" style="width:64px;height:64px">`;
+                body += `<img src="${url}" class="w-full h-full object-cover rounded-lg border cursor-pointer ${i===0?'ring-2 ring-indigo-500':''}" data-thumb="${i}" onclick="carouselGoTo(${i})">`;
+                if (canDeleteSlide) {
+                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">&times;</button>`;
+                }
+                body += `</div>`;
+            });
+            body += `</div>`;
+        } else {
+            body += '<div class="pres-images-grid">';
+            body += '<div class="pres-img-label">Design Output</div>';
+            designUrls.forEach(u => {
+                const url = u.trim();
+                body += `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
+            });
+            body += '</div>';
+        }
     }
 
     // Designer upload zone (conditional: in_design + can upload design)
@@ -545,7 +578,7 @@ async function openPostSlideView(postId) {
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
         const isDesigner = currentUser?.role === 'designer';
-        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story'].includes(postType));
+        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel'].includes(postType));
 
         if (showUpload) {
             body += `<div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500 mb-4" id="psd-upload-zone"
@@ -604,7 +637,7 @@ function buildPostSlideActions(post) {
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
         const isDesigner = currentUser?.role === 'designer';
-        const showActions = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story'].includes(postType));
+        const showActions = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel'].includes(postType));
 
         if (showActions) {
             actions += `<button onclick="document.getElementById('psd-design-input')?.click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`;
@@ -713,6 +746,46 @@ function uploadPsdDesign(files) {
     }
 }
 
+// ========== CAROUSEL NAVIGATION ==========
+
+let carouselCurrentSlide = 0;
+
+function carouselNav(dir) {
+    const imgs = document.querySelectorAll('#psd-carousel img[data-slide]');
+    if (!imgs.length) return;
+    carouselCurrentSlide = (carouselCurrentSlide + dir + imgs.length) % imgs.length;
+    carouselGoTo(carouselCurrentSlide);
+}
+
+function carouselGoTo(idx) {
+    const imgs = document.querySelectorAll('#psd-carousel img[data-slide]');
+    const dots = document.querySelectorAll('#psd-carousel-dots .carousel-dot');
+    const thumbs = document.querySelectorAll('#psd-carousel-thumbs img[data-thumb]');
+    if (!imgs.length) return;
+    carouselCurrentSlide = idx;
+    imgs.forEach((img, i) => { img.style.display = i === idx ? 'block' : 'none'; });
+    dots.forEach((dot, i) => { dot.classList.toggle('active', i === idx); });
+    thumbs.forEach((th, i) => {
+        th.classList.toggle('ring-2', i === idx);
+        th.classList.toggle('ring-indigo-500', i === idx);
+    });
+    const counter = document.getElementById('psd-carousel-counter');
+    if (counter) counter.textContent = `Slide ${idx + 1} of ${imgs.length}`;
+}
+
+async function deleteCarouselSlide(postId, slideIndex) {
+    if (!confirm('Remove this slide?')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/remove-design-slide`, {
+        method: 'POST',
+        body: { slide_index: slideIndex, user_id: currentUser?.id || 1 }
+    });
+    if (res && res.success) {
+        showToast('Slide removed', 'success');
+        loadClientCalendar();
+        openPostSlideView(postId);
+    }
+}
+
 // ========== WORKFLOW TRANSITIONS ==========
 
 async function clientTransitionPost(postId, newStatus) {
@@ -752,5 +825,77 @@ async function clientReturnToCopywriter(postId) {
         showToast('Returned to copywriter', 'success');
         loadClientCalendar();
         openPostSlideView(postId);
+    }
+}
+
+// ========== EDIT ACCOUNT ==========
+
+let editBriefFileUrl = '';
+
+function openEditClientModal() {
+    if (!clientData) return;
+    document.getElementById('ec-name').value = clientData.name || '';
+    document.getElementById('ec-company').value = clientData.company || '';
+    document.getElementById('ec-email').value = clientData.email || '';
+    document.getElementById('ec-brief-text').value = clientData.brief_text || '';
+    document.getElementById('ec-brief-url').value = clientData.brief_url || '';
+    document.getElementById('ec-content-reqs').value = clientData.content_requirements || '';
+    editBriefFileUrl = clientData.brief_file_url || '';
+
+    const fileCurrentEl = document.getElementById('ec-brief-file-current');
+    if (editBriefFileUrl) {
+        fileCurrentEl.innerHTML = `Current: <a href="${esc(editBriefFileUrl)}" target="_blank" class="text-indigo-600 underline">View file</a>`;
+        fileCurrentEl.classList.remove('hidden');
+    } else {
+        fileCurrentEl.classList.add('hidden');
+    }
+    document.getElementById('ec-brief-file').value = '';
+
+    document.getElementById('edit-client-modal').classList.remove('hidden');
+}
+
+function closeEditClientModal() {
+    document.getElementById('edit-client-modal').classList.add('hidden');
+}
+
+async function onEditBriefFileSelected(files) {
+    if (!files || !files.length) return;
+    const formData = new FormData();
+    formData.append('images', files[0]);
+    showToast('Uploading brief file...', 'info');
+    try {
+        const res = await fetch(API_URL + '/upload-file', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.url) {
+            editBriefFileUrl = data.url;
+            const fileCurrentEl = document.getElementById('ec-brief-file-current');
+            fileCurrentEl.innerHTML = `Uploaded: <a href="${esc(data.url)}" target="_blank" class="text-indigo-600 underline">View file</a>`;
+            fileCurrentEl.classList.remove('hidden');
+            showToast('File uploaded', 'success');
+        }
+    } catch (e) {
+        showToast('File upload failed', 'error');
+    }
+}
+
+async function saveClientEdit() {
+    const name = document.getElementById('ec-name').value.trim();
+    if (!name) { showToast('Name is required', 'error'); return; }
+
+    const payload = {
+        name,
+        company: document.getElementById('ec-company').value.trim(),
+        email: document.getElementById('ec-email').value.trim(),
+        brief_text: document.getElementById('ec-brief-text').value.trim(),
+        brief_url: document.getElementById('ec-brief-url').value.trim(),
+        brief_file_url: editBriefFileUrl,
+        content_requirements: document.getElementById('ec-content-reqs').value.trim(),
+    };
+
+    const res = await apiFetch(`${API_URL}/clients/${clientId}`, { method: 'PUT', body: payload });
+    if (res && res.success) {
+        showToast('Account updated', 'success');
+        closeEditClientModal();
+        loadClientDetail();
     }
 }
