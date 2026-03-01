@@ -70,8 +70,8 @@ function getOfficialPlatformIcon(platform) {
 }
 
 // === Role Permissions ===
-// Workflow: draft → in_design → design_review → approved → scheduled → posted
-// Manager: assigns team members to clients, reviews designs in design_review, approves or sends back
+// Workflow: draft → pending_review → in_design → approved → scheduled → posted
+// Manager: reviews content in pending_review before sending to design. Design approval is done externally.
 // Roles:
 // Admin: manages accounts, team, sets requirements/brief, full access
 // SMM Specialist: creates posts on calendar, writes TOV/caption, uploads references, views designs
@@ -387,7 +387,7 @@ function getPostStatus(post) {
     if (wf === 'posted') return 'Posted';
     if (wf === 'scheduled') return 'Scheduled';
     if (wf === 'approved') return 'Approved';
-    if (wf === 'design_review') return 'Design Review';
+    if (wf === 'design_review') return 'Approved';  // Legacy - treat as approved
     if (wf === 'needs_caption') return 'Draft';  // Legacy - treat as draft
     if (wf === 'pending_review') return 'Pending Review';
     if (wf === 'in_design') return 'Needs Design';

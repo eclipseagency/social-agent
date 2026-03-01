@@ -8,15 +8,14 @@ from routes.auth import require_role, require_login
 
 posts_bp = Blueprint('posts', __name__)
 
-VALID_WORKFLOW_STATUSES = ['draft', 'pending_review', 'in_design', 'design_review', 'approved', 'scheduled', 'posted']
+VALID_WORKFLOW_STATUSES = ['draft', 'pending_review', 'in_design', 'approved', 'scheduled', 'posted']
 
 # Valid workflow transitions: from_status -> list of allowed to_statuses
 VALID_TRANSITIONS = {
     'draft': ['pending_review', 'in_design'],
     'pending_review': ['in_design', 'draft'],
-    'in_design': ['design_review', 'draft'],
-    'design_review': ['approved', 'in_design', 'draft'],
-    'approved': ['scheduled'],
+    'in_design': ['approved', 'draft'],
+    'approved': ['scheduled', 'in_design'],
     'scheduled': ['posted', 'approved'],
 }
 
@@ -191,16 +190,6 @@ def change_workflow(post_id):
              'post', post_id)
         )
 
-    # Notify manager when moving to design_review
-    if new_status == 'design_review' and post.get('assigned_manager_id'):
-        db.execute(
-            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
-               VALUES (?,?,?,?,?,?)""",
-            (post['assigned_manager_id'], 'design_review_ready',
-             'Design Ready for Review', f'Design submitted for your review: {topic}',
-             'post', post_id)
-        )
-
     # Notify SM specialist when moving to approved
     if new_status == 'approved' and post.get('assigned_sm_id'):
         db.execute(
@@ -269,26 +258,26 @@ def upload_design(post_id):
             (design_output_str, post_id)
         )
 
-        # Auto-advance to design_review if currently in_design
+        # Auto-advance to approved if currently in_design (design approval is done externally)
         current_workflow = post.get('workflow_status', '') or ''
         if current_workflow == 'in_design':
             user_id = request.form.get('user_id', 1)
             db.execute(
-                "UPDATE scheduled_posts SET workflow_status='design_review', updated_at=datetime('now') WHERE id=?",
+                "UPDATE scheduled_posts SET workflow_status='approved', updated_at=datetime('now') WHERE id=?",
                 (post_id,)
             )
             db.execute(
                 """INSERT INTO workflow_history (post_id, user_id, from_status, to_status, comment)
                    VALUES (?,?,?,?,?)""",
-                (post_id, user_id, 'in_design', 'design_review', 'Design uploaded')
+                (post_id, user_id, 'in_design', 'approved', 'Design uploaded')
             )
-            # Notify manager when design is ready for review
-            if post.get('assigned_manager_id'):
+            # Notify SM specialist that post is ready to schedule
+            if post.get('assigned_sm_id'):
                 db.execute(
                     """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
                        VALUES (?,?,?,?,?,?)""",
-                    (post['assigned_manager_id'], 'design_review_ready',
-                     'Design Ready for Review', f'Design submitted for your review: {post.get("topic", "Untitled")}',
+                    (post['assigned_sm_id'], 'post_approved',
+                     'Post Ready to Schedule', f'Design uploaded and approved: {post.get("topic", "Untitled")}',
                      'post', post_id)
                 )
 
@@ -419,7 +408,6 @@ def pipeline():
         'draft': [],
         'pending_review': [],
         'in_design': [],
-        'design_review': [],
         'approved': [],
         'scheduled': []
     }
@@ -648,20 +636,6 @@ def my_work():
             r['action_label'] = 'Pending Review'
         items.extend(pending)
 
-        # Manager reviews posts in design_review stage
-        rows = dicts_from_rows(db.execute("""
-            SELECT sp.*, c.name as client_name
-            FROM scheduled_posts sp
-            LEFT JOIN clients c ON sp.client_id = c.id
-            WHERE (sp.assigned_manager_id=? OR sp.assigned_manager_id IS NULL) AND sp.workflow_status='design_review'
-            ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
-        """, (user_id,)).fetchall())
-        for r in rows:
-            r['action'] = 'needs_review'
-            r['action_label'] = 'Needs Review'
-        existing_ids = {i['id'] for i in items}
-        items.extend([r for r in rows if r['id'] not in existing_ids])
-
         # Draft posts waiting for team (created but not sent to design yet)
         drafts = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
@@ -732,20 +706,6 @@ def my_work():
             r['action_label'] = 'متأخر'
         items.extend(overdue)
 
-        # Posts in review
-        in_review = dicts_from_rows(db.execute("""
-            SELECT sp.*, c.name as client_name
-            FROM scheduled_posts sp
-            LEFT JOIN clients c ON sp.client_id = c.id
-            WHERE sp.workflow_status='design_review'
-            ORDER BY sp.updated_at DESC LIMIT 20
-        """).fetchall())
-        for r in in_review:
-            r['action'] = 'needs_review'
-            r['action_label'] = 'يحتاج مراجعة'
-        existing_ids = {i['id'] for i in items}
-        items.extend([r for r in in_review if r['id'] not in existing_ids])
-
     db.close()
     return jsonify(items)
 
@@ -768,16 +728,16 @@ def transition_post(post_id):
     user_role = session.get('user_role', '')
     if user_role != 'admin':
         if user_role in ('designer', 'motion_editor'):
-            # Designers can only submit for review (in_design -> design_review)
-            if new_status != 'design_review':
+            # Designers can mark as done (in_design -> approved)
+            if new_status != 'approved':
                 return jsonify({'error': 'Permission denied'}), 403
         elif user_role == 'copywriter':
-            # Copywriters can only send to design (draft -> in_design)
-            if new_status != 'in_design':
+            # Copywriters can send for review (draft -> pending_review)
+            if new_status not in ('pending_review',):
                 return jsonify({'error': 'Permission denied'}), 403
         elif user_role == 'sm_specialist':
-            # SM Specialists can send to design (draft -> in_design) or schedule (approved -> scheduled)
-            if new_status not in ('in_design', 'scheduled'):
+            # SM Specialists can send for review (draft -> pending_review) or schedule (approved -> scheduled)
+            if new_status not in ('pending_review', 'scheduled'):
                 return jsonify({'error': 'Permission denied'}), 403
         elif user_role == 'manager':
             pass  # Managers have same access as admin for transitions
@@ -807,19 +767,9 @@ def transition_post(post_id):
         db.close()
         return jsonify({'error': 'Designer must be assigned before moving to design'}), 400
 
-    if new_status == 'design_review':
-        design_urls = post.get('design_output_urls', '') or ''
-        if not design_urls.strip():
-            db.close()
-            return jsonify({'error': 'Design must be uploaded before submitting for review'}), 400
-
-    if old_status == 'design_review' and new_status == 'in_design' and not comment:
+    if old_status == 'pending_review' and new_status == 'draft' and not comment:
         db.close()
-        return jsonify({'error': 'Feedback comment is required when returning to design'}), 400
-
-    if old_status == 'design_review' and new_status == 'draft' and not comment:
-        db.close()
-        return jsonify({'error': 'Feedback comment is required when returning to copywriter'}), 400
+        return jsonify({'error': 'Feedback comment is required when returning to draft'}), 400
 
     if new_status == 'scheduled':
         scheduled_at = data.get('scheduled_at') or post.get('scheduled_at', '')
@@ -849,7 +799,7 @@ def transition_post(post_id):
             update_fields.append("image_url=?")
             update_params.append(design_urls)
 
-    if old_status == 'design_review' and new_status in ('in_design', 'draft'):
+    if old_status == 'approved' and new_status == 'in_design':
         update_fields.append("revision_count=revision_count+1")
 
     update_params.append(post_id)
@@ -862,8 +812,8 @@ def transition_post(post_id):
         (post_id, user_id, old_status, new_status, comment)
     )
 
-    # Add feedback as a comment if returning to design or copywriter
-    if old_status == 'design_review' and new_status in ('in_design', 'draft') and comment:
+    # Add feedback as a comment if returning to earlier stage
+    if (old_status == 'pending_review' and new_status == 'draft' and comment) or (old_status == 'approved' and new_status == 'in_design' and comment):
         db.execute(
             """INSERT INTO post_comments (post_id, user_id, content, comment_type)
                VALUES (?,?,?,?)""",
@@ -889,33 +839,6 @@ def transition_post(post_id):
                VALUES (?,?,?,?,?,?)""",
             (post['assigned_motion_id'], 'motion_assigned',
              'New Motion Task', f'You have a new video/motion design to work on: {topic}', 'post', post_id)
-        )
-
-    # Notify designer when design is returned for revision
-    if old_status == 'design_review' and new_status == 'in_design' and post.get('assigned_designer_id'):
-        db.execute(
-            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
-               VALUES (?,?,?,?,?,?)""",
-            (post['assigned_designer_id'], 'design_returned',
-             'Design Returned for Revision', f'The manager has returned your design for revision: {topic}', 'post', post_id)
-        )
-
-    # Notify copywriter when post is returned to draft for edits
-    if old_status == 'design_review' and new_status == 'draft' and post.get('assigned_writer_id'):
-        db.execute(
-            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
-               VALUES (?,?,?,?,?,?)""",
-            (post['assigned_writer_id'], 'caption_returned',
-             'Post Returned for Edits', f'The manager returned this post for copywriter edits: {topic}', 'post', post_id)
-        )
-
-    # Notify manager when design is submitted for review
-    if new_status == 'design_review' and post.get('assigned_manager_id'):
-        db.execute(
-            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
-               VALUES (?,?,?,?,?,?)""",
-            (post['assigned_manager_id'], 'design_review_ready',
-             'Design Ready for Review', f'Design submitted for your review: {topic}', 'post', post_id)
         )
 
     # Notify SM specialist when post is approved
@@ -956,17 +879,6 @@ def transition_post(post_id):
             (f'Motion: {topic}', f'Create video/motion content for post: {topic}', post.get('client_id'),
              post['assigned_motion_id'], user_id, 'todo', post.get('priority', 'normal'),
              'design', post_id)
-        )
-
-    # Auto-create task for manager when moving to design_review
-    if new_status == 'design_review' and post.get('assigned_manager_id'):
-        db.execute(
-            """INSERT INTO tasks (title, description, client_id, assigned_to_id, created_by_id,
-                                  status, priority, category, post_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (f'Review: {topic}', f'Review design for post: {topic}', post.get('client_id'),
-             post['assigned_manager_id'], user_id, 'todo', post.get('priority', 'normal'),
-             'review', post_id)
         )
 
     # Auto-create task for SM specialist when post is approved

@@ -135,10 +135,10 @@ def user_stats():
             stats['label'] = 'posts created'
 
         elif role == 'designer':
-            # Count designs completed: workflow_history transitions from in_design -> design_review by this user
+            # Count designs completed: workflow_history transitions from in_design -> approved by this user
             row = db.execute("""
                 SELECT COUNT(*) as c FROM workflow_history
-                WHERE user_id=? AND from_status='in_design' AND to_status='design_review'
+                WHERE user_id=? AND from_status='in_design' AND to_status='approved'
                 AND created_at >= ?
             """, (uid, month_start)).fetchone()
             stats['completed'] = row['c']
@@ -164,7 +164,7 @@ def user_stats():
             # Count motion designs completed
             row = db.execute("""
                 SELECT COUNT(*) as c FROM workflow_history
-                WHERE user_id=? AND from_status='in_design' AND to_status='design_review'
+                WHERE user_id=? AND from_status='in_design' AND to_status='approved'
                 AND created_at >= ?
             """, (uid, month_start)).fetchone()
             stats['completed'] = row['c']
@@ -194,10 +194,10 @@ def user_stats():
             """, (uid, month_start)).fetchone()
             stats['completed'] = row['c']
 
-            # Required: total posts in design_review or later this month
+            # Required: total posts in approved or later this month
             row2 = db.execute("""
                 SELECT COUNT(*) as c FROM scheduled_posts
-                WHERE workflow_status IN ('design_review', 'approved', 'scheduled', 'posted')
+                WHERE workflow_status IN ('approved', 'scheduled', 'posted')
                 AND created_at >= ?
             """, (month_start,)).fetchone()
             stats['required'] = row2['c']

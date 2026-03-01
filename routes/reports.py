@@ -44,7 +44,7 @@ def generate_report():
     total_posts = len(posts)
     posted_count = sum(1 for p in posts if p.get('status') == 'posted' or p.get('workflow_status') == 'posted')
     scheduled_count = sum(1 for p in posts if p.get('status') == 'pending' or p.get('workflow_status') == 'scheduled')
-    draft_count = sum(1 for p in posts if p.get('workflow_status') in ('draft', 'in_design', 'design_review', 'approved'))
+    draft_count = sum(1 for p in posts if p.get('workflow_status') in ('draft', 'pending_review', 'in_design', 'approved'))
 
     # Platform breakdown
     platform_counts = {}

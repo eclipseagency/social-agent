@@ -31,7 +31,7 @@ async function loadPipeline() {
 }
 
 function renderPipelineBoard(board) {
-    const statuses = ['draft', 'pending_review', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'pending_review', 'in_design', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
         const count = document.getElementById('pcount-' + status);
@@ -68,7 +68,7 @@ function initPipelineDragDrop() {
     pipelineSortables = [];
     // Only allow drag & drop for roles that can approve or schedule (admin, manager, sm_specialist)
     if (!canDo('approve') && !canDo('schedule')) return;
-    const statuses = ['draft', 'pending_review', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'pending_review', 'in_design', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
         if (!col) return;
@@ -104,7 +104,7 @@ async function viewPostDetail(postId) {
     const comments = await fetch(API_URL + '/posts/' + postId + '/comments').then(r => r.json());
 
     document.getElementById('post-detail-title').textContent = post.topic || 'Post Details';
-    const statusColors = { draft: 'bg-gray-100 text-gray-800', pending_review: 'bg-yellow-100 text-yellow-800', needs_caption: 'bg-yellow-100 text-yellow-800', in_design: 'bg-pink-100 text-pink-800', design_review: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-green-200 text-green-900' };
+    const statusColors = { draft: 'bg-gray-100 text-gray-800', pending_review: 'bg-yellow-100 text-yellow-800', needs_caption: 'bg-yellow-100 text-yellow-800', in_design: 'bg-pink-100 text-pink-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-green-200 text-green-900' };
 
     let designImagesHtml = '';
     if (post.design_output_urls) {
@@ -142,12 +142,7 @@ async function viewPostDetail(postId) {
             ` : ''}
             ${post.workflow_status === 'in_design' && canDo('uploadDesign') ? `
                 <label class="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm cursor-pointer"><i class="fa-solid fa-upload mr-1"></i> Upload Design <input type="file" class="hidden" multiple accept="image/*" onchange="uploadDesignToPost(${post.id}, this)"></label>
-                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>
-            ` : ''}
-            ${post.workflow_status === 'design_review' && canDo('approve') ? `
-                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'approved')" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Approve</button>
-                <button onclick="promptReturnToDesign(${post.id})" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Designer</button>
-                <button onclick="promptReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>
+                <button onclick="changePostWorkflowAndRefresh(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Mark as Done</button>
             ` : ''}
             ${post.workflow_status === 'approved' && canDo('schedule') ? `<button onclick="promptSchedulePost(${post.id})" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>` : ''}
         </div>

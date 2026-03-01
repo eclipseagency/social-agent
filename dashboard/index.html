@@ -785,10 +785,6 @@
                             <div class="kanban-cards" id="pcol-in_design" data-status="in_design"></div>
                         </div>
                         <div class="kanban-column">
-                            <div class="kanban-column-header"><span><i class="fa-solid fa-magnifying-glass text-yellow-500 mr-2"></i>Design Review</span><span class="text-xs bg-yellow-200 px-2 py-1 rounded-full" id="pcount-design_review">0</span></div>
-                            <div class="kanban-cards" id="pcol-design_review" data-status="design_review"></div>
-                        </div>
-                        <div class="kanban-column">
                             <div class="kanban-column-header"><span><i class="fa-solid fa-circle-check text-green-500 mr-2"></i>Approved</span><span class="text-xs bg-green-200 px-2 py-1 rounded-full" id="pcount-approved">0</span></div>
                             <div class="kanban-cards" id="pcol-approved" data-status="approved"></div>
                         </div>
@@ -2025,7 +2021,7 @@ async function loadPipelineFilterDropdowns() {
 }
 
 function renderPipelineBoard(board) {
-    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'pending_review', 'in_design', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const col = document.getElementById('pcol-' + status);
         const countEl = document.getElementById('pcount-' + status);
@@ -2068,7 +2064,7 @@ function renderPipelineCard(post) {
 function initPipelineDragDrop() {
     pipelineSortables.forEach(s => s.destroy());
     pipelineSortables = [];
-    const statuses = ['draft', 'in_design', 'design_review', 'approved', 'scheduled'];
+    const statuses = ['draft', 'pending_review', 'in_design', 'approved', 'scheduled'];
     statuses.forEach(status => {
         const el = document.getElementById('pcol-' + status);
         if (!el) return;
@@ -2109,8 +2105,8 @@ async function viewPostDetail(postId) {
 
     const comments = await fetch(API_URL + '/posts/' + postId + '/comments').then(r => r.json()).catch(() => []);
 
-    const statusLabels = { draft: 'Draft', pending_review: 'Pending Review', in_design: 'Needs Design', design_review: 'Design Review', approved: 'Approved', scheduled: 'Scheduled', posted: 'Posted' };
-    const statusColors = { draft: 'bg-gray-100 text-gray-800', in_design: 'bg-pink-100 text-pink-800', design_review: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-indigo-100 text-indigo-800' };
+    const statusLabels = { draft: 'Draft', pending_review: 'Pending Review', in_design: 'Needs Design', approved: 'Approved', scheduled: 'Scheduled', posted: 'Posted' };
+    const statusColors = { draft: 'bg-gray-100 text-gray-800', pending_review: 'bg-yellow-100 text-yellow-800', in_design: 'bg-pink-100 text-pink-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-indigo-100 text-indigo-800' };
     const priorityLabels = { urgent: 'Urgent', high: 'High', normal: 'Normal' };
     const currentWf = post.workflow_status || 'draft';
 
@@ -2172,8 +2168,8 @@ async function viewPostDetail(postId) {
 
             <!-- Workflow Actions -->
             <div class="flex flex-wrap gap-2">
-                ${['draft','in_design','design_review','approved','scheduled'].filter(s => s !== currentWf).map(s =>
-                    `<button onclick="changePostWorkflowAndRefresh(${post.id}, '${s}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${s === 'approved' ? 'bg-green-100 text-green-700 hover:bg-green-200' : s === 'in_design' ? 'bg-pink-100 text-pink-700 hover:bg-pink-200' : s === 'design_review' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : s === 'scheduled' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">${statusLabels[s]}</button>`
+                ${['draft','pending_review','in_design','approved','scheduled'].filter(s => s !== currentWf).map(s =>
+                    `<button onclick="changePostWorkflowAndRefresh(${post.id}, '${s}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${s === 'approved' ? 'bg-green-100 text-green-700 hover:bg-green-200' : s === 'in_design' ? 'bg-pink-100 text-pink-700 hover:bg-pink-200' : s === 'pending_review' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : s === 'scheduled' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">${statusLabels[s]}</button>`
                 ).join('')}
                 <button onclick="deletePost(${post.id}); hidePostDetailModal(); loadPipeline();" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 ml-auto"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
             </div>

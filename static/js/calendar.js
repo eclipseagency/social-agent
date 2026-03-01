@@ -257,7 +257,7 @@ async function openPostDetail(postId) {
         } else if (wf === 'draft') {
             bannerEl.className = 'role-banner role-banner-copywriter';
             bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div>Draft — write the caption and save it.</div>';
-        } else if (['in_design', 'design_review'].includes(wf)) {
+        } else if (wf === 'in_design') {
             bannerEl.className = 'role-banner role-banner-copywriter';
             bannerEl.innerHTML = '<i class="fa-solid fa-pen-nib"></i><div>You can still edit and save the caption.</div>';
         } else {
@@ -273,10 +273,7 @@ async function openPostDetail(postId) {
             bannerEl.innerHTML = '<i class="fa-solid fa-eye"></i><div>View only — this post is in <strong>' + esc(wf.replace(/_/g, ' ')) + '</strong> stage.</div>';
         }
     } else if (role === 'sm_specialist') {
-        if (wf === 'design_review') {
-            bannerEl.className = 'role-banner role-banner-reviewer';
-            bannerEl.innerHTML = '<i class="fa-solid fa-clipboard-check"></i><div><strong>Review needed!</strong> Check the designs and approve or return for changes.</div>';
-        } else if (wf === 'approved') {
+        if (wf === 'approved') {
             bannerEl.className = 'role-banner role-banner-reviewer';
             bannerEl.innerHTML = '<i class="fa-solid fa-calendar-check"></i><div>Approved — ready to schedule.</div>';
         }
@@ -447,13 +444,7 @@ async function openPostDetail(postId) {
     }
     if (wf === 'in_design' && canDo('uploadDesign')) {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
-    }
-    if (wf === 'design_review' && canDo('approve')) {
-        actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
-        actions.push(`<button onclick="returnToDesign(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>`);
-        if (post.assigned_writer_id) {
-            actions.push(`<button onclick="returnToCaption(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>`);
-        }
+        actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Mark as Done</button>`);
     }
     if (wf === 'approved' && canDo('schedule')) {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
@@ -519,7 +510,7 @@ async function openPostDetail(postId) {
     } else if (role === 'sm_specialist') {
         // SM Specialist / Moderator: review-focused, read-only
         // Highlight designs section during review
-        if (wf === 'design_review' && designsSection) designsSection.classList.add('role-focus');
+        if (wf === 'in_design' && designsSection) designsSection.classList.add('role-focus');
         // Hide upload zones (they don't upload)
         if (uploadZone) uploadZone.style.display = 'none';
         if (refUploadZone) refUploadZone.style.display = 'none';
