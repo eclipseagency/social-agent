@@ -173,6 +173,16 @@
                         </div>
                         <div id="cp-ref-previews" class="flex flex-wrap gap-2 mt-2"></div>
                     </div>
+                    <!-- Direct Design Upload (admin only) -->
+                    <div id="cp-design-upload-section" class="hidden">
+                        <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fa-solid fa-palette text-purple-500 mr-1"></i>Upload Design / Video</label>
+                        <input type="file" id="cp-design-input" multiple accept="image/*,video/*" class="hidden" onchange="previewDesignFiles(this.files)">
+                        <div class="upload-zone p-3 rounded-lg text-center cursor-pointer text-sm text-gray-500" onclick="document.getElementById('cp-design-input').click()" style="border-color:#a78bfa">
+                            <i class="fa-solid fa-palette text-xl mb-1 block text-purple-400"></i>
+                            Upload final design or video
+                        </div>
+                        <div id="cp-design-previews" class="flex flex-wrap gap-2 mt-2"></div>
+                    </div>
                 </div>
                 <!-- Right: Live Slide Preview -->
                 <div class="create-post-preview p-4 bg-gray-50">
@@ -183,10 +193,11 @@
                 </div>
             </div>
         </div>
-        <div class="flex justify-end gap-2 p-4 border-t">
+        <div class="flex justify-end gap-2 p-4 border-t flex-wrap">
             <button onclick="closeCreatePostModal()" class="px-4 py-2 rounded-lg text-sm bg-gray-200 hover:bg-gray-300">Cancel</button>
             <button onclick="submitCreatePost('draft')" class="px-4 py-2 rounded-lg text-sm bg-gray-600 text-white hover:bg-gray-700"><i class="fa-solid fa-save mr-1"></i> Save Draft</button>
             <button onclick="submitCreatePost('in_design')" class="px-4 py-2 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-700"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
+            <button id="cp-btn-post-directly" onclick="submitCreatePost('posted')" class="hidden px-4 py-2 rounded-lg text-sm bg-green-600 text-white hover:bg-green-700"><i class="fa-solid fa-bolt mr-1"></i> Post Directly</button>
         </div>
     </div>
 </div>

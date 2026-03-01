@@ -7,6 +7,7 @@ let clientCalByDate = {};
 let clientDraggedPostId = null;
 let clientStatusFilter = '';
 let createPostRefFiles = [];
+let createPostDesignFiles = [];
 let slideViewPostId = null;
 let carouselSlides = [];
 
@@ -455,8 +456,14 @@ function openCreatePostModal(dateStr) {
     document.getElementById('cp-slides-container').classList.add('hidden');
     document.getElementById('cp-tov-container').classList.remove('hidden');
     createPostRefFiles = [];
+    createPostDesignFiles = [];
     document.getElementById('cp-ref-previews').innerHTML = '';
     document.getElementById('cp-ref-input').value = '';
+    document.getElementById('cp-design-previews').innerHTML = '';
+    // Show admin-only sections
+    const isAdmin = currentUser?.role === 'admin';
+    document.getElementById('cp-design-upload-section').classList.toggle('hidden', !isAdmin);
+    document.getElementById('cp-btn-post-directly').classList.toggle('hidden', !isAdmin);
     updateSlidePreview();
     document.getElementById('create-post-modal').classList.remove('hidden');
 }
@@ -464,6 +471,7 @@ function openCreatePostModal(dateStr) {
 function closeCreatePostModal() {
     document.getElementById('create-post-modal').classList.add('hidden');
     createPostRefFiles = [];
+    createPostDesignFiles = [];
 }
 
 function updateSlidePreview() {
@@ -571,6 +579,33 @@ function removeRefPreview(i) {
     updateSlidePreview();
 }
 
+function previewDesignFiles(files) {
+    for (const file of files) {
+        file._previewUrl = URL.createObjectURL(file);
+        createPostDesignFiles.push(file);
+    }
+    renderDesignPreviews();
+}
+
+function renderDesignPreviews() {
+    const container = document.getElementById('cp-design-previews');
+    container.innerHTML = createPostDesignFiles.map((f, i) => {
+        const isVideo = f.type?.startsWith('video/');
+        return `<div class="relative">
+            ${isVideo
+                ? `<video src="${f._previewUrl}" class="w-16 h-16 object-cover rounded-lg border"></video>`
+                : `<img src="${f._previewUrl}" class="w-16 h-16 object-cover rounded-lg border">`}
+            <button onclick="removeDesignPreview(${i})" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">&times;</button>
+        </div>`;
+    }).join('');
+}
+
+function removeDesignPreview(i) {
+    if (createPostDesignFiles[i]?._previewUrl) URL.revokeObjectURL(createPostDesignFiles[i]._previewUrl);
+    createPostDesignFiles.splice(i, 1);
+    renderDesignPreviews();
+}
+
 async function submitCreatePost(workflowStatus) {
     const editId = document.getElementById('cp-edit-id').value;
     const date = document.getElementById('cp-date').value;
@@ -580,19 +615,25 @@ async function submitCreatePost(workflowStatus) {
     const caption = document.getElementById('cp-caption').value.trim();
     const notes = document.getElementById('cp-notes').value.trim();
     const isCarousel = postType === 'carousel';
+    const isAdminDirect = workflowStatus === 'posted' && canDo('manageClients');
 
     if (!date) { showToast('Please select a date', 'error'); return; }
     if (platforms.length === 0) { showToast('Please select at least one platform', 'error'); return; }
+
+    // Admin direct upload: require design files, TOV is optional
+    if (isAdminDirect && createPostDesignFiles.length === 0) {
+        showToast('Please upload at least one design or video', 'error'); return;
+    }
 
     let topicValue;
     if (isCarousel) {
         if (carouselSlides.length < 2) { showToast('Carousel requires at least 2 slides', 'error'); return; }
         const hasContent = carouselSlides.some(s => s.text && s.text.trim());
-        if (!hasContent) { showToast('Please enter text for at least one slide', 'error'); return; }
+        if (!hasContent && !isAdminDirect) { showToast('Please enter text for at least one slide', 'error'); return; }
         topicValue = getCarouselSlidesData();
     } else {
         topicValue = document.getElementById('cp-tov').value.trim();
-        if (!topicValue) { showToast('Please enter text on design / TOV', 'error'); return; }
+        if (!topicValue && !isAdminDirect) { showToast('Please enter text on design / TOV', 'error'); return; }
     }
 
     const scheduledAt = date + 'T' + time + ':00';
@@ -635,7 +676,15 @@ async function submitCreatePost(workflowStatus) {
         await apiFetch(`${API_URL}/posts/${postId}/upload-references`, { method: 'POST', body: formData });
     }
 
-    showToast(editId ? 'Post updated' : 'Post created', 'success');
+    // Step 3: Upload design files if admin direct post
+    if (createPostDesignFiles.length > 0 && postId) {
+        const formData = new FormData();
+        for (const file of createPostDesignFiles) formData.append('images', file);
+        if (currentUser) formData.append('user_id', currentUser.id);
+        await apiFetch(`${API_URL}/posts/${postId}/upload-design`, { method: 'POST', body: formData });
+    }
+
+    showToast(editId ? 'Post updated' : (isAdminDirect ? 'Post published directly' : 'Post created'), 'success');
     closeCreatePostModal();
     loadClientCalendar();
 }
