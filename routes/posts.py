@@ -8,11 +8,12 @@ from routes.auth import require_role, require_login
 
 posts_bp = Blueprint('posts', __name__)
 
-VALID_WORKFLOW_STATUSES = ['draft', 'in_design', 'design_review', 'approved', 'scheduled', 'posted']
+VALID_WORKFLOW_STATUSES = ['draft', 'pending_review', 'in_design', 'design_review', 'approved', 'scheduled', 'posted']
 
 # Valid workflow transitions: from_status -> list of allowed to_statuses
 VALID_TRANSITIONS = {
-    'draft': ['in_design'],
+    'draft': ['pending_review', 'in_design'],
+    'pending_review': ['in_design', 'draft'],
     'in_design': ['design_review', 'draft'],
     'design_review': ['approved', 'in_design', 'draft'],
     'approved': ['scheduled'],
@@ -169,6 +170,16 @@ def change_workflow(post_id):
     )
 
     topic = post.get('topic', 'Untitled')
+
+    # Notify manager when moving to pending_review
+    if new_status == 'pending_review' and post.get('assigned_manager_id'):
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (post['assigned_manager_id'], 'pending_review',
+             'Post Ready for Review', f'A post needs your review before going to design: {topic}',
+             'post', post_id)
+        )
 
     # Notify designer when moving to in_design
     if new_status == 'in_design' and post.get('assigned_designer_id'):
@@ -406,6 +417,7 @@ def pipeline():
 
     board = {
         'draft': [],
+        'pending_review': [],
         'in_design': [],
         'design_review': [],
         'approved': [],
@@ -528,6 +540,15 @@ def create_post(client_id):
            VALUES (?,?,?,?,?)""",
         (post_id, user_id, '', wf_status, 'Post created')
     )
+    # Notify manager if assigned and status is pending_review
+    if wf_status == 'pending_review' and assigned_manager_id:
+        db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id)
+               VALUES (?,?,?,?,?,?)""",
+            (assigned_manager_id, 'pending_review',
+             'Post Ready for Review', f'A post needs your review before going to design: {data.get("topic", "Untitled")}',
+             'post', post_id)
+        )
     # Notify designer if assigned and status is in_design
     if wf_status == 'in_design' and assigned_designer_id:
         db.execute(
@@ -614,6 +635,19 @@ def my_work():
         items.extend([r for r in returned if r['id'] not in existing_ids])
 
     elif role == 'manager':
+        # Manager reviews posts pending_review (before sending to design)
+        pending = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE (sp.assigned_manager_id=? OR sp.assigned_manager_id IS NULL) AND sp.workflow_status='pending_review'
+            ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
+        """, (user_id,)).fetchall())
+        for r in pending:
+            r['action'] = 'pending_review'
+            r['action_label'] = 'Pending Review'
+        items.extend(pending)
+
         # Manager reviews posts in design_review stage
         rows = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
@@ -625,7 +659,8 @@ def my_work():
         for r in rows:
             r['action'] = 'needs_review'
             r['action_label'] = 'Needs Review'
-        items.extend(rows)
+        existing_ids = {i['id'] for i in items}
+        items.extend([r for r in rows if r['id'] not in existing_ids])
 
         # Draft posts waiting for team (created but not sent to design yet)
         drafts = dicts_from_rows(db.execute("""

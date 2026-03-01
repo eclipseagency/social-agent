@@ -229,7 +229,7 @@ async function saveBrief(workflowStatus) {
     };
     const res = await fetch(API_URL + '/clients/' + clientId + '/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
     if (res.success) {
-        const msgs = { 'draft': 'Draft saved', 'in_design': 'Sent to designer' };
+        const msgs = { 'draft': 'Draft saved', 'pending_review': 'Sent for review', 'in_design': 'Sent to designer' };
         showToast(msgs[workflowStatus] || 'Saved', 'success');
         setTimeout(() => { window.location.href = '/calendar'; }, 1000);
     } else { showToast(res.error || 'Failed', 'error'); }

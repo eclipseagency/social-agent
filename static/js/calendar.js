@@ -161,7 +161,7 @@ async function handleFileDrop(files, dateStr) {
     const designPosts = dayPosts.filter(p => (p.workflow_status || '') === 'in_design');
 
     if (designPosts.length === 0) {
-        showToast('No posts in "In Design" status on this day', 'error');
+        showToast('No posts in "Needs Design" status on this day', 'error');
         return;
     }
 
@@ -436,11 +436,14 @@ async function openPostDetail(postId) {
     // Workflow action buttons — filtered by role permissions
     const actions = [];
     if (wf === 'draft' && canDo('createPost')) {
-        actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
+        actions.push(`<button onclick="transitionPost(${post.id}, 'pending_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send for Review</button>`);
     }
     if (wf === 'draft' && canDo('editCaption') && !canDo('createPost')) {
-        // Copywriter: can send to design once caption and brief are ready
-        actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
+        actions.push(`<button onclick="transitionPost(${post.id}, 'pending_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send for Review</button>`);
+    }
+    if (wf === 'pending_review' && canDo('approve')) {
+        actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-palette mr-1"></i> Approve & Send to Design</button>`);
+        actions.push(`<button onclick="returnToDraft(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Draft</button>`);
     }
     if (wf === 'in_design' && canDo('uploadDesign')) {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
@@ -596,13 +599,13 @@ async function submitCaption() {
     });
     if (!saveRes || !saveRes.success) return;
 
-    // Transition from needs_caption to in_design
+    // Transition from needs_caption to pending_review
     const res = await apiFetch(`${API_URL}/posts/${currentDetailPost.id}/transition`, {
         method: 'POST',
-        body: { status: 'in_design', user_id: currentUser?.id || 1 }
+        body: { status: 'pending_review', user_id: currentUser?.id || 1 }
     });
     if (res && res.success) {
-        showToast('Caption submitted — sent to design', 'success');
+        showToast('Caption submitted — sent for review', 'success');
         loadCalendar();
         openPostDetail(currentDetailPost.id);
     }
@@ -700,6 +703,19 @@ async function transitionPost(postId, newStatus) {
     });
     if (res && res.success) {
         showToast(`Status changed to ${newStatus.replace('_', ' ')}`, 'success');
+        loadCalendar();
+        openPostDetail(postId);
+    }
+}
+
+async function returnToDraft(postId) {
+    const comment = prompt('Feedback (optional):');
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'draft', user_id: currentUser?.id || 1, comment: comment || '' }
+    });
+    if (res && res.success) {
+        showToast('Returned to draft', 'success');
         loadCalendar();
         openPostDetail(postId);
     }

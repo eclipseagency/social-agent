@@ -53,7 +53,8 @@
         <select id="client-cal-status-filter" onchange="applyClientStatusFilter()" class="border rounded-lg px-3 py-1 text-sm">
             <option value="">All Statuses</option>
             <option value="Draft">Draft</option>
-            <option value="In Design">In Design</option>
+            <option value="Pending Review">Pending Review</option>
+            <option value="Needs Design">Needs Design</option>
             <option value="Design Review">Design Review</option>
             <option value="Approved">Approved</option>
             <option value="Scheduled">Scheduled</option>
@@ -199,7 +200,7 @@
         <div class="flex justify-end gap-2 p-4 border-t flex-wrap">
             <button onclick="closeCreatePostModal()" class="px-4 py-2 rounded-lg text-sm bg-gray-200 hover:bg-gray-300">Cancel</button>
             <button onclick="submitCreatePost('draft')" class="px-4 py-2 rounded-lg text-sm bg-gray-600 text-white hover:bg-gray-700"><i class="fa-solid fa-save mr-1"></i> Save Draft</button>
-            <button onclick="submitCreatePost('in_design')" class="px-4 py-2 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-700"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
+            <button onclick="submitCreatePost('pending_review')" class="px-4 py-2 rounded-lg text-sm bg-yellow-500 text-white hover:bg-yellow-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send for Review</button>
             <button id="cp-btn-post-directly" onclick="submitCreatePost('posted')" class="hidden px-4 py-2 rounded-lg text-sm bg-green-600 text-white hover:bg-green-700"><i class="fa-solid fa-bolt mr-1"></i> Post Directly</button>
         </div>
     </div>

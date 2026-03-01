@@ -504,7 +504,7 @@
                                 </div>
                                 <div class="flex gap-3">
                                     <button onclick="saveBrief('draft')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-300 transition"><i class="fa-solid fa-bookmark mr-1"></i> Save as Brief</button>
-                                    <button onclick="saveBrief('in_design')" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-pink-600 hover:to-purple-700 transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
+                                    <button onclick="saveBrief('pending_review')" class="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-yellow-600 hover:to-orange-600 transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send for Review</button>
                                 </div>
                             </div>
                             <!-- Post Type -->
@@ -781,7 +781,7 @@
                             <div class="kanban-cards" id="pcol-draft" data-status="draft"></div>
                         </div>
                         <div class="kanban-column">
-                            <div class="kanban-column-header"><span><i class="fa-solid fa-palette text-pink-500 mr-2"></i>In Design</span><span class="text-xs bg-pink-200 px-2 py-1 rounded-full" id="pcount-in_design">0</span></div>
+                            <div class="kanban-column-header"><span><i class="fa-solid fa-palette text-pink-500 mr-2"></i>Needs Design</span><span class="text-xs bg-pink-200 px-2 py-1 rounded-full" id="pcount-in_design">0</span></div>
                             <div class="kanban-cards" id="pcol-in_design" data-status="in_design"></div>
                         </div>
                         <div class="kanban-column">
@@ -2109,7 +2109,7 @@ async function viewPostDetail(postId) {
 
     const comments = await fetch(API_URL + '/posts/' + postId + '/comments').then(r => r.json()).catch(() => []);
 
-    const statusLabels = { draft: 'Draft', in_design: 'In Design', design_review: 'Design Review', approved: 'Approved', scheduled: 'Scheduled', posted: 'Posted' };
+    const statusLabels = { draft: 'Draft', pending_review: 'Pending Review', in_design: 'Needs Design', design_review: 'Design Review', approved: 'Approved', scheduled: 'Scheduled', posted: 'Posted' };
     const statusColors = { draft: 'bg-gray-100 text-gray-800', in_design: 'bg-pink-100 text-pink-800', design_review: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', scheduled: 'bg-blue-100 text-blue-800', posted: 'bg-indigo-100 text-indigo-800' };
     const priorityLabels = { urgent: 'Urgent', high: 'High', normal: 'Normal' };
     const currentWf = post.workflow_status || 'draft';

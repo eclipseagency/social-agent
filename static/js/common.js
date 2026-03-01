@@ -357,7 +357,8 @@ function getPostStatus(post) {
     if (wf === 'approved') return 'Approved';
     if (wf === 'design_review') return 'Design Review';
     if (wf === 'needs_caption') return 'Draft';  // Legacy - treat as draft
-    if (wf === 'in_design') return 'In Design';
+    if (wf === 'pending_review') return 'Pending Review';
+    if (wf === 'in_design') return 'Needs Design';
     if (wf === 'draft') return 'Draft';
     return wf.replace(/_/g, ' ');
 }
@@ -365,7 +366,8 @@ function getPostStatus(post) {
 function getStatusColor(status) {
     const colors = {
         'Draft': '#94a3b8',
-        'In Design': '#f97316',
+        'Pending Review': '#eab308',
+        'Needs Design': '#f97316',
         'Design Review': '#8b5cf6',
         'Approved': '#22c55e',
         'Scheduled': '#3b82f6',
@@ -378,7 +380,8 @@ function getStatusBorderClass(post) {
     const status = getPostStatus(post);
     const map = {
         'Draft': 'cal-border-draft',
-        'In Design': 'cal-border-needs-design',
+        'Pending Review': 'cal-border-pending-review',
+        'Needs Design': 'cal-border-needs-design',
         'Design Review': 'cal-border-design-review',
         'Approved': 'cal-border-ready',
         'Scheduled': 'cal-border-scheduled',

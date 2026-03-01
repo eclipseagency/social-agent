@@ -349,7 +349,7 @@ async function handleClientFileDrop(files, dateStr) {
     const dayPosts = getClientDayPosts(dateStr);
     const designPosts = dayPosts.filter(p => (p.workflow_status || '') === 'in_design');
     if (designPosts.length === 0) {
-        showToast('No posts in "In Design" status on this day', 'error');
+        showToast('No posts in "Needs Design" status on this day', 'error');
         return;
     }
     await uploadClientDesignFiles(designPosts[0].id, files);
@@ -858,10 +858,16 @@ function buildPostSlideActions(post) {
     const wf = post.workflow_status || 'draft';
     let actions = '';
 
-    // Draft: SMM/admin can edit and send to designer
+    // Draft: SMM/admin can edit and send for review
     if (wf === 'draft' && canDo('createPost')) {
         actions += `<button onclick="editPostInModal(${post.id})" class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700"><i class="fa-solid fa-pen mr-1"></i> Edit</button>`;
-        actions += `<button onclick="clientTransitionPost(${post.id}, 'in_design')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>`;
+        actions += `<button onclick="clientTransitionPost(${post.id}, 'pending_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send for Review</button>`;
+    }
+
+    // Pending Review: manager/admin can approve and send to design, or return to draft
+    if (wf === 'pending_review' && canDo('approve')) {
+        actions += `<button onclick="clientTransitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-palette mr-1"></i> Approve & Send to Design</button>`;
+        actions += `<button onclick="clientReturnToDraft(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Draft</button>`;
     }
 
     // In Design: designer/motion_designer can upload and submit for review
@@ -1038,6 +1044,19 @@ async function clientTransitionPost(postId, newStatus) {
     });
     if (res && res.success) {
         showToast(`Status changed to ${newStatus.replace(/_/g, ' ')}`, 'success');
+        loadClientCalendar();
+        openPostSlideView(postId);
+    }
+}
+
+async function clientReturnToDraft(postId) {
+    const comment = prompt('Feedback (optional):');
+    const res = await apiFetch(`${API_URL}/posts/${postId}/transition`, {
+        method: 'POST',
+        body: { status: 'draft', user_id: currentUser?.id || 1, comment: comment || '' }
+    });
+    if (res && res.success) {
+        showToast('Returned to draft', 'success');
         loadClientCalendar();
         openPostSlideView(postId);
     }

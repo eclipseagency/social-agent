@@ -134,6 +134,7 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .cal-mini-card { border-left: 3px solid #94a3b8; border-radius: 6px; padding: 4px 6px; margin-bottom: 3px; background: white; cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; font-size: 11px; overflow: hidden; }
 .cal-mini-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); transform: translateY(-1px); }
 .cal-border-draft { border-left-color: #94a3b8; }
+.cal-border-pending-review { border-left-color: #eab308; }
 .cal-border-needs-design { border-left-color: #f97316; }
 .cal-border-needs-caption { border-left-color: #eab308; }
 .cal-border-design-review { border-left-color: #8b5cf6; }
