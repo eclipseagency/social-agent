@@ -872,9 +872,13 @@ function buildPostSlideActions(post) {
     const wf = post.workflow_status || 'draft';
     let actions = '';
 
-    // Draft: SMM/admin can edit and send for review
-    if (wf === 'draft' && canDo('createPost')) {
+    // Edit button — available at any stage before posted
+    if (wf !== 'posted' && canDo('createPost')) {
         actions += `<button onclick="editPostInModal(${post.id})" class="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700"><i class="fa-solid fa-pen mr-1"></i> Edit</button>`;
+    }
+
+    // Draft: SMM/admin can send for review
+    if (wf === 'draft' && canDo('createPost')) {
         actions += `<button onclick="clientTransitionPost(${post.id}, 'pending_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send for Review</button>`;
     }
 
