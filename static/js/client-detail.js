@@ -111,11 +111,15 @@ function renderBriefSection() {
         let reqs = [];
         try { reqs = JSON.parse(clientData.content_requirements || '[]'); } catch (e) {}
         if (reqs.length > 0) {
-            reqsEl.innerHTML = reqs.map(r =>
-                `<div class="flex items-center gap-2">
+            reqsEl.innerHTML = reqs.map(r => {
+                const platList = r.platforms || (r.platform ? [r.platform] : []);
+                const platIcons = platList.map(p => getPlatformIcon(p)).join(' ');
+                const platNames = platList.map(p => esc(p)).join(', ');
+                return `<div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-                    <span>${getPlatformIcon(r.platform)} <strong>${r.count}</strong> ${esc(r.type)}${r.count > 1 ? 's' : ''} on ${esc(r.platform)}</span>
-                </div>`
+                    <span>${platIcons} <strong>${r.count}</strong> ${esc(r.type)}${r.count > 1 ? 's' : ''} on ${platNames}</span>
+                </div>`;
+            }
             ).join('');
         } else {
             reqsEl.innerHTML = '<p class="text-gray-400 text-xs italic">No requirements set</p>';
@@ -977,7 +981,7 @@ async function openEditClientModal() {
     let reqs = [];
     try { reqs = JSON.parse(clientData.content_requirements || '[]'); } catch (e) {}
     if (reqs.length > 0) {
-        reqs.forEach(r => addEditReqRow(r.platform, r.type, r.count));
+        reqs.forEach(r => addEditReqRow(r.platforms || r.platform, r.type, r.count));
     } else {
         addEditReqRow();
     }
@@ -1035,41 +1039,40 @@ async function onEditBriefFileSelected(files) {
     }
 }
 
-function addEditReqRow(platform, type, count) {
+function addEditReqRow(platforms, type, count) {
+    // Backward compat: old data has `platform` (string), new has `platforms` (array)
+    const selected = Array.isArray(platforms) ? platforms : (platforms ? [platforms] : []);
     const container = document.getElementById('ec-content-req-rows');
     const div = document.createElement('div');
-    div.className = 'flex items-center gap-2 flex-wrap ec-req-row';
+    div.className = 'ec-req-row border rounded-lg p-2 mb-2';
     div.innerHTML = `
-        <select class="cr-platform border rounded-lg px-2 py-1 text-sm">
-            <option value="instagram" ${platform==='instagram'?'selected':''}>Instagram</option>
-            <option value="facebook" ${platform==='facebook'?'selected':''}>Facebook</option>
-            <option value="linkedin" ${platform==='linkedin'?'selected':''}>LinkedIn</option>
-            <option value="tiktok" ${platform==='tiktok'?'selected':''}>TikTok</option>
-            <option value="x" ${platform==='x'?'selected':''}>X</option>
-        </select>
-        <select class="cr-type border rounded-lg px-2 py-1 text-sm">
-            <option value="post" ${type==='post'?'selected':''}>Post</option>
-            <option value="story" ${type==='story'?'selected':''}>Story</option>
-            <option value="reel" ${type==='reel'?'selected':''}>Reel</option>
-            <option value="video" ${type==='video'?'selected':''}>Video</option>
-            <option value="carousel" ${type==='carousel'?'selected':''}>Carousel</option>
-        </select>
-        <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="${count||1}" placeholder="#">
-        <span class="text-xs text-gray-400">/ month</span>
-        <button onclick="this.closest('.ec-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
+        <div class="flex flex-wrap gap-1 mb-1 cr-platforms">${buildReqPlatformToggles(selected)}</div>
+        <div class="flex items-center gap-2">
+            <select class="cr-type border rounded-lg px-2 py-1 text-sm">
+                <option value="post" ${type==='post'?'selected':''}>Post</option>
+                <option value="story" ${type==='story'?'selected':''}>Story</option>
+                <option value="reel" ${type==='reel'?'selected':''}>Reel</option>
+                <option value="video" ${type==='video'?'selected':''}>Video</option>
+                <option value="carousel" ${type==='carousel'?'selected':''}>Carousel</option>
+            </select>
+            <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="${count||1}" placeholder="#">
+            <span class="text-xs text-gray-400">/ month</span>
+            <button onclick="this.closest('.ec-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
+        </div>
     `;
     container.appendChild(div);
+    initReqPlatformToggles(div);
 }
 
 function collectEditReqs() {
     const rows = document.querySelectorAll('.ec-req-row');
     const reqs = [];
     rows.forEach(row => {
-        const platform = row.querySelector('.cr-platform')?.value;
+        const platforms = Array.from(row.querySelectorAll('.cr-plat-cb:checked')).map(cb => cb.value);
         const type = row.querySelector('.cr-type')?.value;
         const count = parseInt(row.querySelector('.cr-count')?.value) || 0;
-        if (platform && type && count > 0) {
-            reqs.push({ platform, type, count });
+        if (platforms.length > 0 && type && count > 0) {
+            reqs.push({ platforms, type, count });
         }
     });
     return JSON.stringify(reqs);

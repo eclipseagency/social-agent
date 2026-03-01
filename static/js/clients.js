@@ -1,5 +1,9 @@
 // Accounts (clients) page JS
-function pageInit() { loadClients(); }
+function pageInit() {
+    loadClients();
+    // Add default requirement row
+    addContentReqRow();
+}
 
 async function loadClients() {
     try {
@@ -12,7 +16,7 @@ async function loadClients() {
             cardsEl.innerHTML = clients.map(c => {
                 const reqs = parseContentReqs(c.content_requirements);
                 const reqSummary = reqs.length > 0
-                    ? reqs.map(r => `${r.count} ${r.type}/${r.platform}`).join(', ')
+                    ? reqs.map(r => { const p = r.platforms || (r.platform ? [r.platform] : []); return `${r.count} ${r.type}/${p.join('+')}`; }).join(', ')
                     : 'No requirements set';
                 return `<div class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition cursor-pointer" onclick="window.location='/clients/${c.slug || c.id}'">
                     <div class="flex items-center gap-3 mb-3">
@@ -48,7 +52,10 @@ function parseContentReqs(json) {
     try { return JSON.parse(json); } catch (e) { return []; }
 }
 
-function showAddClientModal() { document.getElementById('add-client-modal').classList.remove('hidden'); }
+function showAddClientModal() {
+    document.getElementById('add-client-modal').classList.remove('hidden');
+    document.querySelectorAll('#content-req-rows .content-req-row').forEach(r => initReqPlatformToggles(r));
+}
 function hideAddClientModal() {
     document.getElementById('add-client-modal').classList.add('hidden');
     // Reset form
@@ -60,50 +67,83 @@ function hideAddClientModal() {
     document.getElementById('client-brief-file').value = '';
     document.getElementById('client-brief-file-url').value = '';
     document.getElementById('client-brief-file-name').textContent = '';
-    document.getElementById('content-req-rows').innerHTML = getDefaultReqRow();
+    document.getElementById('content-req-rows').innerHTML = '';
+    addContentReqRow();
+}
+
+function buildReqPlatformToggles(selected) {
+    const list = Array.isArray(selected) ? selected : (selected ? [selected] : []);
+    const platforms = [
+        { val: 'instagram', icon: 'fa-brands fa-instagram', label: 'IG' },
+        { val: 'facebook', icon: 'fa-brands fa-facebook', label: 'FB' },
+        { val: 'linkedin', icon: 'fa-brands fa-linkedin', label: 'LI' },
+        { val: 'tiktok', icon: 'fa-brands fa-tiktok', label: 'TT' },
+        { val: 'x', icon: 'fa-brands fa-x-twitter', label: 'X' },
+    ];
+    return platforms.map(p =>
+        `<label class="cr-plat-toggle cursor-pointer select-none">
+            <input type="checkbox" value="${p.val}" class="hidden cr-plat-cb" ${list.includes(p.val) ? 'checked' : ''}>
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold border transition
+                ${list.includes(p.val) ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-50 text-gray-500 border-gray-200'}">
+                <i class="${p.icon}"></i>${p.label}
+            </span>
+        </label>`
+    ).join('');
+}
+
+function initReqPlatformToggles(container) {
+    container.querySelectorAll('.cr-plat-cb').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const span = this.nextElementSibling;
+            if (this.checked) {
+                span.className = span.className.replace('bg-gray-50 text-gray-500 border-gray-200', 'bg-indigo-600 text-white border-indigo-600');
+            } else {
+                span.className = span.className.replace('bg-indigo-600 text-white border-indigo-600', 'bg-gray-50 text-gray-500 border-gray-200');
+            }
+        });
+    });
+}
+
+function buildReqRowHtml(selected, type, count) {
+    return `
+        <div class="flex flex-wrap gap-1 mb-1 cr-platforms">${buildReqPlatformToggles(selected)}</div>
+        <div class="flex items-center gap-2">
+            <select class="cr-type border rounded-lg px-2 py-1 text-sm">
+                <option value="post" ${type==='post'?'selected':''}>Post</option>
+                <option value="story" ${type==='story'?'selected':''}>Story</option>
+                <option value="reel" ${type==='reel'?'selected':''}>Reel</option>
+                <option value="video" ${type==='video'?'selected':''}>Video</option>
+                <option value="carousel" ${type==='carousel'?'selected':''}>Carousel</option>
+            </select>
+            <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="${count||1}" placeholder="#">
+            <span class="text-xs text-gray-400">/ month</span>
+            <button onclick="this.closest('.content-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
+        </div>
+    `;
 }
 
 function getDefaultReqRow() {
-    return `<div class="flex items-center gap-2 flex-wrap content-req-row">
-        <select class="cr-platform border rounded-lg px-2 py-1 text-sm">
-            <option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="x">X</option>
-        </select>
-        <select class="cr-type border rounded-lg px-2 py-1 text-sm">
-            <option value="post">Post</option><option value="story">Story</option><option value="reel">Reel</option><option value="video">Video</option>
-        </select>
-        <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="1" placeholder="#">
-        <span class="text-xs text-gray-400">/ month</span>
-        <button onclick="this.closest('.content-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
-    </div>`;
+    return `<div class="content-req-row border rounded-lg p-2 mb-2">${buildReqRowHtml([], '', 1)}</div>`;
 }
 
 function addContentReqRow() {
     const container = document.getElementById('content-req-rows');
     const div = document.createElement('div');
-    div.className = 'flex items-center gap-2 flex-wrap content-req-row';
-    div.innerHTML = `
-        <select class="cr-platform border rounded-lg px-2 py-1 text-sm">
-            <option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="x">X</option>
-        </select>
-        <select class="cr-type border rounded-lg px-2 py-1 text-sm">
-            <option value="post">Post</option><option value="story">Story</option><option value="reel">Reel</option><option value="video">Video</option>
-        </select>
-        <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="1" placeholder="#">
-        <span class="text-xs text-gray-400">/ month</span>
-        <button onclick="this.closest('.content-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
-    `;
+    div.className = 'content-req-row border rounded-lg p-2 mb-2';
+    div.innerHTML = buildReqRowHtml([], '', 1);
     container.appendChild(div);
+    initReqPlatformToggles(div);
 }
 
 function collectContentRequirements() {
     const rows = document.querySelectorAll('.content-req-row');
     const reqs = [];
     rows.forEach(row => {
-        const platform = row.querySelector('.cr-platform')?.value;
+        const platforms = Array.from(row.querySelectorAll('.cr-plat-cb:checked')).map(cb => cb.value);
         const type = row.querySelector('.cr-type')?.value;
         const count = parseInt(row.querySelector('.cr-count')?.value) || 0;
-        if (platform && type && count > 0) {
-            reqs.push({ platform, type, count });
+        if (platforms.length > 0 && type && count > 0) {
+            reqs.push({ platforms, type, count });
         }
     });
     return JSON.stringify(reqs);

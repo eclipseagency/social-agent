@@ -56,19 +56,7 @@
         </div>
         <div class="mb-4">
             <label class="block text-gray-700 mb-2 text-sm font-semibold">Content Requirements (per month)</label>
-            <div class="space-y-3 mt-2" id="content-req-rows">
-                <div class="flex items-center gap-2 flex-wrap content-req-row">
-                    <select class="cr-platform border rounded-lg px-2 py-1 text-sm">
-                        <option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="x">X</option>
-                    </select>
-                    <select class="cr-type border rounded-lg px-2 py-1 text-sm">
-                        <option value="post">Post</option><option value="story">Story</option><option value="reel">Reel</option><option value="video">Video</option>
-                    </select>
-                    <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="1" placeholder="#">
-                    <span class="text-xs text-gray-400">/ month</span>
-                    <button onclick="this.closest('.content-req-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fa-solid fa-times"></i></button>
-                </div>
-            </div>
+            <div class="space-y-2 mt-2" id="content-req-rows"></div>
             <button onclick="addContentReqRow()" class="text-indigo-600 text-xs mt-2"><i class="fa-solid fa-plus mr-1"></i>Add requirement</button>
         </div>
         <div class="flex gap-4">
