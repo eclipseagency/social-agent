@@ -5,7 +5,7 @@
     <button onclick="showAddUserModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm w-full sm:w-auto"><i class="fa-solid fa-plus mr-1"></i> New User</button>
 </div>
 <div class="mb-4">
-    <input type="text" id="user-search" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" placeholder="Search users by name or email..." oninput="filterUsersTable()">
+    <input type="text" id="user-search" autocomplete="off" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" placeholder="Search users by name or email..." oninput="filterUsersTable()">
 </div>
 
 <!-- User Cards with Performance -->
@@ -73,7 +73,7 @@ const roleIcons = {admin:'fa-shield-halved',sm_specialist:'fa-pen-nib',designer:
 let usersData = [];
 let userStatsData = {};
 
-function pageInit() { loadUsers(); }
+function pageInit() { const s = document.getElementById('user-search'); if (s) s.value = ''; loadUsers(); }
 
 async function loadUsers() {
     const [users, stats] = await Promise.all([
