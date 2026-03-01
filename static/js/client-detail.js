@@ -111,22 +111,69 @@ function renderBriefSection() {
         let reqs = [];
         try { reqs = JSON.parse(clientData.content_requirements || '[]'); } catch (e) {}
         if (reqs.length > 0) {
-            reqsEl.innerHTML = reqs.map(r => {
+            reqsEl.innerHTML = reqs.map((r, i) => {
                 const platList = r.platforms || (r.platform ? [r.platform] : []);
                 const platIcons = platList.map(p => getPlatformIcon(p)).join(' ');
                 const platNames = platList.map(p => esc(p)).join(', ');
                 return `<div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-                    <span>${platIcons} <strong>${r.count}</strong> ${esc(r.type)}${r.count > 1 ? 's' : ''} on ${platNames}</span>
+                    ${platIcons}
+                    <span class="font-semibold text-sm" id="req-progress-${i}">0</span>
+                    <span class="text-gray-400 text-sm">/ ${r.count}</span>
+                    <span class="text-sm">${esc(r.type)}${r.count > 1 ? 's' : ''}</span>
+                    <span class="text-xs text-gray-400">on ${platNames}</span>
+                    <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden ml-1" style="min-width:50px;max-width:100px">
+                        <div class="h-full rounded-full transition-all" id="req-bar-${i}" style="width:0%;background:#6366f1"></div>
+                    </div>
                 </div>`;
-            }
-            ).join('');
+            }).join('');
         } else {
             reqsEl.innerHTML = '<p class="text-gray-400 text-xs italic">No requirements set</p>';
         }
     } else {
         section.classList.add('hidden');
     }
+}
+
+function updateReqProgress() {
+    if (!clientData) return;
+    let reqs = [];
+    try { reqs = JSON.parse(clientData.content_requirements || '[]'); } catch (e) {}
+    if (reqs.length === 0) return;
+
+    // Count posts for current calendar month by type and platform
+    const posts = clientPostsData || [];
+
+    reqs.forEach((r, i) => {
+        const platList = r.platforms || (r.platform ? [r.platform] : []);
+        const reqType = (r.type || '').toLowerCase();
+        // Count posts matching ANY of the requirement's platforms AND the type
+        const count = posts.filter(p => {
+            const postType = (p.post_type || 'post').toLowerCase();
+            const postPlatforms = (p.platforms || '').toLowerCase().split(',').map(s => s.trim());
+            return postType === reqType && platList.some(rp => postPlatforms.includes(rp));
+        }).length;
+
+        const target = r.count || 1;
+        const pct = Math.min(100, Math.round((count / target) * 100));
+        const progressEl = document.getElementById(`req-progress-${i}`);
+        const barEl = document.getElementById(`req-bar-${i}`);
+        if (progressEl) {
+            progressEl.textContent = count;
+            if (count >= target) {
+                progressEl.classList.add('text-green-600');
+            } else if (count > 0) {
+                progressEl.classList.add('text-indigo-600');
+            } else {
+                progressEl.classList.add('text-red-500');
+            }
+        }
+        if (barEl) {
+            barEl.style.width = pct + '%';
+            if (count >= target) barEl.style.background = '#22c55e';
+            else if (pct >= 50) barEl.style.background = '#6366f1';
+            else barEl.style.background = '#f97316';
+        }
+    });
 }
 
 function toggleBriefExpand() {
@@ -177,6 +224,7 @@ async function loadClientCalendar() {
 
     document.getElementById('cd-posts-count').textContent = clientPostsData.length;
     renderClientCalendar();
+    updateReqProgress();
 }
 
 function getClientDayPosts(dateStr) {
