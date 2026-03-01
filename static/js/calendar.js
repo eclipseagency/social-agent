@@ -297,7 +297,7 @@ async function openPostDetail(postId) {
         topicInput.classList.add('hidden');
         if (topicData.isCarousel && topicData.slides.length > 0) {
             topicDisplay.innerHTML = topicData.slides.map((s, i) =>
-                `<div style="margin-bottom:6px"><strong style="color:#6366f1;font-size:11px;text-transform:uppercase">Slide ${i + 1}</strong><br>${esc(s.text || '')}</div>`
+                `<div style="margin-bottom:6px"><strong style="color:#6366f1;font-size:11px;text-transform:uppercase">Slide ${i + 1}</strong><br>${esc(s.text || '').replace(/\n/g, '<br>')}</div>`
             ).join('');
             topicDisplay.style.display = '';
         } else if (post.topic) {
@@ -448,6 +448,10 @@ async function openPostDetail(postId) {
     }
     if (wf === 'approved' && canDo('schedule')) {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
+    }
+    // Delete button — for admin/managers on non-posted posts
+    if (wf !== 'posted' && canDo('createPost')) {
+        actions.push(`<button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-trash mr-1"></i> Delete</button>`);
     }
     document.getElementById('detail-actions').innerHTML = actions.join('');
 
@@ -729,6 +733,18 @@ async function returnToDesign(postId) {
         showToast('Returned to design', 'success');
         loadCalendar();
         openPostDetail(postId);
+    }
+}
+
+async function deletePost(postId) {
+    if (!confirm('Are you sure you want to delete this post? This cannot be undone.')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+    if (res && res.success) {
+        showToast('Post deleted', 'success');
+        closePostDetail();
+        loadCalendar();
+    } else {
+        showToast(res?.error || 'Delete failed', 'error');
     }
 }
 

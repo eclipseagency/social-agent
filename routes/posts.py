@@ -1084,7 +1084,7 @@ def get_publish_status(post_id):
 
 
 @posts_bp.route('/api/posts/<int:post_id>', methods=['DELETE'])
-@require_role('admin')
+@require_role('admin', 'sm_specialist')
 def delete_post(post_id):
     db = get_db()
     db.execute("DELETE FROM post_comments WHERE post_id=?", (post_id,))
