@@ -861,17 +861,19 @@ function closeEditClientModal() {
 async function onEditBriefFileSelected(files) {
     if (!files || !files.length) return;
     const formData = new FormData();
-    formData.append('images', files[0]);
+    formData.append('file', files[0]);
     showToast('Uploading brief file...', 'info');
     try {
-        const res = await fetch(API_URL + '/upload-file', { method: 'POST', body: formData });
+        const res = await fetch(API_URL + '/upload-brief-file', { method: 'POST', body: formData });
         const data = await res.json();
-        if (data.url) {
+        if (data.success && data.url) {
             editBriefFileUrl = data.url;
             const fileCurrentEl = document.getElementById('ec-brief-file-current');
-            fileCurrentEl.innerHTML = `Uploaded: <a href="${esc(data.url)}" target="_blank" class="text-indigo-600 underline">View file</a>`;
+            fileCurrentEl.innerHTML = `Uploaded: <a href="${esc(data.url)}" target="_blank" class="text-indigo-600 underline">${esc(data.filename || 'View file')}</a>`;
             fileCurrentEl.classList.remove('hidden');
             showToast('File uploaded', 'success');
+        } else {
+            showToast('Upload failed', 'error');
         }
     } catch (e) {
         showToast('File upload failed', 'error');
