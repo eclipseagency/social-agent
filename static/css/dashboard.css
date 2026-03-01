@@ -206,6 +206,11 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .design-gallery { display: flex; flex-wrap: wrap; gap: 8px; }
 .design-gallery img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.15s; }
 .design-gallery img:hover { transform: scale(1.08); }
+.design-item-wrap { position: relative; display: inline-block; }
+.design-item-wrap img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.15s; }
+.design-item-wrap:hover img { transform: scale(1.08); }
+.design-download-btn { position: absolute; bottom: 4px; right: 4px; background: rgba(99,102,241,0.9); color: white; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; text-decoration: none; opacity: 0; transition: opacity 0.15s; }
+.design-item-wrap:hover .design-download-btn { opacity: 1; }
 
 /* Reference gallery — larger, more visual cards */
 .ref-gallery { display: flex; flex-wrap: wrap; gap: 10px; }

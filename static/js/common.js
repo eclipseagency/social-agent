@@ -85,7 +85,7 @@ const ROLE_PERMISSIONS = {
     sm_specialist:    { createPost: true, editCaption: true, uploadDesign: false, uploadRef: true, approve: false, schedule: false, viewAll: true, manageTeam: false, manageClients: false, viewClients: true },
     designer:         { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true },
     motion_designer:  { createPost: false, editCaption: false, uploadDesign: true, uploadRef: false, approve: false, schedule: false, viewAll: false, manageTeam: false, manageClients: false, viewClients: true },
-    moderator:        { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: true, schedule: true, viewAll: true, manageTeam: false, manageClients: false, viewClients: true },
+    moderator:        { createPost: false, editCaption: false, uploadDesign: false, uploadRef: false, approve: false, schedule: false, viewAll: true, manageTeam: false, manageClients: false, viewClients: true },
 };
 
 function canDo(action) {
@@ -303,12 +303,14 @@ async function loadUsersDropdown(selectId, roleFilter = '') {
     let url = API_URL + '/users';
     if (roleFilter) url += '?role=' + roleFilter;
     const users = await fetch(url).then(r => r.json());
+    // Exclude moderators from assignment dropdowns — they see all accounts by default
+    const assignable = users.filter(u => u.role !== 'moderator');
     const el = document.getElementById(selectId);
     if (el) {
         const currentHtml = el.innerHTML;
         // Keep existing first option if it's a placeholder
         const firstOption = el.querySelector('option')?.outerHTML || '';
-        el.innerHTML = firstOption + users.map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
+        el.innerHTML = firstOption + assignable.map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('');
     }
     return users;
 }

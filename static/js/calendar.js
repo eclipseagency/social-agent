@@ -272,6 +272,15 @@ async function openPostDetail(postId) {
             bannerEl.className = 'role-banner role-banner-designer';
             bannerEl.innerHTML = '<i class="fa-solid fa-eye"></i><div>View only — this post is in <strong>' + esc(wf.replace(/_/g, ' ')) + '</strong> stage.</div>';
         }
+    } else if (role === 'moderator') {
+        bannerEl.className = 'role-banner role-banner-reviewer';
+        if (wf === 'scheduled' || wf === 'approved') {
+            bannerEl.innerHTML = '<i class="fa-solid fa-clock"></i><div><strong>Ready to post!</strong> Download the designs and post at the scheduled time.</div>';
+        } else if (wf === 'posted') {
+            bannerEl.innerHTML = '<i class="fa-solid fa-check-circle"></i><div>This post has been published.</div>';
+        } else {
+            bannerEl.innerHTML = '<i class="fa-solid fa-eye"></i><div>View only — this post is in <strong>' + esc(wf.replace(/_/g, ' ')) + '</strong> stage.</div>';
+        }
     } else if (role === 'sm_specialist') {
         if (wf === 'approved') {
             bannerEl.className = 'role-banner role-banner-reviewer';
@@ -365,7 +374,13 @@ async function openPostDetail(postId) {
     if (designUrls.length) {
         // Designer has uploaded designs
         designsTitle.innerHTML = '<i class="fa-solid fa-palette mr-1"></i> Design Output';
-        document.getElementById('detail-designs').innerHTML = designUrls.map(u => `<img src="${u.trim()}" alt="Design" onclick="window.open('${u.trim()}','_blank')">`).join('');
+        document.getElementById('detail-designs').innerHTML = designUrls.map((u, i) => {
+            const url = u.trim();
+            return `<div class="design-item-wrap">
+                <img src="${url}" alt="Design" onclick="window.open('${url}','_blank')">
+                <a href="${url}" download="design-${i + 1}" class="design-download-btn" title="Download"><i class="fa-solid fa-download"></i></a>
+            </div>`;
+        }).join('');
         designsSection.style.display = '';
     } else if (wf === 'in_design') {
         // Post is actively waiting for designer
@@ -517,14 +532,27 @@ async function openPostDetail(postId) {
         if (tovSection) tovSection.style.display = 'none';
         if (refUploadZone) refUploadZone.style.display = 'none';
 
+    } else if (role === 'moderator') {
+        // Account Moderator: view-only, responsible for posting
+        // Hide all edit/upload zones
+        if (uploadZone) uploadZone.style.display = 'none';
+        if (refUploadZone) refUploadZone.style.display = 'none';
+        if (saveBriefSection) saveBriefSection.classList.add('hidden');
+        // Caption is read-only (already set above via canEditCaption)
+        if (saveCaptionBtn) saveCaptionBtn.style.display = 'none';
+        if (submitCaptionBtn) submitCaptionBtn.classList.add('hidden');
+        // Hide assignments (not their concern)
+        if (assignSection) assignSection.style.display = 'none';
+        // Highlight designs for easy access
+        if (designsSection && designUrls.length) designsSection.classList.add('role-focus');
+
     } else if (role === 'sm_specialist') {
-        // SM Specialist / Moderator: review-focused, read-only
+        // SM Specialist: review-focused
         // Highlight designs section during review
         if (wf === 'in_design' && designsSection) designsSection.classList.add('role-focus');
         // Hide upload zones (they don't upload)
         if (uploadZone) uploadZone.style.display = 'none';
         if (refUploadZone) refUploadZone.style.display = 'none';
-        // Caption buttons shown (they can edit captions)
         // Hide save brief
         if (saveBriefSection) saveBriefSection.classList.add('hidden');
     }
