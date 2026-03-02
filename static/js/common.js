@@ -503,8 +503,8 @@ function renderCalendarMiniCard(post) {
             <span class="cal-status-dot" style="background:${getStatusColor(status)}" title="${status}"></span>
         </div>
         ${thumbnail ? `<div class="cal-card-thumb" style="position:relative"><img src="${thumbnail}" alt="" loading="lazy">${contentType === 'carousel' && (post.design_output_urls || '').split(',').filter(u => u.trim()).length > 1 ? `<span style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px"><i class="fa-solid fa-images" style="margin-right:2px"></i>${(post.design_output_urls || '').split(',').filter(u => u.trim()).length}</span>` : ''}</div>` : ''}
-        ${topicPreview ? `<div class="cal-card-topic">${esc(topicPreview)}</div>` : ''}
-        ${captionPreview ? `<div class="cal-card-caption">${esc(captionPreview)}</div>` : ''}
+        ${topicPreview ? `<div class="cal-card-topic" dir="auto">${esc(topicPreview)}</div>` : ''}
+        ${captionPreview ? `<div class="cal-card-caption" dir="auto">${esc(captionPreview)}</div>` : ''}
         ${isDesignerUpload ? `<div class="cal-card-upload-hint"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Design</div>` : ''}
         <div class="cal-card-meta">
             <span class="cal-card-client">${esc(post.client_name || '')}</span>

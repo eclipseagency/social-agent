@@ -244,11 +244,11 @@ function showDayPosts(dateStr, day) {
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center gap-2">
                         ${getPlatformIcon(p.platforms)} ${getContentTypeIcon(p.post_type)}
-                        <div><p class="font-semibold text-sm">${esc(getTopicPreview(p.topic, 60) || 'Untitled')}</p><p class="text-xs text-gray-400">${esc(p.client_name || '')}</p></div>
+                        <div><p class="font-semibold text-sm" dir="auto">${esc(getTopicPreview(p.topic, 60) || 'Untitled')}</p><p class="text-xs text-gray-400">${esc(p.client_name || '')}</p></div>
                     </div>
                     <span class="px-2 py-1 rounded-full text-xs font-semibold text-white" style="background:${color}">${status}</span>
                 </div>
-                <p class="text-sm text-gray-600 line-clamp-2">${esc(p.caption || 'No caption yet')}</p>
+                <p class="text-sm text-gray-600 line-clamp-2" dir="auto">${esc(p.caption || 'No caption yet')}</p>
                 <div class="text-xs text-gray-400 mt-2"><i class="fa-regular fa-clock mr-1"></i>${(p.scheduled_at || p.created_at || '').replace('T', ' ')}</div>
             </div>`;
         }).join('');

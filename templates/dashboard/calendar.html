@@ -78,15 +78,15 @@
         <!-- Text on Design (editable in draft) -->
         <div class="brief-section" id="detail-topic-section">
             <div class="brief-section-title flex items-center justify-between"><span><i class="fa-solid fa-pen-fancy mr-1"></i> Text on Design</span><button onclick="copyTopicText()" class="text-xs text-gray-400 hover:text-indigo-600 transition" title="Copy text"><i class="fa-solid fa-copy"></i></button></div>
-            <div class="brief-section-content" id="detail-topic"></div>
-            <textarea id="detail-topic-input" rows="4" class="w-full border rounded-lg p-3 text-sm hidden" placeholder="Enter text that goes on the design..."></textarea>
+            <div class="brief-section-content" id="detail-topic" dir="auto"></div>
+            <textarea id="detail-topic-input" rows="4" dir="auto" class="w-full border rounded-lg p-3 text-sm hidden" placeholder="Enter text that goes on the design..."></textarea>
         </div>
 
         <!-- Notes for Designer (editable in draft) -->
         <div class="brief-section" id="detail-notes-section">
             <div class="brief-section-title"><i class="fa-solid fa-paintbrush mr-1"></i> Notes for Designer</div>
-            <div class="brief-section-content" id="detail-notes"></div>
-            <textarea id="detail-notes-input" class="w-full border rounded-lg p-3 text-sm hidden" rows="3" placeholder="Instructions or notes for the designer..."></textarea>
+            <div class="brief-section-content" id="detail-notes" dir="auto"></div>
+            <textarea id="detail-notes-input" dir="auto" class="w-full border rounded-lg p-3 text-sm hidden" rows="3" placeholder="Instructions or notes for the designer..."></textarea>
         </div>
 
         <!-- Design References -->
@@ -122,7 +122,7 @@
         <!-- Caption -->
         <div class="brief-section" id="detail-caption-section">
             <div class="brief-section-title"><i class="fa-solid fa-message mr-1"></i> Caption</div>
-            <textarea id="detail-caption" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="Write caption..."></textarea>
+            <textarea id="detail-caption" dir="auto" class="w-full border rounded-lg p-3 text-sm" rows="4" placeholder="Write caption..."></textarea>
             <div class="flex gap-2 mt-2" id="detail-caption-buttons">
                 <button id="btn-copy-caption" onclick="copyCaption()" class="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600">
                     <i class="fa-solid fa-copy mr-1"></i> Copy
