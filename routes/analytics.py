@@ -380,6 +380,117 @@ def user_stats():
     return jsonify(result)
 
 
+@analytics_bp.route('/api/suggestions', methods=['GET'])
+def get_suggestions():
+    """Compute data-driven content recommendations from historical engagement data."""
+    db = get_db()
+    client_id = request.args.get('client_id', '')
+    client_filter = ''
+    client_params = []
+    if client_id:
+        client_filter = 'AND sp.client_id = ?'
+        client_params = [int(client_id)]
+    params = client_params
+
+    # Best posting hours (top 5 by avg engagement)
+    best_hours = dicts_from_rows(db.execute(f"""
+        SELECT CAST(strftime('%H', COALESCE(sp.scheduled_at, sp.created_at)) AS INTEGER) as hour,
+               COUNT(*) as post_count,
+               COALESCE(AVG(pi.engagement_rate), 0) as avg_engagement,
+               COALESCE(SUM(pi.impressions), 0) as total_impressions
+        FROM scheduled_posts sp
+        LEFT JOIN post_insights pi ON sp.id = pi.post_id
+        WHERE sp.status='posted' {client_filter}
+        GROUP BY hour
+        HAVING COUNT(*) >= 1
+        ORDER BY avg_engagement DESC
+        LIMIT 5
+    """, params).fetchall())
+
+    # Best content types
+    best_content_types = dicts_from_rows(db.execute(f"""
+        SELECT sp.post_type as type, COUNT(*) as post_count,
+               COALESCE(AVG(pi.engagement_rate), 0) as avg_engagement,
+               COALESCE(SUM(pi.impressions), 0) as total_impressions
+        FROM scheduled_posts sp
+        LEFT JOIN post_insights pi ON sp.id = pi.post_id
+        WHERE sp.status='posted' AND sp.post_type IS NOT NULL {client_filter}
+        GROUP BY sp.post_type
+        ORDER BY avg_engagement DESC
+    """, params).fetchall())
+
+    # Best platforms
+    best_platforms = dicts_from_rows(db.execute(f"""
+        SELECT pi.platform, COUNT(*) as post_count,
+               AVG(pi.engagement_rate) as avg_engagement,
+               SUM(pi.impressions) as total_impressions,
+               SUM(pi.likes) as total_likes
+        FROM post_insights pi
+        JOIN scheduled_posts sp ON pi.post_id = sp.id
+        WHERE 1=1 {client_filter}
+        GROUP BY pi.platform
+        ORDER BY avg_engagement DESC
+    """, params).fetchall())
+
+    # Posting frequency: avg posts/day over last 30 days vs total posted
+    freq_row = db.execute(f"""
+        SELECT COUNT(*) as total_posted,
+               COUNT(DISTINCT DATE(COALESCE(sp.scheduled_at, sp.created_at))) as active_days
+        FROM scheduled_posts sp
+        WHERE sp.status='posted'
+          AND COALESCE(sp.scheduled_at, sp.created_at) >= datetime('now', '-30 days')
+          {client_filter}
+    """, params).fetchone()
+    total_posted = freq_row['total_posted'] or 0
+    active_days = freq_row['active_days'] or 1
+    avg_posts_per_day = round(total_posted / 30, 1)
+
+    # Content mix: current % per type
+    content_mix = dicts_from_rows(db.execute(f"""
+        SELECT sp.post_type as type, COUNT(*) as count
+        FROM scheduled_posts sp
+        WHERE sp.status='posted' AND sp.post_type IS NOT NULL {client_filter}
+        GROUP BY sp.post_type ORDER BY count DESC
+    """, params).fetchall())
+    total_mix = sum(c['count'] for c in content_mix) or 1
+    for c in content_mix:
+        c['percentage'] = round(c['count'] / total_mix * 100, 1)
+
+    # Per-platform best times
+    platform_best_times = {}
+    plat_hours = dicts_from_rows(db.execute(f"""
+        SELECT pi.platform,
+               CAST(strftime('%H', COALESCE(sp.scheduled_at, sp.created_at)) AS INTEGER) as hour,
+               AVG(pi.engagement_rate) as avg_engagement,
+               COUNT(*) as post_count
+        FROM post_insights pi
+        JOIN scheduled_posts sp ON pi.post_id = sp.id
+        WHERE 1=1 {client_filter}
+        GROUP BY pi.platform, hour
+        HAVING COUNT(*) >= 1
+        ORDER BY pi.platform, avg_engagement DESC
+    """, params).fetchall())
+    for row in plat_hours:
+        plat = row['platform']
+        if plat not in platform_best_times:
+            platform_best_times[plat] = {'hour': row['hour'], 'avg_engagement': row['avg_engagement'], 'post_count': row['post_count']}
+
+    db.close()
+    return jsonify({
+        'best_hours': best_hours,
+        'best_content_types': best_content_types,
+        'best_platforms': best_platforms,
+        'posting_frequency': {
+            'avg_posts_per_day': avg_posts_per_day,
+            'total_last_30_days': total_posted,
+            'active_days': active_days,
+            'optimal_per_day': max(1, round(total_posted / max(active_days, 1), 1))
+        },
+        'content_mix': content_mix,
+        'platform_best_times': platform_best_times
+    })
+
+
 def _parse_reqs(json_str):
     if not json_str:
         return []

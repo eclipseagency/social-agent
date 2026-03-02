@@ -12,7 +12,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-gray-600 text-sm font-medium mb-2">Select Client</label>
-                    <select id="post-client" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" onchange="loadScheduleSuggestions(this.value); updateLivePreview()"></select>
+                    <select id="post-client" class="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" onchange="loadScheduleSuggestions(this.value); loadContentSuggestions(this.value); updateLivePreview()"></select>
                 </div>
             </div>
             <div>
@@ -166,18 +166,18 @@
     <!-- Preview Column -->
     <div class="space-y-4 lg:space-y-6">
         <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-6 lg:sticky lg:top-6">
-            <h3 class="font-bold text-base sm:text-lg mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-eye text-green-600"></i></span> Post Preview</h3>
-            <div class="post-preview">
-                <div class="post-preview-header">
-                    <div class="post-preview-avatar"><span id="preview-avatar"><i class="fa-solid fa-building"></i></span></div>
-                    <div><p class="font-semibold text-sm" id="preview-name">Client Name</p><p class="text-xs text-gray-400">Just now</p></div>
-                </div>
-                <div class="carousel-preview" id="carousel-preview">
-                    <div class="flex items-center justify-center h-full text-gray-400">
-                        <div class="text-center"><i class="fa-regular fa-image text-4xl"></i><p class="text-sm mt-2">Add images to preview</p></div>
-                    </div>
-                </div>
-                <div class="p-4"><p class="text-sm text-gray-600 leading-relaxed" id="preview-caption">Caption will appear here...</p></div>
+            <h3 class="font-bold text-base sm:text-lg mb-3 flex items-center gap-2"><span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-eye text-green-600"></i></span> Post Preview</h3>
+            <!-- Platform Tabs -->
+            <div class="flex gap-1 mb-3" id="preview-tabs">
+                <button onclick="switchPreviewTab('instagram')" class="preview-tab active flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition" data-platform="instagram"><i class="fa-brands fa-instagram"></i> IG</button>
+                <button onclick="switchPreviewTab('linkedin')" class="preview-tab flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition" data-platform="linkedin"><i class="fa-brands fa-linkedin"></i> LI</button>
+                <button onclick="switchPreviewTab('facebook')" class="preview-tab flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition" data-platform="facebook"><i class="fa-brands fa-facebook"></i> FB</button>
+            </div>
+            <!-- Mockup Container -->
+            <div id="mockup-container" class="mockup-frame">
+                <div id="mockup-instagram" class="mockup-panel active"></div>
+                <div id="mockup-linkedin" class="mockup-panel" style="display:none"></div>
+                <div id="mockup-facebook" class="mockup-panel" style="display:none"></div>
             </div>
             <div class="grid grid-cols-3 gap-3 mt-4">
                 <div class="bg-pink-50 rounded-xl p-3 text-center"><p class="text-2xl" id="preview-images-count">0</p><p class="text-xs text-gray-500">Images</p></div>
@@ -189,6 +189,11 @@
         <div id="schedule-suggestions" class="hidden bg-white rounded-2xl shadow-sm p-4 sm:p-6">
             <h3 class="font-bold text-sm mb-3"><i class="fa-solid fa-lightbulb text-yellow-500 mr-1"></i> Suggested Times</h3>
             <div id="suggestions-list" class="space-y-2"></div>
+        </div>
+        <!-- AI Content Hints -->
+        <div id="content-hints" class="hidden bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+            <h3 class="font-bold text-sm mb-3"><i class="fa-solid fa-wand-magic-sparkles text-purple-500 mr-1"></i> Smart Hints</h3>
+            <div id="content-hints-list" class="space-y-2 text-xs"></div>
         </div>
     </div>
 </div>

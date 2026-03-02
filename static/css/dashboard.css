@@ -77,6 +77,89 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .dark .post-preview-header { border-color: #334155; }
 .dark .carousel-preview { background: #0f172a; }
 
+/* ===== Platform Mockup Previews ===== */
+.preview-tab { background: #f1f5f9; color: #64748b; cursor: pointer; border: 1px solid transparent; }
+.preview-tab.active { background: #6366f1; color: #fff; }
+.preview-tab.dimmed { opacity: 0.35; pointer-events: none; }
+.dark .preview-tab { background: #1e293b; color: #94a3b8; }
+.dark .preview-tab.active { background: #6366f1; color: #fff; }
+.mockup-frame { border-radius: 12px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; }
+.dark .mockup-frame { background: #0f172a; border-color: #334155; }
+.mockup-panel { font-size: 13px; line-height: 1.4; }
+
+/* Instagram mockup */
+.mockup-ig-header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.mockup-ig-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.mockup-ig-user { font-weight: 600; font-size: 13px; }
+.mockup-ig-dots { margin-left: auto; color: #262626; font-size: 16px; letter-spacing: 2px; }
+.mockup-ig-image { width: 100%; background: #efefef; display: flex; align-items: center; justify-content: center; color: #bbb; position: relative; overflow: hidden; }
+.mockup-ig-image img { width: 100%; height: 100%; object-fit: cover; }
+.mockup-ig-actions { display: flex; align-items: center; gap: 14px; padding: 10px 12px 4px; font-size: 20px; color: #262626; }
+.mockup-ig-actions .ig-save { margin-left: auto; }
+.mockup-ig-likes { padding: 0 12px; font-size: 12px; font-weight: 600; color: #262626; }
+.mockup-ig-caption { padding: 4px 12px 10px; font-size: 12px; color: #262626; }
+.mockup-ig-caption .ig-user { font-weight: 600; }
+.mockup-ig-caption .ig-more { color: #8e8e8e; cursor: pointer; }
+
+/* LinkedIn mockup */
+.mockup-li-header { display: flex; align-items: flex-start; gap: 10px; padding: 12px; }
+.mockup-li-avatar { width: 40px; height: 40px; border-radius: 50%; background: #0a66c2; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+.mockup-li-info { flex: 1; min-width: 0; }
+.mockup-li-name { font-weight: 600; font-size: 13px; color: #000; }
+.mockup-li-company { font-size: 11px; color: #666; }
+.mockup-li-follow { color: #0a66c2; font-weight: 600; font-size: 13px; flex-shrink: 0; }
+.mockup-li-caption { padding: 0 12px 8px; font-size: 13px; color: #000; }
+.mockup-li-image { width: 100%; background: #f3f2ef; display: flex; align-items: center; justify-content: center; color: #bbb; position: relative; overflow: hidden; }
+.mockup-li-image img { width: 100%; height: 100%; object-fit: cover; }
+.mockup-li-reactions { display: flex; align-items: center; gap: 4px; padding: 8px 12px 4px; font-size: 11px; color: #666; border-bottom: 1px solid #e0e0e0; }
+.mockup-li-actions { display: flex; justify-content: space-around; padding: 6px 0; font-size: 12px; color: #666; font-weight: 600; }
+.mockup-li-actions span { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+
+/* Facebook mockup */
+.mockup-fb-header { display: flex; align-items: center; gap: 10px; padding: 12px; }
+.mockup-fb-avatar { width: 36px; height: 36px; border-radius: 50%; background: #1877f2; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.mockup-fb-info { flex: 1; }
+.mockup-fb-name { font-weight: 600; font-size: 13px; color: #050505; }
+.mockup-fb-meta { font-size: 11px; color: #65676b; display: flex; align-items: center; gap: 4px; }
+.mockup-fb-caption { padding: 0 12px 8px; font-size: 14px; color: #050505; }
+.mockup-fb-image { width: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; color: #bbb; position: relative; overflow: hidden; }
+.mockup-fb-image img { width: 100%; height: 100%; object-fit: cover; }
+.mockup-fb-stats { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 12px; color: #65676b; border-bottom: 1px solid #ced0d4; }
+.mockup-fb-actions { display: flex; justify-content: space-around; padding: 4px 0; font-size: 13px; color: #65676b; font-weight: 600; }
+.mockup-fb-actions span { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+
+/* Story/Reel mockup */
+.mockup-story-frame { width: 100%; max-width: 260px; margin: 0 auto; aspect-ratio: 9/16; border-radius: 16px; overflow: hidden; background: #000; position: relative; }
+.mockup-story-frame img { width: 100%; height: 100%; object-fit: cover; }
+.mockup-story-overlay { position: absolute; top: 0; left: 0; right: 0; padding: 12px; display: flex; align-items: center; gap: 8px; background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent); }
+.mockup-story-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(45deg, #f09433, #dc2743); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; border: 2px solid #fff; flex-shrink: 0; }
+.mockup-story-name { color: #fff; font-weight: 600; font-size: 12px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+.mockup-story-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #555; font-size: 32px; }
+
+/* Carousel nav in mockups */
+.mockup-carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; background: rgba(255,255,255,0.85); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.15); z-index: 2; }
+.mockup-carousel-nav.prev { left: 6px; }
+.mockup-carousel-nav.next { right: 6px; }
+.mockup-carousel-dots { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 2; }
+.mockup-carousel-dots .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.4); }
+.mockup-carousel-dots .dot.active { background: #fff; }
+
+/* Dark mode mockups */
+.dark .mockup-ig-header, .dark .mockup-ig-actions, .dark .mockup-ig-likes, .dark .mockup-ig-caption { color: #e0e0e0; }
+.dark .mockup-ig-dots { color: #e0e0e0; }
+.dark .mockup-ig-image { background: #1e293b; }
+.dark .mockup-ig-caption .ig-more { color: #6b7280; }
+.dark .mockup-li-header, .dark .mockup-li-caption { color: #e0e0e0; }
+.dark .mockup-li-name { color: #e0e0e0; }
+.dark .mockup-li-company, .dark .mockup-li-reactions, .dark .mockup-li-actions { color: #9ca3af; }
+.dark .mockup-li-image { background: #1e293b; }
+.dark .mockup-li-reactions { border-color: #374151; }
+.dark .mockup-fb-header, .dark .mockup-fb-caption { color: #e0e0e0; }
+.dark .mockup-fb-name { color: #e0e0e0; }
+.dark .mockup-fb-meta, .dark .mockup-fb-stats, .dark .mockup-fb-actions { color: #9ca3af; }
+.dark .mockup-fb-image { background: #1e293b; }
+.dark .mockup-fb-stats { border-color: #374151; }
+
 /* Kanban */
 .kanban-board { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px; min-height: 400px; }
 .kanban-column { min-width: 280px; max-width: 320px; flex: 1; background: #f8fafc; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; }

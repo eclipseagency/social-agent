@@ -78,6 +78,11 @@ def billing():
     return render_template('dashboard/billing.html', active_page='billing')
 
 
+@dashboard_bp.route('/capacity')
+def capacity():
+    return render_template('dashboard/capacity.html', active_page='capacity')
+
+
 @dashboard_bp.route('/login')
 def login_page():
     return render_template('auth/login.html')

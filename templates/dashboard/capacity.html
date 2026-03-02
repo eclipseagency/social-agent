@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+    <h2 class="text-xl sm:text-2xl font-bold"><i class="fa-solid fa-chart-gantt text-indigo-600 mr-2"></i>Capacity Planning</h2>
+    <div class="flex items-center gap-2">
+        <select id="capacity-role-filter" onchange="filterCapacityByRole()" class="border rounded-lg px-3 py-2 text-sm">
+            <option value="">All Roles</option>
+        </select>
+    </div>
+</div>
+
+<!-- Role Summary Cards -->
+<div id="role-summary" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6"></div>
+
+<!-- Capacity Bars -->
+<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+    <h3 class="font-bold mb-4 text-sm"><i class="fa-solid fa-battery-half text-indigo-500 mr-2"></i>Team Capacity</h3>
+    <div id="capacity-bars" class="space-y-3"></div>
+</div>
+
+<!-- Workload Heatmap -->
+<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+    <h3 class="font-bold mb-4 text-sm"><i class="fa-solid fa-grip text-orange-500 mr-2"></i>Workload Heatmap <span class="text-xs text-gray-400 font-normal">(14 days)</span></h3>
+    <div id="workload-heatmap" class="overflow-x-auto"></div>
+</div>
+
+<!-- Unassigned + Deadlines -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm"><i class="fa-solid fa-user-slash text-red-500 mr-2"></i>Unassigned Work</h3>
+        <div id="unassigned-list" class="space-y-2 max-h-[400px] overflow-y-auto"></div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+        <h3 class="font-bold mb-4 text-sm"><i class="fa-solid fa-calendar-check text-blue-500 mr-2"></i>Upcoming Deadlines <span class="text-xs text-gray-400 font-normal">(7 days)</span></h3>
+        <div id="deadlines-list" class="space-y-2 max-h-[400px] overflow-y-auto"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/capacity.js"></script>
+{% endblock %}

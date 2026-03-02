@@ -4,6 +4,8 @@ let platformVideos = { instagram: null, linkedin: null, facebook: null };
 let briefReferenceUrls = [];
 let carouselPreviewIndex = 0;
 let currentPostType = 'post';
+let activePreviewTab = 'instagram';
+let mockupCarouselIdx = { instagram: 0, linkedin: 0, facebook: 0 };
 
 function pageInit() {
     loadClientsDropdown('post-client');
@@ -17,7 +19,15 @@ function pageInit() {
                 if (timeInput) timeInput.classList.toggle('hidden', this.value !== 'later');
             });
         });
+        // Dim preview tabs when platform is unchecked
+        const cb = document.getElementById('platform-' + p);
+        if (cb) cb.addEventListener('change', () => { updatePreviewTabs(); renderAllMockups(); });
+        // Re-render on size change
+        const sizeEl = document.getElementById('size-' + p);
+        if (sizeEl) sizeEl.addEventListener('change', () => renderAllMockups());
     });
+    renderAllMockups();
+    loadContentSuggestions(document.getElementById('post-client')?.value);
 }
 
 function onPostTypeChange() {
@@ -49,6 +59,7 @@ function onPostTypeChange() {
         captionContainer.style.display = ['story', 'banner', 'brochure'].includes(currentPostType) ? 'none' : '';
     }
     updatePreview();
+    renderAllMockups();
 }
 
 function getPlatformSize(platform) {
@@ -64,24 +75,172 @@ function updatePreview() {
     if (countEl) countEl.textContent = activePlatforms;
     const typeEl = document.getElementById('preview-type');
     const typeTextEl = document.getElementById('preview-type-text');
-    if (currentPostType === 'story') {
-        if (typeEl) typeEl.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
-        if (typeTextEl) typeTextEl.textContent = 'Story';
-    } else {
-        if (typeEl) typeEl.innerHTML = '<i class="fa-solid fa-image"></i>';
-        if (typeTextEl) typeTextEl.textContent = 'Image';
-    }
+    const typeIcons = { story: ['fa-mobile-screen', 'Story'], reel: ['fa-film', 'Reel'], video: ['fa-video', 'Video'], carousel: ['fa-images', 'Carousel'], banner: ['fa-panorama', 'Banner'], brochure: ['fa-book-open', 'Brochure'] };
+    const t = typeIcons[currentPostType] || ['fa-image', 'Image'];
+    if (typeEl) typeEl.innerHTML = `<i class="fa-solid ${t[0]}"></i>`;
+    if (typeTextEl) typeTextEl.textContent = t[1];
+    updatePreviewTabs();
+    renderAllMockups();
 }
 
 function updateLivePreview() {
-    const clientSelect = document.getElementById('post-client');
-    const clientName = clientSelect ? clientSelect.options[clientSelect.selectedIndex]?.text : 'Client Name';
-    document.getElementById('preview-name').textContent = clientName || 'Client Name';
-    document.getElementById('preview-avatar').textContent = (clientName || 'C').charAt(0).toUpperCase();
-    const caption = document.getElementById('caption-instagram')?.value || document.getElementById('caption-linkedin')?.value || document.getElementById('caption-facebook')?.value || '';
-    document.getElementById('preview-caption').textContent = caption || 'Caption will appear here...';
     const imgCount = platformImages.instagram.length + platformImages.linkedin.length + platformImages.facebook.length;
-    document.getElementById('preview-images-count').textContent = imgCount;
+    const el = document.getElementById('preview-images-count');
+    if (el) el.textContent = imgCount;
+    renderAllMockups();
+}
+
+// === Preview Tab System ===
+function switchPreviewTab(platform) {
+    activePreviewTab = platform;
+    document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.preview-tab[data-platform="${platform}"]`)?.classList.add('active');
+    document.querySelectorAll('.mockup-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById('mockup-' + platform);
+    if (panel) panel.style.display = 'block';
+}
+
+function updatePreviewTabs() {
+    ['instagram', 'linkedin', 'facebook'].forEach(p => {
+        const tab = document.querySelector(`.preview-tab[data-platform="${p}"]`);
+        if (!tab) return;
+        const checked = document.getElementById('platform-' + p)?.checked;
+        tab.classList.toggle('dimmed', !checked);
+    });
+}
+
+function renderAllMockups() {
+    renderPlatformMockup('instagram');
+    renderPlatformMockup('linkedin');
+    renderPlatformMockup('facebook');
+}
+
+function getPreviewData(platform) {
+    const clientSelect = document.getElementById('post-client');
+    const clientName = clientSelect ? (clientSelect.options[clientSelect.selectedIndex]?.text || 'Client') : 'Client';
+    const initial = (clientName || 'C').charAt(0).toUpperCase();
+    const caption = document.getElementById('caption-' + platform)?.value || '';
+    const images = platformImages[platform] || [];
+    const size = getPlatformSize(platform);
+    return { clientName, initial, caption, images, size };
+}
+
+function getAspectStyle(size) {
+    const [w, h] = (size || '1080x1080').split('x').map(Number);
+    const ratio = w / h;
+    if (ratio > 1.5) return 'aspect-ratio: 1.91/1; min-height: 140px;';
+    if (ratio < 0.8) return 'aspect-ratio: 4/5; min-height: 200px;';
+    return 'aspect-ratio: 1/1; min-height: 180px;';
+}
+
+function renderImageArea(images, idx, platform, aspectStyle) {
+    if (!images.length) {
+        return `<div style="${aspectStyle}"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-regular fa-image" style="font-size:36px;color:#ccc"></i></div></div>`;
+    }
+    const safeIdx = Math.min(idx, images.length - 1);
+    let nav = '';
+    if (images.length > 1) {
+        nav = `<div class="mockup-carousel-nav prev" onclick="event.stopPropagation(); previewCarouselNav('${platform}',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+               <div class="mockup-carousel-nav next" onclick="event.stopPropagation(); previewCarouselNav('${platform}',1)"><i class="fa-solid fa-chevron-right"></i></div>
+               <div class="mockup-carousel-dots">${images.map((_, i) => `<div class="dot ${i === safeIdx ? 'active' : ''}"></div>`).join('')}</div>`;
+    }
+    return `<div style="${aspectStyle};position:relative"><img src="${images[safeIdx]}" style="width:100%;height:100%;object-fit:cover">${nav}</div>`;
+}
+
+function previewCarouselNav(platform, dir) {
+    const imgs = platformImages[platform] || [];
+    if (imgs.length <= 1) return;
+    mockupCarouselIdx[platform] = (mockupCarouselIdx[platform] + dir + imgs.length) % imgs.length;
+    renderPlatformMockup(platform);
+}
+
+function renderPlatformMockup(platform) {
+    const panel = document.getElementById('mockup-' + platform);
+    if (!panel) return;
+    const isStory = currentPostType === 'story' || currentPostType === 'reel';
+    if (isStory) { renderStoryMockup(panel, platform); return; }
+    if (platform === 'instagram') renderInstagramMockup(panel);
+    else if (platform === 'linkedin') renderLinkedInMockup(panel);
+    else if (platform === 'facebook') renderFacebookMockup(panel);
+}
+
+function renderStoryMockup(panel, platform) {
+    const { clientName, initial, images } = getPreviewData(platform);
+    const img = images.length ? `<img src="${images[0]}" style="width:100%;height:100%;object-fit:cover">` : `<div class="mockup-story-placeholder"><i class="fa-regular fa-image"></i></div>`;
+    panel.innerHTML = `<div class="mockup-story-frame">${img}<div class="mockup-story-overlay"><div class="mockup-story-avatar">${initial}</div><div class="mockup-story-name">${esc(clientName)}</div></div></div>`;
+}
+
+function renderInstagramMockup(panel) {
+    const { clientName, initial, caption, images, size } = getPreviewData('instagram');
+    const aspect = getAspectStyle(size);
+    const imgHtml = renderImageArea(images, mockupCarouselIdx.instagram, 'instagram', aspect);
+    const capText = caption || 'Caption will appear here...';
+    const shortCap = capText.length > 100 ? capText.substring(0, 100) + '<span class="ig-more"> ...more</span>' : capText;
+    panel.innerHTML = `
+        <div class="mockup-ig-header"><div class="mockup-ig-avatar">${initial}</div><div><div class="mockup-ig-user">${esc(clientName)}</div></div><div class="mockup-ig-dots">···</div></div>
+        <div class="mockup-ig-image">${imgHtml}</div>
+        <div class="mockup-ig-actions"><i class="fa-regular fa-heart"></i><i class="fa-regular fa-comment"></i><i class="fa-regular fa-paper-plane"></i><i class="fa-regular fa-bookmark ig-save"></i></div>
+        <div class="mockup-ig-likes">${images.length ? '0 likes' : ''}</div>
+        <div class="mockup-ig-caption"><span class="ig-user">${esc(clientName)}</span> ${shortCap}</div>`;
+}
+
+function renderLinkedInMockup(panel) {
+    const { clientName, initial, caption, images, size } = getPreviewData('linkedin');
+    const aspect = getAspectStyle(size);
+    const imgHtml = renderImageArea(images, mockupCarouselIdx.linkedin, 'linkedin', aspect);
+    const capText = caption || 'Caption will appear here...';
+    panel.innerHTML = `
+        <div class="mockup-li-header"><div class="mockup-li-avatar">${initial}</div><div class="mockup-li-info"><div class="mockup-li-name">${esc(clientName)}</div><div class="mockup-li-company">Company · Just now</div></div><span class="mockup-li-follow">+ Follow</span></div>
+        <div class="mockup-li-caption">${esc(capText)}</div>
+        <div class="mockup-li-image">${imgHtml}</div>
+        <div class="mockup-li-reactions"><span>👍</span><span>❤️</span><span>💡</span><span style="margin-left:auto">0 reactions</span></div>
+        <div class="mockup-li-actions"><span><i class="fa-regular fa-thumbs-up"></i> Like</span><span><i class="fa-regular fa-comment"></i> Comment</span><span><i class="fa-solid fa-repeat"></i> Repost</span><span><i class="fa-regular fa-paper-plane"></i> Send</span></div>`;
+}
+
+function renderFacebookMockup(panel) {
+    const { clientName, initial, caption, images, size } = getPreviewData('facebook');
+    const aspect = getAspectStyle(size);
+    const imgHtml = renderImageArea(images, mockupCarouselIdx.facebook, 'facebook', aspect);
+    const capText = caption || 'Caption will appear here...';
+    panel.innerHTML = `
+        <div class="mockup-fb-header"><div class="mockup-fb-avatar">${initial}</div><div class="mockup-fb-info"><div class="mockup-fb-name">${esc(clientName)}</div><div class="mockup-fb-meta">Just now · <i class="fa-solid fa-earth-americas" style="font-size:10px"></i></div></div></div>
+        <div class="mockup-fb-caption">${esc(capText)}</div>
+        <div class="mockup-fb-image">${imgHtml}</div>
+        <div class="mockup-fb-stats"><span>👍 ❤️ 0</span><span>0 comments · 0 shares</span></div>
+        <div class="mockup-fb-actions"><span><i class="fa-regular fa-thumbs-up"></i> Like</span><span><i class="fa-regular fa-comment"></i> Comment</span><span><i class="fa-solid fa-share"></i> Share</span></div>`;
+}
+
+// === AI Content Suggestions (contextual hints on form) ===
+async function loadContentSuggestions(clientId) {
+    const container = document.getElementById('content-hints');
+    const list = document.getElementById('content-hints-list');
+    if (!container || !list) return;
+    try {
+        let url = API_URL + '/suggestions';
+        if (clientId) url += '?client_id=' + clientId;
+        const data = await fetch(url).then(r => r.json());
+        if (!data || !data.best_hours || data.best_hours.length === 0) { container.classList.add('hidden'); return; }
+        container.classList.remove('hidden');
+        let html = '';
+        // Best time per platform
+        if (data.platform_best_times) {
+            for (const [plat, info] of Object.entries(data.platform_best_times)) {
+                html += `<div class="flex items-center gap-2 p-2 bg-purple-50 rounded-lg">${getPlatformIcon(plat)}<span>Best time for ${getPlatformName(plat)}: <strong>${formatHour(info.hour)}</strong> <span class="text-purple-500">(${info.avg_engagement.toFixed(1)}% eng.)</span></span></div>`;
+            }
+        }
+        // Best content type
+        if (data.best_content_types && data.best_content_types.length > 0) {
+            const best = data.best_content_types[0];
+            html += `<div class="flex items-center gap-2 p-2 bg-blue-50 rounded-lg"><i class="fa-solid fa-trophy text-amber-500"></i><span>Top type: <strong>${best.type}</strong> (${best.avg_engagement.toFixed(1)}% avg eng.)</span></div>`;
+        }
+        list.innerHTML = html || '<p class="text-gray-400">No suggestions yet</p>';
+    } catch (e) { container.classList.add('hidden'); }
+}
+
+function formatHour(h) {
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    return h > 12 ? (h - 12) + ' PM' : h + ' AM';
 }
 
 function initPlatformGalleries() {

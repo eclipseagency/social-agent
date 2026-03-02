@@ -623,12 +623,12 @@ def my_work():
         items.extend([r for r in returned if r['id'] not in existing_ids])
 
     elif role == 'manager':
-        # Manager reviews posts pending_review (before sending to design)
+        # Manager reviews posts assigned to them in pending_review
         pending = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
             FROM scheduled_posts sp
             LEFT JOIN clients c ON sp.client_id = c.id
-            WHERE (sp.assigned_manager_id=? OR sp.assigned_manager_id IS NULL) AND sp.workflow_status='pending_review'
+            WHERE sp.assigned_manager_id=? AND sp.workflow_status='pending_review'
             ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
         """, (user_id,)).fetchall())
         for r in pending:
@@ -636,43 +636,29 @@ def my_work():
             r['action_label'] = 'Pending Review'
         items.extend(pending)
 
-        # Draft posts waiting for team (created but not sent to design yet)
-        drafts = dicts_from_rows(db.execute("""
-            SELECT sp.*, c.name as client_name
-            FROM scheduled_posts sp
-            LEFT JOIN clients c ON sp.client_id = c.id
-            WHERE sp.workflow_status='draft' AND sp.assigned_designer_id IS NULL
-            ORDER BY sp.created_at DESC LIMIT 10
-        """).fetchall())
-        for r in drafts:
-            r['action'] = 'unassigned'
-            r['action_label'] = 'Unassigned Draft'
-        existing_ids = {i['id'] for i in items}
-        items.extend([r for r in drafts if r['id'] not in existing_ids])
-
     elif role == 'sm_specialist':
-        # SM Specialist schedules approved posts
+        # SM Specialist: approved posts assigned to them or that they created
         approved = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
             FROM scheduled_posts sp
             LEFT JOIN clients c ON sp.client_id = c.id
-            WHERE (sp.assigned_sm_id=? OR sp.assigned_sm_id IS NULL) AND sp.workflow_status='approved'
+            WHERE (sp.assigned_sm_id=? OR sp.created_by_id=?) AND sp.workflow_status='approved'
               AND (sp.scheduled_at IS NULL OR sp.scheduled_at='')
             ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
-        """, (user_id,)).fetchall())
+        """, (user_id, user_id)).fetchall())
         for r in approved:
             r['action'] = 'ready_to_schedule'
             r['action_label'] = 'Ready to Schedule'
         items.extend(approved)
 
-        # Scheduled posts to monitor
+        # Scheduled posts they own
         scheduled = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
             FROM scheduled_posts sp
             LEFT JOIN clients c ON sp.client_id = c.id
-            WHERE (sp.assigned_sm_id=? OR sp.assigned_sm_id IS NULL) AND sp.workflow_status='scheduled'
+            WHERE (sp.assigned_sm_id=? OR sp.created_by_id=?) AND sp.workflow_status='scheduled'
             ORDER BY sp.scheduled_at ASC LIMIT 10
-        """, (user_id,)).fetchall())
+        """, (user_id, user_id)).fetchall())
         for r in scheduled:
             r['action'] = 'scheduled'
             r['action_label'] = 'Scheduled'
@@ -1212,18 +1198,42 @@ def global_search():
 @require_login
 def activity_timeline():
     limit = min(int(request.args.get('limit', 20)), 50)
+    user_id = request.args.get('user_id', type=int)
+    role = request.args.get('role', '')
     db = get_db()
-    rows = dicts_from_rows(db.execute("""
-        SELECT wh.id, wh.post_id, wh.from_status, wh.to_status, wh.comment, wh.created_at,
-               u.username as user_name, u.role as user_role,
-               sp.topic, sp.post_type, sp.platforms, c.name as client_name
-        FROM workflow_history wh
-        LEFT JOIN users u ON wh.user_id = u.id
-        LEFT JOIN scheduled_posts sp ON wh.post_id = sp.id
-        LEFT JOIN clients c ON sp.client_id = c.id
-        ORDER BY wh.created_at DESC
-        LIMIT ?
-    """, (limit,)).fetchall())
+
+    # Admins see all activity; other roles see only activity on their assigned posts
+    if role == 'admin' or not user_id:
+        rows = dicts_from_rows(db.execute("""
+            SELECT wh.id, wh.post_id, wh.from_status, wh.to_status, wh.comment, wh.created_at,
+                   u.username as user_name, u.role as user_role,
+                   sp.topic, sp.post_type, sp.platforms, c.name as client_name
+            FROM workflow_history wh
+            LEFT JOIN users u ON wh.user_id = u.id
+            LEFT JOIN scheduled_posts sp ON wh.post_id = sp.id
+            LEFT JOIN clients c ON sp.client_id = c.id
+            ORDER BY wh.created_at DESC
+            LIMIT ?
+        """, (limit,)).fetchall())
+    else:
+        rows = dicts_from_rows(db.execute("""
+            SELECT wh.id, wh.post_id, wh.from_status, wh.to_status, wh.comment, wh.created_at,
+                   u.username as user_name, u.role as user_role,
+                   sp.topic, sp.post_type, sp.platforms, c.name as client_name
+            FROM workflow_history wh
+            LEFT JOIN users u ON wh.user_id = u.id
+            LEFT JOIN scheduled_posts sp ON wh.post_id = sp.id
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE wh.user_id = ?
+               OR sp.assigned_designer_id = ?
+               OR sp.assigned_writer_id = ?
+               OR sp.assigned_sm_id = ?
+               OR sp.assigned_motion_id = ?
+               OR sp.created_by_id = ?
+            ORDER BY wh.created_at DESC
+            LIMIT ?
+        """, (user_id, user_id, user_id, user_id, user_id, user_id, limit)).fetchall())
+
     db.close()
     return jsonify(rows)
 

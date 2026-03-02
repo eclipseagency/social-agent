@@ -41,6 +41,12 @@
 <!-- Coverage Alerts -->
 <div id="coverage-alerts" class="mb-6 space-y-2"></div>
 
+<!-- Quick Suggestions -->
+<div id="dashboard-suggestions" class="hidden bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6" data-nav-perm="viewAll">
+    <h3 class="font-bold mb-3 text-sm sm:text-base"><i class="fa-solid fa-wand-magic-sparkles text-purple-500 mr-2"></i>Smart Suggestions</h3>
+    <div id="dashboard-suggestions-list" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+</div>
+
 <!-- Quick Actions + Recent Activity -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
     <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
@@ -67,6 +73,7 @@ function pageInit() {
     loadMyWork();
     loadCoverageAlerts();
     loadActivityTimeline();
+    loadDashboardSuggestions();
 }
 
 function setRoleGreeting() {
@@ -165,7 +172,9 @@ async function loadActivityTimeline() {
     const container = document.getElementById('activity-timeline');
     if (!container) return;
     try {
-        const data = await fetch(API_URL + '/activity?limit=20').then(r => r.json());
+        let actUrl = API_URL + '/activity?limit=20';
+        if (currentUser) actUrl += `&user_id=${currentUser.id}&role=${currentUser.role || ''}`;
+        const data = await fetch(actUrl).then(r => r.json());
         if (!data || data.length === 0) {
             container.innerHTML = '<p class="text-gray-400 text-center py-4">No recent activity</p>';
             return;
@@ -199,6 +208,35 @@ async function loadActivityTimeline() {
     } catch (e) {
         container.innerHTML = '<p class="text-gray-400 text-center py-4">No recent activity</p>';
     }
+}
+
+async function loadDashboardSuggestions() {
+    if (!canDo('viewAll')) return;
+    const section = document.getElementById('dashboard-suggestions');
+    const list = document.getElementById('dashboard-suggestions-list');
+    if (!section || !list) return;
+    try {
+        const data = await fetch(API_URL + '/suggestions').then(r => r.json());
+        if (!data || (!data.best_hours?.length && !data.best_platforms?.length)) { section.classList.add('hidden'); return; }
+        section.classList.remove('hidden');
+        let html = '';
+        if (data.best_hours && data.best_hours.length > 0) {
+            const top = data.best_hours[0];
+            html += `<div class="bg-green-50 rounded-xl p-3 text-center"><i class="fa-solid fa-clock text-green-500 text-lg"></i><p class="text-sm font-bold mt-1">${formatHour(top.hour)}</p><p class="text-[10px] text-gray-500">Best posting time</p></div>`;
+        }
+        if (data.best_content_types && data.best_content_types.length > 0) {
+            const top = data.best_content_types[0];
+            html += `<div class="bg-blue-50 rounded-xl p-3 text-center"><i class="fa-solid fa-shapes text-blue-500 text-lg"></i><p class="text-sm font-bold mt-1 capitalize">${top.type}</p><p class="text-[10px] text-gray-500">Top content type</p></div>`;
+        }
+        if (data.best_platforms && data.best_platforms.length > 0) {
+            const top = data.best_platforms[0];
+            html += `<div class="bg-pink-50 rounded-xl p-3 text-center">${getPlatformIcon(top.platform)}<p class="text-sm font-bold mt-1">${getPlatformName(top.platform)}</p><p class="text-[10px] text-gray-500">Best platform</p></div>`;
+        }
+        if (data.posting_frequency) {
+            html += `<div class="bg-amber-50 rounded-xl p-3 text-center"><i class="fa-solid fa-gauge-high text-amber-500 text-lg"></i><p class="text-sm font-bold mt-1">${data.posting_frequency.avg_posts_per_day}/day</p><p class="text-[10px] text-gray-500">Current frequency</p></div>`;
+        }
+        list.innerHTML = html;
+    } catch (e) { section.classList.add('hidden'); }
 }
 
 function getTimeAgo(dateStr) {

@@ -59,6 +59,9 @@ async function loadAnalytics() {
     renderTopPosts(data.top_posts);
     renderTopClients(data.top_clients);
     renderTeamPerformance(data.team_performance);
+
+    // === SUGGESTIONS ===
+    loadSuggestions(clientId);
 }
 
 // === CHART RENDERERS ===
@@ -266,6 +269,85 @@ function renderTeamPerformance(team) {
             </div>
         </div>
     `).join('');
+}
+
+// === SUGGESTIONS ===
+
+async function loadSuggestions(clientId) {
+    const section = document.getElementById('suggestions-section');
+    const container = document.getElementById('suggestions-cards');
+    if (!section || !container) return;
+    try {
+        let url = `${API_URL}/suggestions`;
+        if (clientId) url += `?client_id=${clientId}`;
+        const data = await fetch(url).then(r => r.json());
+        if (!data || (!data.best_hours?.length && !data.best_content_types?.length)) {
+            section.classList.add('hidden');
+            return;
+        }
+        section.classList.remove('hidden');
+        renderSuggestions(container, data);
+    } catch (e) { section.classList.add('hidden'); }
+}
+
+function renderSuggestions(container, data) {
+    let cards = '';
+
+    // 1. Best Posting Times
+    if (data.best_hours && data.best_hours.length > 0) {
+        const top3 = data.best_hours.slice(0, 3);
+        const hoursHtml = top3.map((h, i) => {
+            const badge = i === 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+            return `<div class="flex items-center justify-between py-1"><span class="font-semibold">${formatHour(h.hour)}</span><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${badge}">${h.avg_engagement.toFixed(1)}%</span></div>`;
+        }).join('');
+        cards += `<div class="bg-white rounded-xl shadow-sm p-4 border-t-4 border-green-400">
+            <div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-clock text-green-500"></i><span class="text-xs font-bold text-gray-700">Best Times</span></div>
+            ${hoursHtml}
+        </div>`;
+    }
+
+    // 2. Best Content Types
+    if (data.best_content_types && data.best_content_types.length > 0) {
+        const maxEng = Math.max(...data.best_content_types.map(t => t.avg_engagement)) || 1;
+        const typesHtml = data.best_content_types.map(t => {
+            const pct = Math.round((t.avg_engagement / maxEng) * 100);
+            return `<div class="mb-1"><div class="flex items-center justify-between text-[11px]"><span class="font-semibold capitalize">${t.type}</span><span class="text-gray-500">${t.avg_engagement.toFixed(1)}%</span></div><div class="w-full bg-gray-100 rounded-full h-1.5 mt-0.5"><div class="bg-blue-500 h-1.5 rounded-full" style="width:${pct}%"></div></div></div>`;
+        }).join('');
+        cards += `<div class="bg-white rounded-xl shadow-sm p-4 border-t-4 border-blue-400">
+            <div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-shapes text-blue-500"></i><span class="text-xs font-bold text-gray-700">Best Types</span></div>
+            ${typesHtml}
+        </div>`;
+    }
+
+    // 3. Best Platforms
+    if (data.best_platforms && data.best_platforms.length > 0) {
+        const platsHtml = data.best_platforms.map(p => `<div class="flex items-center justify-between py-1"><span class="flex items-center gap-1">${getPlatformIcon(p.platform)} <span class="text-xs font-semibold">${getPlatformName(p.platform)}</span></span><span class="text-xs text-gray-500">${(p.avg_engagement || 0).toFixed(1)}% eng.</span></div>`).join('');
+        cards += `<div class="bg-white rounded-xl shadow-sm p-4 border-t-4 border-pink-400">
+            <div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-ranking-star text-pink-500"></i><span class="text-xs font-bold text-gray-700">Best Platforms</span></div>
+            ${platsHtml}
+        </div>`;
+    }
+
+    // 4. Posting Frequency
+    if (data.posting_frequency) {
+        const f = data.posting_frequency;
+        cards += `<div class="bg-white rounded-xl shadow-sm p-4 border-t-4 border-amber-400">
+            <div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-gauge-high text-amber-500"></i><span class="text-xs font-bold text-gray-700">Frequency</span></div>
+            <div class="text-center py-2"><span class="text-2xl font-bold text-amber-600">${f.avg_posts_per_day}</span><span class="text-xs text-gray-500 block">posts/day avg</span></div>
+            <div class="text-[10px] text-gray-500 text-center">${f.total_last_30_days} posts in ${f.active_days} active days</div>
+        </div>`;
+    }
+
+    // 5. Content Mix
+    if (data.content_mix && data.content_mix.length > 0) {
+        const mixHtml = data.content_mix.map(c => `<div class="flex items-center justify-between py-0.5 text-[11px]"><span class="capitalize font-medium">${c.type}</span><span class="text-gray-500">${c.percentage}%</span></div>`).join('');
+        cards += `<div class="bg-white rounded-xl shadow-sm p-4 border-t-4 border-purple-400">
+            <div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-chart-pie text-purple-500"></i><span class="text-xs font-bold text-gray-700">Content Mix</span></div>
+            ${mixHtml}
+        </div>`;
+    }
+
+    container.innerHTML = cards;
 }
 
 // === SYNC ===

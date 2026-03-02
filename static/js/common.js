@@ -53,6 +53,13 @@ async function apiFetch(url, options = {}) {
     }
 }
 
+// === Shared Helpers ===
+function formatHour(h) {
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    return h > 12 ? (h - 12) + ' PM' : h + ' AM';
+}
+
 // === Platform Helpers ===
 function getPlatformIcon(platform) {
     if (platform === 'instagram') return '<i class="fa-brands fa-instagram text-pink-500"></i>';
