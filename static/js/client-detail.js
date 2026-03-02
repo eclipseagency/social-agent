@@ -834,11 +834,17 @@ async function openPostSlideView(postId) {
             });
             body += `</div>`;
         } else {
+            const canDeleteDesign = canDo('uploadDesign') && wf === 'in_design';
             body += '<div class="pres-images-grid">';
             body += '<div class="pres-img-label">Design Output</div>';
-            designUrls.forEach(u => {
+            designUrls.forEach((u, i) => {
                 const url = u.trim();
+                body += `<div style="position:relative;display:inline-block">`;
                 body += `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
+                if (canDeleteDesign) {
+                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:4px;right:4px" title="Remove">&times;</button>`;
+                }
+                body += `</div>`;
             });
             body += '</div>';
         }

@@ -215,6 +215,21 @@ async function uploadDesignFiles(postId, files) {
     }
 }
 
+async function removeDesignSlide(postId, index) {
+    if (!confirm('Remove this design?')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}/remove-design-slide`, {
+        method: 'POST',
+        body: JSON.stringify({ index }),
+    });
+    if (res && res.success) {
+        showToast('Design removed', 'success');
+        loadCalendar();
+        if (currentDetailPost && currentDetailPost.id === postId) {
+            openPostDetail(postId);
+        }
+    }
+}
+
 // ========== DAY POSTS MODAL ==========
 
 function showDayPosts(dateStr, day) {
@@ -393,6 +408,9 @@ async function openPostDetail(postId) {
         refUploadZone.style.display = (needsDesign && canDo('uploadRef')) ? '' : 'none';
     }
 
+    // Can this user edit designs? (designer/motion_designer on in_design, or admin)
+    const canEditDesigns = (canDo('uploadDesign') && wf === 'in_design') || (currentUser?.role === 'admin');
+
     if (designUrls.length) {
         // Designer has uploaded designs
         designsTitle.innerHTML = '<i class="fa-solid fa-palette mr-1"></i> Design Output';
@@ -401,6 +419,7 @@ async function openPostDetail(postId) {
             return `<div class="design-item-wrap">
                 <img src="${url}" alt="Design" onclick="window.open('${url}','_blank')">
                 <a href="${url}" download="design-${i + 1}" class="design-download-btn" title="Download"><i class="fa-solid fa-download"></i></a>
+                ${canEditDesigns ? `<button onclick="event.stopPropagation(); removeDesignSlide(${post.id}, ${i})" class="absolute top-1 left-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 hover:opacity-100 transition" style="position:absolute;top:4px;left:4px;opacity:0;z-index:2" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0" title="Remove"><i class="fa-solid fa-trash-can"></i></button>` : ''}
             </div>`;
         }).join('');
         designsSection.style.display = '';
@@ -518,10 +537,16 @@ async function openPostDetail(postId) {
         if (captionSec) captionSec.style.display = 'none';
     }
 
-    // Show/hide design upload zone — ONLY when post is in_design AND user can upload designs
+    // Show/hide design upload zone — when post is in_design AND user can upload designs
+    // Keep visible even after uploads so designer can add/replace
     const uploadZone = document.getElementById('detail-upload-zone');
     if (uploadZone) {
         uploadZone.style.display = (wf === 'in_design' && canDo('uploadDesign')) ? '' : 'none';
+    }
+
+    // Also show upload zone for designer if designs exist but still in_design (to allow replacement)
+    if (uploadZone && designUrls.length && wf === 'in_design' && canDo('uploadDesign')) {
+        uploadZone.style.display = '';
     }
 
     // ===== Role-specific UX tailoring =====
