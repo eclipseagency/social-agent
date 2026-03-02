@@ -172,6 +172,8 @@ function checkAuth() {
     if (saved) {
         try {
             currentUser = JSON.parse(saved);
+            // Ensure super admin flag is always set
+            if (currentUser.email === 'marketing@eclipseadagency.com') currentUser.is_super_admin = true;
             // Update UI elements
             const nameEl = document.getElementById('user-name');
             if (nameEl) nameEl.textContent = currentUser.name || currentUser.username || currentUser.email;
