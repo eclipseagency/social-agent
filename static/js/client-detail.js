@@ -821,7 +821,7 @@ async function openPostSlideView(postId) {
             body += `</div>`;
             body += `<div class="text-center text-xs text-gray-500 mb-2" id="psd-carousel-counter">Slide 1 of ${designUrls.length}</div>`;
             // Thumbnail strip
-            const canDeleteSlide = canDo('uploadDesign') && wf === 'in_design';
+            const canDeleteSlide = canDo('uploadDesign') && ['in_design', 'approved'].includes(wf);
             body += `<div class="flex flex-wrap gap-2 mb-4" id="psd-carousel-thumbs">`;
             designUrls.forEach((u, i) => {
                 const url = u.trim();
@@ -834,7 +834,7 @@ async function openPostSlideView(postId) {
             });
             body += `</div>`;
         } else {
-            const canDeleteDesign = canDo('uploadDesign') && wf === 'in_design';
+            const canDeleteDesign = canDo('uploadDesign') && ['in_design', 'approved'].includes(wf);
             body += '<div class="pres-images-grid">';
             body += '<div class="pres-img-label">Design Output</div>';
             designUrls.forEach((u, i) => {
@@ -850,8 +850,8 @@ async function openPostSlideView(postId) {
         }
     }
 
-    // Designer upload zone (conditional: in_design + can upload design)
-    if (wf === 'in_design' && canDo('uploadDesign')) {
+    // Designer upload zone (conditional: in_design/approved + can upload design)
+    if (['in_design', 'approved'].includes(wf) && canDo('uploadDesign')) {
         // Motion designer can only upload for video/reel posts
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
@@ -1001,8 +1001,8 @@ function buildPostSlideActions(post) {
         actions += `<button onclick="clientReturnToDraft(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Draft</button>`;
     }
 
-    // In Design: designer/motion_designer can upload and submit for review
-    if (wf === 'in_design' && canDo('uploadDesign')) {
+    // In Design / Approved: designer/motion_designer can upload designs
+    if (['in_design', 'approved'].includes(wf) && canDo('uploadDesign')) {
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
         const isDesigner = currentUser?.role === 'designer';
@@ -1010,7 +1010,7 @@ function buildPostSlideActions(post) {
 
         if (showActions) {
             actions += `<button onclick="document.getElementById('psd-design-input')?.click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`;
-            actions += `<button onclick="clientTransitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Mark as Done</button>`;
+            if (wf === 'in_design') actions += `<button onclick="clientTransitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Mark as Done</button>`;
         }
     }
 

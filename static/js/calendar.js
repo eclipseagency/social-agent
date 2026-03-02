@@ -178,16 +178,15 @@ async function onDayDrop(e, dateStr) {
 }
 
 async function handleFileDrop(files, dateStr) {
-    // Find posts on this day that are in_design
+    // Find posts on this day that need designs
     const dayPosts = getDayPosts(dateStr);
-    const designPosts = dayPosts.filter(p => (p.workflow_status || '') === 'in_design');
+    const designPosts = dayPosts.filter(p => ['in_design', 'approved'].includes(p.workflow_status || ''));
 
     if (designPosts.length === 0) {
-        showToast('No posts in "Needs Design" status on this day', 'error');
+        showToast('No posts needing designs on this day', 'error');
         return;
     }
 
-    // Upload to the first in_design post
     const targetPost = designPosts[0];
     await uploadDesignFiles(targetPost.id, files);
 }
@@ -408,8 +407,8 @@ async function openPostDetail(postId) {
         refUploadZone.style.display = (needsDesign && canDo('uploadRef')) ? '' : 'none';
     }
 
-    // Can this user edit designs? (designer/motion_designer on in_design, or admin)
-    const canEditDesigns = (canDo('uploadDesign') && wf === 'in_design') || (currentUser?.role === 'admin');
+    // Can this user edit designs? (designer/motion_designer on in_design/approved, or admin)
+    const canEditDesigns = (canDo('uploadDesign') && ['in_design', 'approved'].includes(wf)) || (currentUser?.role === 'admin');
 
     if (designUrls.length) {
         // Designer has uploaded designs
@@ -498,9 +497,9 @@ async function openPostDetail(postId) {
         actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-palette mr-1"></i> Approve & Send to Design</button>`);
         actions.push(`<button onclick="returnToDraft(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Draft</button>`);
     }
-    if (wf === 'in_design' && canDo('uploadDesign')) {
+    if (['in_design', 'approved'].includes(wf) && canDo('uploadDesign')) {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
-        actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Mark as Done</button>`);
+        if (wf === 'in_design') actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Mark as Done</button>`);
     }
     if (wf === 'approved' && canDo('schedule')) {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
@@ -537,16 +536,10 @@ async function openPostDetail(postId) {
         if (captionSec) captionSec.style.display = 'none';
     }
 
-    // Show/hide design upload zone — when post is in_design AND user can upload designs
-    // Keep visible even after uploads so designer can add/replace
+    // Show/hide design upload zone — when post is in_design or approved AND user can upload designs
     const uploadZone = document.getElementById('detail-upload-zone');
     if (uploadZone) {
-        uploadZone.style.display = (wf === 'in_design' && canDo('uploadDesign')) ? '' : 'none';
-    }
-
-    // Also show upload zone for designer if designs exist but still in_design (to allow replacement)
-    if (uploadZone && designUrls.length && wf === 'in_design' && canDo('uploadDesign')) {
-        uploadZone.style.display = '';
+        uploadZone.style.display = (['in_design', 'approved'].includes(wf) && canDo('uploadDesign')) ? '' : 'none';
     }
 
     // ===== Role-specific UX tailoring =====
