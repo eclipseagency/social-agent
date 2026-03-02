@@ -38,8 +38,20 @@ async function loadCalendar() {
     const [data, slotsData] = await Promise.all(fetches);
 
     if (!data) return;
-    calendarPostsData = data.posts || [];
-    calendarByDate = data.by_date || {};
+    let posts = data.posts || [];
+    let byDate = data.by_date || {};
+    // Designer/motion_designer only see posts in_design or later
+    const role = currentUser?.role;
+    if (role === 'designer' || role === 'motion_designer') {
+        const visibleStatuses = ['in_design', 'approved', 'scheduled', 'posted'];
+        posts = posts.filter(p => visibleStatuses.includes(p.workflow_status));
+        for (const d in byDate) {
+            byDate[d] = byDate[d].filter(p => visibleStatuses.includes(p.workflow_status));
+            if (!byDate[d].length) delete byDate[d];
+        }
+    }
+    calendarPostsData = posts;
+    calendarByDate = byDate;
     scheduleSlots = (slotsData && slotsData.slots) ? slotsData.slots : {};
     renderCalendar();
     renderOverdueAlert();

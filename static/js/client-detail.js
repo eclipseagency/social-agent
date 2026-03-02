@@ -217,6 +217,17 @@ async function loadClientCalendar() {
     clientPostsData = data.posts || [];
     clientCalByDate = data.by_date || {};
 
+    // Designer/motion_designer only see posts in_design or later
+    const role = currentUser?.role;
+    if (role === 'designer' || role === 'motion_designer') {
+        const visibleStatuses = ['in_design', 'approved', 'scheduled', 'posted'];
+        clientPostsData = clientPostsData.filter(p => visibleStatuses.includes(p.workflow_status));
+        for (const d in clientCalByDate) {
+            clientCalByDate[d] = clientCalByDate[d].filter(p => visibleStatuses.includes(p.workflow_status));
+            if (!clientCalByDate[d].length) delete clientCalByDate[d];
+        }
+    }
+
     // Role-based filtering: motion_designer only sees video/reel
     if (currentUser?.role === 'motion_designer') {
         clientPostsData = clientPostsData.filter(p => ['video', 'reel'].includes((p.post_type || '').toLowerCase()));
