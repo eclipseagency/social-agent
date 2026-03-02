@@ -545,12 +545,8 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .pres-slide-container {
     flex: 1;
     max-width: 900px;
-    direction: rtl;
     cursor: pointer;
     animation: presSlideIn 0.3s ease-out;
-}
-.pres-slide-container * {
-    unicode-bidi: plaintext;
 }
 @keyframes presSlideIn {
     from { opacity: 0; transform: translateX(30px); }
@@ -590,7 +586,6 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     font-size: 22px;
     font-weight: 600;
     line-height: 1.6;
-    direction: rtl;
     unicode-bidi: plaintext;
 }
 .pres-tov-block .pres-tov-label {
@@ -607,7 +602,6 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     border-radius: 14px;
     padding: 16px 20px;
     margin-bottom: 16px;
-    direction: rtl;
     unicode-bidi: plaintext;
     white-space: pre-wrap;
     font-size: 15px;
@@ -627,7 +621,6 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     border-radius: 14px;
     padding: 16px 20px;
     margin-bottom: 16px;
-    direction: rtl;
     unicode-bidi: plaintext;
     white-space: pre-wrap;
     font-size: 14px;
@@ -656,7 +649,6 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     color: #6366f1;
     font-weight: 700;
     margin-bottom: 4px;
-    direction: rtl;
 }
 .pres-images-grid img.pres-ref-img {
     width: 140px;
@@ -686,7 +678,6 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     align-items: center;
     gap: 8px;
     margin-bottom: 16px;
-    direction: rtl;
 }
 .pres-slide-header .pres-date {
     font-size: 15px;
