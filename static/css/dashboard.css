@@ -992,3 +992,32 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .overdue-alert-banner i { color: #ef4444; }
 .dark .overdue-alert-banner { background: linear-gradient(135deg, #450a0a, #7f1d1d); border-color: #991b1b; color: #fca5a5; }
 .dark .cal-overdue-badge { background: #450a0a; color: #fca5a5; }
+
+/* @Mention Autocomplete Dropdown */
+.mention-dropdown { position: absolute; bottom: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 -4px 16px rgba(0,0,0,0.1); max-height: 180px; overflow-y: auto; z-index: 100; margin-bottom: 4px; display: none; }
+.mention-dropdown.show { display: block; }
+.mention-item { padding: 8px 12px; cursor: pointer; font-size: 13px; color: #334155; transition: background 0.15s; }
+.mention-item:hover, .mention-item-active { background: #eef2ff; color: #4338ca; }
+.mention-item .mention-at { color: #6366f1; font-weight: 600; margin-right: 2px; }
+.mention-highlight { color: #4f46e5; background: rgba(99,102,241,0.1); padding: 0 2px; border-radius: 3px; font-weight: 600; }
+.dark .mention-dropdown { background: #1e293b; border-color: #334155; box-shadow: 0 -4px 16px rgba(0,0,0,0.3); }
+.dark .mention-item { color: #cbd5e1; }
+.dark .mention-item:hover, .dark .mention-item-active { background: #312e81; color: #a5b4fc; }
+.dark .mention-highlight { color: #a5b4fc; background: rgba(99,102,241,0.2); }
+
+/* Notification Toast Popup */
+.toast-notification { display: flex; align-items: flex-start; gap: 10px; background: #fff; border-left: 4px solid #6366f1; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); padding: 14px 16px; min-width: 300px; max-width: 400px; animation: toastSlideIn 0.35s ease-out; cursor: pointer; transition: opacity 0.3s, transform 0.3s; }
+.toast-notification:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(0,0,0,0.18); }
+.toast-notif-icon { width: 36px; height: 36px; border-radius: 50%; background: #eef2ff; color: #6366f1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; }
+.toast-notif-body { flex: 1; min-width: 0; }
+.toast-notif-title { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 2px; }
+.toast-notif-message { font-size: 12px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast-notif-close { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 2px; flex-shrink: 0; line-height: 1; }
+.toast-notif-close:hover { color: #475569; }
+@keyframes toastSlideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.dark .toast-notification { background: #1e293b; border-color: #818cf8; box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+.dark .toast-notif-icon { background: #312e81; color: #a5b4fc; }
+.dark .toast-notif-title { color: #e2e8f0; }
+.dark .toast-notif-message { color: #94a3b8; }
+.dark .toast-notif-close { color: #64748b; }
+.dark .toast-notif-close:hover { color: #94a3b8; }

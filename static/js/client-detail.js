@@ -940,6 +940,7 @@ async function openPostSlideView(postId) {
 
     document.getElementById('post-slide-modal').classList.remove('hidden');
     loadSlideComments(post.id);
+    initMentionAutocomplete(document.getElementById('slide-comment-input'));
 }
 
 function closePostSlideModal() {
@@ -965,7 +966,7 @@ async function loadSlideComments(postId) {
         const typeIcon = c.comment_type === 'rejection' ? '<i class="fa-solid fa-rotate-left text-red-400 mr-1"></i>' :
                          c.comment_type === 'approval' ? '<i class="fa-solid fa-check text-green-400 mr-1"></i>' :
                          c.comment_type === 'edit' ? '<i class="fa-solid fa-pen text-amber-400 mr-1"></i>' : '';
-        const contentHtml = c.comment_type === 'edit' ? renderEditComment(c.content) : esc(c.content);
+        const contentHtml = c.comment_type === 'edit' ? renderEditComment(c.content) : highlightMentions(esc(c.content));
         return `<div class="post-chat-msg ${isMine ? 'post-chat-mine' : 'post-chat-other'}">
             <div class="post-chat-bubble ${isMine ? 'post-chat-bubble-mine' : 'post-chat-bubble-other'} ${c.comment_type === 'edit' ? 'post-chat-edit' : ''}">
                 <div class="post-chat-name">${esc(c.user_name || 'User')}</div>

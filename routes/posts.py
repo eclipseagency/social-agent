@@ -1,3 +1,4 @@
+import re
 import threading
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session
@@ -5,6 +6,7 @@ from models import get_db, dict_from_row, dicts_from_rows
 from services.scheduler import publish_post, run_scheduler, force_publish_all, get_account_for_client, _get_env_account
 from services.cloudinary_service import upload_image
 from routes.auth import require_role, require_login
+from routes.notifications import create_notification
 
 posts_bp = Blueprint('posts', __name__)
 
@@ -470,6 +472,26 @@ def add_post_comment(post_id):
            VALUES (?,?,?,?,?)""",
         (post_id, user_id, content, data.get('comment_type', 'comment'), data.get('attachment_urls', ''))
     )
+
+    # Parse @mentions and create notifications
+    mentioned_names = set(re.findall(r'@(\w+)', content))
+    if mentioned_names:
+        # Get commenter info
+        commenter = dict_from_row(db.execute("SELECT username FROM users WHERE id=?", (user_id,)).fetchone())
+        commenter_name = commenter['username'] if commenter else 'Someone'
+        # Get post topic for context
+        post_row = dict_from_row(db.execute("SELECT topic FROM scheduled_posts WHERE id=?", (post_id,)).fetchone())
+        post_topic = (post_row['topic'] if post_row else '')[:50] or 'a post'
+        for name in mentioned_names:
+            mentioned_user = dict_from_row(db.execute("SELECT id FROM users WHERE username=?", (name,)).fetchone())
+            if mentioned_user and mentioned_user['id'] != user_id:
+                create_notification(
+                    db, mentioned_user['id'], 'mention',
+                    'You were mentioned',
+                    f'{commenter_name} mentioned you in a comment on "{post_topic}"',
+                    ref_type='post', ref_id=post_id
+                )
+
     db.commit()
     db.close()
     return jsonify({'success': True})

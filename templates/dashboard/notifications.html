@@ -24,6 +24,7 @@ async function loadNotifications() {
             post_approved: { bg: 'bg-green-100 text-green-600', icon: 'fa-circle-check' },
             post_scheduled: { bg: 'bg-blue-100 text-blue-600', icon: 'fa-calendar-check' },
             post_reminder: { bg: 'bg-orange-100 text-orange-600', icon: 'fa-clock' },
+            mention: { bg: 'bg-indigo-100 text-indigo-600', icon: 'fa-at' },
         };
         const style = iconMap[n.type] || { bg: 'bg-indigo-100 text-indigo-600', icon: 'fa-bell' };
         return `

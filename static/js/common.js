@@ -238,6 +238,8 @@ function checkAuth() {
             // Start notification polling
             loadNotificationCount();
             setInterval(loadNotificationCount, 30000);
+            // Load mention users for @mention autocomplete
+            loadMentionUsers();
             // Call page-specific init
             if (typeof pageInit === 'function') pageInit();
         } catch (e) {
@@ -326,11 +328,159 @@ async function loadNotificationCount() {
             if (count > 0) mobileDot.classList.remove('hidden');
             else mobileDot.classList.add('hidden');
         }
-        // Play sound when new notifications arrive
+        // Play sound + show popup when new notifications arrive
         if (_lastNotifCount >= 0 && count > _lastNotifCount) {
             playNotificationSound();
+            showNotificationPopup();
         }
         _lastNotifCount = count;
+    } catch (e) { /* silent */ }
+}
+
+// === @Mention Autocomplete ===
+let _mentionUsers = [];
+
+async function loadMentionUsers() {
+    try {
+        const users = await fetch(API_URL + '/users').then(r => r.json());
+        _mentionUsers = (users || []).map(u => ({ id: u.id, username: u.username }));
+    } catch (e) { /* silent */ }
+}
+
+function initMentionAutocomplete(inputEl) {
+    if (!inputEl || inputEl._mentionInit) return;
+    inputEl._mentionInit = true;
+
+    // Create dropdown (positioned by parent's relative container)
+    let dropdown = inputEl.parentElement.querySelector('.mention-dropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.className = 'mention-dropdown';
+        inputEl.parentElement.style.position = 'relative';
+        inputEl.parentElement.insertBefore(dropdown, inputEl);
+    }
+
+    let activeIdx = -1;
+    let matched = [];
+
+    inputEl.addEventListener('input', function() {
+        const val = this.value;
+        const cursor = this.selectionStart;
+        const textBefore = val.substring(0, cursor);
+        const match = textBefore.match(/@(\w*)$/);
+        if (!match) { dropdown.classList.remove('show'); return; }
+        const query = match[1].toLowerCase();
+        matched = _mentionUsers.filter(u =>
+            u.username.toLowerCase().includes(query) &&
+            u.id !== currentUser?.id
+        ).slice(0, 8);
+        if (matched.length === 0) { dropdown.classList.remove('show'); return; }
+        activeIdx = -1;
+        renderMentionDropdown(dropdown, matched, activeIdx);
+        dropdown.classList.add('show');
+    });
+
+    inputEl.addEventListener('keydown', function(e) {
+        if (!dropdown.classList.contains('show')) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIdx = Math.min(activeIdx + 1, matched.length - 1);
+            renderMentionDropdown(dropdown, matched, activeIdx);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIdx = Math.max(activeIdx - 1, 0);
+            renderMentionDropdown(dropdown, matched, activeIdx);
+        } else if ((e.key === 'Enter' || e.key === 'Tab') && activeIdx >= 0) {
+            e.preventDefault();
+            insertMention(inputEl, matched[activeIdx].username);
+            dropdown.classList.remove('show');
+        } else if (e.key === 'Escape') {
+            dropdown.classList.remove('show');
+        }
+    });
+
+    // Close dropdown on blur (with delay so click can register)
+    inputEl.addEventListener('blur', function() {
+        setTimeout(() => dropdown.classList.remove('show'), 150);
+    });
+}
+
+function renderMentionDropdown(dropdown, users, activeIdx) {
+    dropdown.innerHTML = users.map((u, i) =>
+        `<div class="mention-item ${i === activeIdx ? 'mention-item-active' : ''}" data-idx="${i}" onmousedown="event.preventDefault()">
+            <span class="mention-at">@</span>${esc(u.username)}
+        </div>`
+    ).join('');
+    // Click handler on items
+    dropdown.querySelectorAll('.mention-item').forEach(el => {
+        el.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            const idx = parseInt(this.dataset.idx);
+            const input = dropdown.parentElement.querySelector('input.post-chat-input');
+            if (input && users[idx]) {
+                insertMention(input, users[idx].username);
+                dropdown.classList.remove('show');
+            }
+        });
+    });
+}
+
+function insertMention(inputEl, username) {
+    const val = inputEl.value;
+    const cursor = inputEl.selectionStart;
+    const textBefore = val.substring(0, cursor);
+    const textAfter = val.substring(cursor);
+    const newBefore = textBefore.replace(/@(\w*)$/, '@' + username + ' ');
+    inputEl.value = newBefore + textAfter;
+    inputEl.selectionStart = inputEl.selectionEnd = newBefore.length;
+    inputEl.focus();
+}
+
+function highlightMentions(escapedText) {
+    return escapedText.replace(/@(\w+)/g, '<span class="mention-highlight">@$1</span>');
+}
+
+// === Notification Toast Popup ===
+async function showNotificationPopup() {
+    if (!currentUser) return;
+    try {
+        const notifs = await fetch(API_URL + '/notifications?user_id=' + currentUser.id + '&unread_only=true').then(r => r.json());
+        if (!notifs || notifs.length === 0) return;
+        const n = notifs[0]; // latest unread
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const iconMap = {
+            task_assigned: 'fa-clipboard-list',
+            design_assigned: 'fa-palette',
+            pending_review: 'fa-clock-rotate-left',
+            design_completed: 'fa-circle-check',
+            post_approved: 'fa-circle-check',
+            post_scheduled: 'fa-calendar-check',
+            post_reminder: 'fa-clock',
+            mention: 'fa-at',
+        };
+        const icon = iconMap[n.type] || 'fa-bell';
+
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.innerHTML = `
+            <div class="toast-notif-icon"><i class="fa-solid ${icon}"></i></div>
+            <div class="toast-notif-body">
+                <div class="toast-notif-title">${esc(n.title || 'New Notification')}</div>
+                <div class="toast-notif-message">${esc(n.message || '')}</div>
+            </div>
+            <button class="toast-notif-close" onclick="event.stopPropagation(); this.parentElement.remove();">&times;</button>
+        `;
+        toast.addEventListener('click', () => {
+            window.location.href = '/notifications';
+        });
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
     } catch (e) { /* silent */ }
 }
 
