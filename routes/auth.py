@@ -32,7 +32,7 @@ def require_admin(f):
     return decorated
 
 
-SUPER_ADMIN_EMAIL = 'admin@eclipseadagency.com'
+SUPER_ADMIN_EMAIL = 'marketing@eclipseadagency.com'
 
 
 def require_super_admin(f):
@@ -95,7 +95,7 @@ def login():
     session['user_id'] = user['id']
     session['user_role'] = user['role']
 
-    is_super = user['email'] == 'admin@eclipseadagency.com'
+    is_super = user['email'] == 'marketing@eclipseadagency.com'
 
     return jsonify({
         'success': True,
