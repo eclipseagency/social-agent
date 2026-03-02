@@ -295,6 +295,27 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .design-download-btn { position: absolute; bottom: 4px; right: 4px; background: rgba(99,102,241,0.9); color: white; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; text-decoration: none; opacity: 0; transition: opacity 0.15s; }
 .design-item-wrap:hover .design-download-btn { opacity: 1; }
 
+/* Upload thumbnail gallery (platform images + brief references) */
+.upload-thumb-wrap { position: relative; width: 80px; height: 80px; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; display: inline-block; transition: transform 0.15s; }
+.upload-thumb-wrap:hover { transform: scale(1.06); }
+.upload-thumb-img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; display: block; }
+.upload-thumb-badge { position: absolute; top: 4px; left: 4px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; pointer-events: none; }
+.upload-thumb-actions { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; padding: 4px; background: linear-gradient(transparent, rgba(0,0,0,0.6)); opacity: 0; transition: opacity 0.15s; }
+.upload-thumb-wrap:hover .upload-thumb-actions { opacity: 1; }
+.upload-thumb-btn { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: none; cursor: pointer; text-decoration: none; color: white; }
+.upload-thumb-btn.download { background: rgba(99,102,241,0.9); }
+.upload-thumb-btn.remove { background: rgba(239,68,68,0.9); }
+.dark .upload-thumb-wrap { border-color: #374151; }
+
+/* Image preview lightbox overlay */
+.img-preview-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.img-preview-overlay.active { opacity: 1; pointer-events: auto; }
+.img-preview-close { position: absolute; top: 16px; right: 20px; color: white; font-size: 32px; cursor: pointer; line-height: 1; }
+.img-preview-close:hover { color: #a5b4fc; }
+.img-preview-full { max-width: 90vw; max-height: 75vh; border-radius: 10px; object-fit: contain; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+.img-preview-download { background: #6366f1; color: white; padding: 8px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.15s; }
+.img-preview-download:hover { background: #4f46e5; }
+
 /* Reference gallery — larger, more visual cards */
 .ref-gallery { display: flex; flex-wrap: wrap; gap: 10px; }
 .ref-gallery-item { position: relative; width: 160px; height: 120px; border-radius: 10px; overflow: hidden; cursor: pointer; border: 1px solid #e2e8f0; transition: transform 0.15s, box-shadow 0.15s; }

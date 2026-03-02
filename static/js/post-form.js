@@ -275,10 +275,13 @@ function renderPlatformGallery(platform) {
     const gallery = document.getElementById(platform + '-gallery');
     if (!gallery) return;
     gallery.innerHTML = platformImages[platform].map((url, i) => `
-        <div class="relative w-16 h-16 rounded-lg overflow-hidden border">
-            <img src="${url}" class="w-full h-full object-cover">
-            <div class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl cursor-pointer text-xs" onclick="removePlatformImage('${platform}', ${i})">&times;</div>
-            <div class="absolute top-0 left-0 bg-indigo-600 text-white w-5 h-5 flex items-center justify-center rounded-br text-xs">${i + 1}</div>
+        <div class="upload-thumb-wrap">
+            <img src="${url}" class="upload-thumb-img" onclick="openImagePreview('${url}')">
+            <div class="upload-thumb-badge">${i + 1}</div>
+            <div class="upload-thumb-actions">
+                <a href="${url}" download="image-${i + 1}" class="upload-thumb-btn download" title="Download"><i class="fa-solid fa-download"></i></a>
+                <button class="upload-thumb-btn remove" onclick="removePlatformImage('${platform}', ${i})" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+            </div>
         </div>
     `).join('');
 }
@@ -326,11 +329,34 @@ function renderBriefReferencesGallery() {
     const gallery = document.getElementById('brief-references-gallery');
     if (!gallery) return;
     gallery.innerHTML = briefReferenceUrls.map((url, i) => `
-        <div class="relative w-16 h-16 rounded-lg overflow-hidden border">
-            <img src="${url}" class="w-full h-full object-cover">
-            <div class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl cursor-pointer text-xs" onclick="removeBriefReference(${i})">&times;</div>
+        <div class="upload-thumb-wrap">
+            <img src="${url}" class="upload-thumb-img" onclick="openImagePreview('${url}')">
+            <div class="upload-thumb-actions">
+                <a href="${url}" download="reference-${i + 1}" class="upload-thumb-btn download" title="Download"><i class="fa-solid fa-download"></i></a>
+                <button class="upload-thumb-btn remove" onclick="removeBriefReference(${i})" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+            </div>
         </div>
     `).join('');
+}
+
+function openImagePreview(url) {
+    let overlay = document.getElementById('img-preview-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'img-preview-overlay';
+        overlay.className = 'img-preview-overlay';
+        overlay.innerHTML = '<div class="img-preview-close" onclick="closeImagePreview()">&times;</div><img class="img-preview-full"><a class="img-preview-download" download><i class="fa-solid fa-download"></i> Download</a>';
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) closeImagePreview(); });
+        document.body.appendChild(overlay);
+    }
+    overlay.querySelector('.img-preview-full').src = url;
+    overlay.querySelector('.img-preview-download').href = url;
+    overlay.classList.add('active');
+}
+
+function closeImagePreview() {
+    const overlay = document.getElementById('img-preview-overlay');
+    if (overlay) overlay.classList.remove('active');
 }
 
 async function loadScheduleSuggestions(clientId) {
