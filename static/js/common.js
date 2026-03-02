@@ -183,13 +183,18 @@ function checkAuth() {
                 const roleLabels = { admin: 'Admin', sm_specialist: 'SMM Specialist', designer: 'Graphic Designer', motion_designer: 'Motion Designer', moderator: 'Account Moderator' };
                 const roleColors = { admin: 'bg-red-500/20 text-red-300', sm_specialist: 'bg-green-500/20 text-green-300', designer: 'bg-purple-500/20 text-purple-300', motion_designer: 'bg-orange-500/20 text-orange-300', moderator: 'bg-blue-500/20 text-blue-300' };
                 const r = currentUser.role || 'user';
-                roleBadge.textContent = roleLabels[r] || r;
+                roleBadge.textContent = currentUser.is_super_admin ? 'Super Admin' : (roleLabels[r] || r);
                 roleBadge.className = `inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 mb-4 ${roleColors[r] || 'bg-slate-500/20 text-slate-300'}`;
             }
             // Hide admin-only nav items for non-admins
             if (currentUser.role !== 'admin') {
                 const usersNav = document.getElementById('users-nav');
                 if (usersNav) usersNav.classList.add('hidden');
+                const billingNav = document.getElementById('billing-nav');
+                if (billingNav) billingNav.classList.add('hidden');
+            }
+            // Billing is super-admin only
+            if (!currentUser.is_super_admin) {
                 const billingNav = document.getElementById('billing-nav');
                 if (billingNav) billingNav.classList.add('hidden');
             }

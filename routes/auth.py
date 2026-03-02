@@ -32,6 +32,23 @@ def require_admin(f):
     return decorated
 
 
+SUPER_ADMIN_EMAIL = 'admin@eclipseadagency.com'
+
+
+def require_super_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'error': 'Login required'}), 401
+        db = get_db()
+        user = db.execute("SELECT email FROM users WHERE id=?", (session['user_id'],)).fetchone()
+        db.close()
+        if not user or user['email'] != SUPER_ADMIN_EMAIL:
+            return jsonify({'success': False, 'error': 'Super admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
 def require_role(*roles):
     """Allow only specific roles (admin always passes)."""
     def wrapper(f):
@@ -78,6 +95,8 @@ def login():
     session['user_id'] = user['id']
     session['user_role'] = user['role']
 
+    is_super = user['email'] == 'admin@eclipseadagency.com'
+
     return jsonify({
         'success': True,
         'user': {
@@ -86,6 +105,7 @@ def login():
             'username': user['username'],
             'email': user['email'],
             'role': user['role'],
+            'is_super_admin': is_super,
             'dark_mode': user['dark_mode'],
             'job_title': user.get('job_title', ''),
             'phone': user.get('phone', ''),

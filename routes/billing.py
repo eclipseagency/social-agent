@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify
 from models import get_db, dicts_from_rows, dict_from_row
-from routes.auth import require_admin
+from routes.auth import require_super_admin
 
 billing_bp = Blueprint('billing', __name__)
 
 
 @billing_bp.route('/api/billing', methods=['GET'])
-@require_admin
+@require_super_admin
 def list_billing():
     """List all clients with billing info + invoices for a given month."""
     month = request.args.get('month', '')
@@ -57,7 +57,7 @@ def list_billing():
 
 
 @billing_bp.route('/api/billing/client/<int:client_id>', methods=['PUT'])
-@require_admin
+@require_super_admin
 def update_client_billing(client_id):
     """Update monthly_value and billing_start_date for a client."""
     data = request.json or {}
@@ -89,7 +89,7 @@ def update_client_billing(client_id):
 
 
 @billing_bp.route('/api/billing/invoice', methods=['POST'])
-@require_admin
+@require_super_admin
 def create_or_update_invoice():
     """Create or update an invoice for a client+month."""
     data = request.json or {}
@@ -142,7 +142,7 @@ def create_or_update_invoice():
 
 
 @billing_bp.route('/api/billing/invoice/<int:invoice_id>', methods=['PUT'])
-@require_admin
+@require_super_admin
 def update_invoice(invoice_id):
     """Toggle sent/paid status or update notes for an invoice."""
     data = request.json or {}
@@ -183,7 +183,7 @@ def update_invoice(invoice_id):
 
 
 @billing_bp.route('/api/billing/generate', methods=['POST'])
-@require_admin
+@require_super_admin
 def generate_invoices():
     """Auto-generate invoices for all active clients for a given month."""
     data = request.json or {}
