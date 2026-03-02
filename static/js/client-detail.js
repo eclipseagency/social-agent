@@ -556,7 +556,8 @@ function updateSlidePreview() {
     if (isCarousel && carouselSlides.length > 0) {
         carouselSlides.forEach((slide, i) => {
             if (slide.text && slide.text.trim()) {
-                html += `<div class="pres-tov-block" dir="auto" style="text-align:start;font-size:16px;padding:14px 16px;margin-bottom:8px">`;
+                const slideDir = isRTL(slide.text) ? 'rtl' : 'ltr';
+                html += `<div class="pres-tov-block" dir="${slideDir}" style="text-align:${slideDir === 'rtl' ? 'right' : 'left'};font-size:16px;padding:14px 16px;margin-bottom:8px">`;
                 html += `<div class="pres-tov-label">Slide ${i + 1}</div>`;
                 html += `<div>${esc(slide.text)}</div>`;
                 html += '</div>';
@@ -566,7 +567,8 @@ function updateSlidePreview() {
 
     // TOV block (indigo gradient) — only for non-carousel
     if (!isCarousel && tov) {
-        html += '<div class="pres-tov-block" dir="auto" style="text-align:start">';
+        const tovDir = isRTL(tov) ? 'rtl' : 'ltr';
+        html += `<div class="pres-tov-block" dir="${tovDir}" style="text-align:${tovDir === 'rtl' ? 'right' : 'left'}">`;
         html += '<div class="pres-tov-label">Text on Design</div>';
         html += `<div>${esc(tov)}</div>`;
         html += '</div>';
@@ -586,7 +588,8 @@ function updateSlidePreview() {
 
     // Caption
     if (caption) {
-        html += '<div class="pres-caption-block" dir="auto" style="text-align:start">';
+        const cDir = isRTL(caption) ? 'rtl' : 'ltr';
+        html += `<div class="pres-caption-block" dir="${cDir}" style="text-align:${cDir === 'rtl' ? 'right' : 'left'}">`;
         html += '<div class="pres-caption-label">Caption</div>';
         html += `<div>${esc(caption)}</div>`;
         html += '</div>';
@@ -594,7 +597,8 @@ function updateSlidePreview() {
 
     // Notes
     if (notes) {
-        html += '<div class="pres-notes-block" dir="auto" style="text-align:start">';
+        const nDir = isRTL(notes) ? 'rtl' : 'ltr';
+        html += `<div class="pres-notes-block" dir="${nDir}" style="text-align:${nDir === 'rtl' ? 'right' : 'left'}">`;
         html += '<div class="pres-notes-label">Notes for Designer</div>';
         html += `<div>${esc(notes)}</div>`;
         html += '</div>';
@@ -774,14 +778,16 @@ async function openPostSlideView(postId) {
     if (topicParsed.isCarousel && topicParsed.slides.length > 0) {
         topicParsed.slides.forEach((slide, i) => {
             if (slide.text && slide.text.trim()) {
-                body += `<div class="pres-tov-block" dir="auto" style="text-align:start;font-size:18px;padding:16px 18px;margin-bottom:8px">`;
+                const sDir = isRTL(slide.text) ? 'rtl' : 'ltr';
+                body += `<div class="pres-tov-block" dir="${sDir}" style="text-align:${sDir === 'rtl' ? 'right' : 'left'};font-size:18px;padding:16px 18px;margin-bottom:8px">`;
                 body += `<div class="pres-tov-label">Slide ${i + 1}</div>`;
                 body += `<div>${esc(slide.text).replace(/\n/g, '<br>')}</div>`;
                 body += '</div>';
             }
         });
     } else if (post.topic) {
-        body += '<div class="pres-tov-block" dir="auto" style="text-align:start">';
+        const topicDir = isRTL(post.topic) ? 'rtl' : 'ltr';
+        body += `<div class="pres-tov-block" dir="${topicDir}" style="text-align:${topicDir === 'rtl' ? 'right' : 'left'}">`;
         body += `<div class="pres-tov-label" style="display:flex;justify-content:space-between;align-items:center">Text on Design / Topic <button onclick="copyToClipboard(\`${esc(post.topic).replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)" class="text-xs text-indigo-300 hover:text-white" title="Copy"><i class="fa-solid fa-copy"></i></button></div>`;
         body += `<div>${esc(post.topic).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
@@ -873,7 +879,8 @@ async function openPostSlideView(postId) {
 
     // Caption (hidden for stories/banners/brochures — only text on design matters)
     if (post.caption && !['story', 'banner', 'brochure'].includes(post.post_type)) {
-        body += '<div class="pres-caption-block" dir="auto" style="text-align:start">';
+        const capDir = isRTL(post.caption) ? 'rtl' : 'ltr';
+        body += `<div class="pres-caption-block" dir="${capDir}" style="text-align:${capDir === 'rtl' ? 'right' : 'left'}">`;
         body += `<div class="pres-caption-label" style="display:flex;justify-content:space-between;align-items:center">Caption <button onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(post.caption)}'))" class="text-xs text-green-300 hover:text-white" title="Copy caption"><i class="fa-solid fa-copy"></i></button></div>`;
         body += `<div>${esc(post.caption).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
@@ -881,7 +888,8 @@ async function openPostSlideView(postId) {
 
     // Notes
     if (post.brief_notes) {
-        body += '<div class="pres-notes-block" dir="auto" style="text-align:start">';
+        const notesDir = isRTL(post.brief_notes) ? 'rtl' : 'ltr';
+        body += `<div class="pres-notes-block" dir="${notesDir}" style="text-align:${notesDir === 'rtl' ? 'right' : 'left'}">`;
         body += '<div class="pres-notes-label">Notes for Designer</div>';
         body += `<div>${esc(post.brief_notes).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
