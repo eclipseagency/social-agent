@@ -806,14 +806,31 @@ async function openPostSlideView(postId) {
 
     // Reference images
     const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
-    if (refUrls.length) {
+    const canUploadRefs = canDo('uploadRef') && wf !== 'posted';
+    if (refUrls.length || canUploadRefs) {
         body += '<div class="pres-images-grid">';
         body += '<div class="pres-img-label">Design References</div>';
-        refUrls.forEach(u => {
+        refUrls.forEach((u, i) => {
             const url = u.trim();
+            body += `<div style="position:relative;display:inline-block">`;
             body += `<img class="pres-ref-img" src="${url}" alt="Reference" onclick="window.open('${url}','_blank')">`;
+            if (canUploadRefs) {
+                body += `<button onclick="event.stopPropagation();deletePostReference(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:2px;right:2px" title="Remove">&times;</button>`;
+            }
+            body += `</div>`;
         });
         body += '</div>';
+        if (canUploadRefs) {
+            body += `<div class="upload-zone p-3 rounded-lg text-center cursor-pointer text-sm text-gray-500 mt-2 mb-4" id="psd-ref-upload-zone"
+                onclick="document.getElementById('psd-ref-input').click()"
+                ondragover="event.preventDefault(); this.classList.add('dragover')"
+                ondragleave="this.classList.remove('dragover')"
+                ondrop="handlePsdRefDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-lg mb-1 block text-blue-400"></i>
+                Drop reference images here or click to upload
+            </div>
+            <input type="file" id="psd-ref-input" multiple accept="image/*" class="hidden" onchange="uploadPsdReferences(this.files)">`;
+        }
     }
 
     // Design output
@@ -1156,6 +1173,48 @@ function handlePsdDesignDrop(event) {
 function uploadPsdDesign(files) {
     if (slideViewPostId && files.length > 0) {
         uploadClientDesignFiles(slideViewPostId, files);
+    }
+}
+
+// ========== REFERENCE UPLOAD (post slideshow) ==========
+
+function handlePsdRefDrop(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('dragover');
+    if (slideViewPostId && event.dataTransfer.files.length > 0) {
+        uploadPsdReferences(event.dataTransfer.files);
+    }
+}
+
+async function uploadPsdReferences(files) {
+    if (!slideViewPostId || !files.length) return;
+    const formData = new FormData();
+    for (const f of files) formData.append('images', f);
+    const res = await apiFetch(`${API_URL}/posts/${slideViewPostId}/upload-reference`, {
+        method: 'POST', body: formData
+    });
+    if (res && res.urls) {
+        showToast(`${res.urls.length} reference(s) uploaded`, 'success');
+        loadClientCalendar();
+        // Re-open the post detail to refresh
+        openClientPostDetail(slideViewPostId);
+    }
+}
+
+async function deletePostReference(postId, index) {
+    const post = clientPostsData.find(p => p.id === postId);
+    if (!post) return;
+    const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
+    refUrls.splice(index, 1);
+    const res = await apiFetch(`${API_URL}/posts/${postId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: { design_reference_urls: refUrls.join(',') }
+    });
+    if (res && res.success) {
+        showToast('Reference removed', 'success');
+        post.design_reference_urls = refUrls.join(',');
+        openClientPostDetail(postId);
     }
 }
 
