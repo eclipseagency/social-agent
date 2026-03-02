@@ -405,22 +405,23 @@ async function openPostDetail(postId) {
                 <img src="${url}" alt="Reference" onclick="window.open('${url}','_blank')">
                 <div class="ref-gallery-overlay">
                     <span class="ref-gallery-name">${esc(filename.length > 20 ? filename.substring(0, 17) + '...' : filename)}</span>
-                    ${needsDesign && canDo('uploadRef') ? `<button class="ref-gallery-delete" onclick="event.stopPropagation(); deleteReference(${post.id}, ${i})" title="Remove"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                    ${wf !== 'posted' && canDo('uploadRef') ? `<button class="ref-gallery-delete" onclick="event.stopPropagation(); deleteReference(${post.id}, ${i})" title="Remove"><i class="fa-solid fa-trash-can"></i></button>` : ''}
                 </div>
             </div>`;
         }).join('')}</div>`;
         refsSection.style.display = '';
-    } else if (needsDesign) {
+    } else if (wf !== 'posted' && canDo('uploadRef')) {
         document.getElementById('detail-references').innerHTML = '<p class="text-gray-400 text-sm">No references added yet — upload references for the designer</p>';
         refsSection.style.display = '';
     } else {
         refsSection.style.display = 'none';
     }
 
-    // Show/hide reference upload zone — only before design is done AND if user can upload refs
+    // Show/hide reference upload zone — before posted AND if user can upload refs
+    const canUploadRefs = canDo('uploadRef') && wf !== 'posted';
     const refUploadZone = document.getElementById('detail-reference-upload-zone');
     if (refUploadZone) {
-        refUploadZone.style.display = (needsDesign && canDo('uploadRef')) ? '' : 'none';
+        refUploadZone.style.display = canUploadRefs ? '' : 'none';
     }
 
     // Can this user edit designs? (designer/motion_designer on in_design/approved, or admin)
