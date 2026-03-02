@@ -521,6 +521,9 @@ async function openPostDetail(postId) {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
         if (wf === 'in_design') actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Mark as Done</button>`);
     }
+    if (wf === 'in_design' && currentUser?.role === 'admin') {
+        actions.push(`<button onclick="transitionPost(${post.id}, 'pending_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return for Review</button>`);
+    }
     if (wf === 'approved' && canDo('schedule')) {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
     }

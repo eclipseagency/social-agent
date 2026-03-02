@@ -16,7 +16,7 @@ VALID_WORKFLOW_STATUSES = ['draft', 'pending_review', 'in_design', 'approved', '
 VALID_TRANSITIONS = {
     'draft': ['pending_review', 'in_design'],
     'pending_review': ['in_design', 'draft'],
-    'in_design': ['approved', 'draft'],
+    'in_design': ['approved', 'pending_review', 'draft'],
     'approved': ['scheduled', 'posted', 'in_design'],
     'scheduled': ['posted', 'approved'],
 }

@@ -1053,6 +1053,11 @@ function buildPostSlideActions(post) {
         }
     }
 
+    // In Design: admin can return for review
+    if (wf === 'in_design' && currentUser?.role === 'admin') {
+        actions += `<button onclick="clientTransitionPost(${post.id}, 'pending_review')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return for Review</button>`;
+    }
+
     // Approved: moderator/admin can schedule
     if (wf === 'approved' && canDo('schedule')) {
         actions += `<button onclick="openSchedulePicker(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>`;
