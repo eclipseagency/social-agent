@@ -338,15 +338,17 @@ async function openPostDetail(postId) {
         topicDisplay.style.display = 'none';
         topicInput.classList.remove('hidden');
         topicInput.value = post.topic || '';
+        setTextDir(topicInput, post.topic);
     } else {
         topicInput.classList.add('hidden');
         if (topicData.isCarousel && topicData.slides.length > 0) {
             topicDisplay.innerHTML = topicData.slides.map((s, i) =>
-                `<div style="margin-bottom:6px"><strong style="color:#6366f1;font-size:11px;text-transform:uppercase">Slide ${i + 1}</strong><br>${esc(s.text || '').replace(/\n/g, '<br>')}</div>`
+                `<div dir="auto" style="margin-bottom:6px;text-align:${isRTL(s.text) ? 'right' : 'left'}"><strong style="color:#6366f1;font-size:11px;text-transform:uppercase">Slide ${i + 1}</strong><br>${esc(s.text || '').replace(/\n/g, '<br>')}</div>`
             ).join('');
             topicDisplay.style.display = '';
         } else if (post.topic) {
             topicDisplay.innerHTML = esc(post.topic).replace(/\n/g, '<br>');
+            setTextDir(topicDisplay, post.topic);
             topicDisplay.style.display = '';
         } else {
             topicSection.style.display = 'none';
@@ -362,10 +364,12 @@ async function openPostDetail(postId) {
         notesDisplay.style.display = 'none';
         notesInput.classList.remove('hidden');
         notesInput.value = post.brief_notes || '';
+        setTextDir(notesInput, post.brief_notes);
     } else {
         notesInput.classList.add('hidden');
         if (post.brief_notes) {
             notesDisplay.textContent = post.brief_notes;
+            setTextDir(notesDisplay, post.brief_notes);
             notesDisplay.style.display = '';
         } else {
             notesSection.style.display = 'none';
@@ -439,6 +443,7 @@ async function openPostDetail(postId) {
     // Caption — editable at any stage before posted
     const captionEl = document.getElementById('detail-caption');
     captionEl.value = post.caption || '';
+    setTextDir(captionEl, post.caption);
     const canEditCaption = canDo('editCaption') && wf !== 'posted';
     captionEl.readOnly = !canEditCaption;
     captionEl.style.opacity = canEditCaption ? '1' : '0.7';
@@ -452,10 +457,12 @@ async function openPostDetail(postId) {
         tovDisplay.style.display = 'none';
         tovInput.classList.remove('hidden');
         tovInput.value = post.tov || '';
+        setTextDir(tovInput, post.tov);
     } else {
         tovInput.classList.add('hidden');
         if (post.tov) {
             tovDisplay.textContent = post.tov;
+            setTextDir(tovDisplay, post.tov);
             tovDisplay.style.display = '';
         } else {
             tovSection.style.display = 'none';

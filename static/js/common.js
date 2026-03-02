@@ -475,6 +475,24 @@ function isPostOverdue(post) {
     return new Date(sa) < new Date();
 }
 
+function isRTL(text) {
+    if (!text) return false;
+    const rtlChar = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF]/;
+    // Check first non-whitespace, non-punctuation character
+    for (let i = 0; i < text.length && i < 100; i++) {
+        if (rtlChar.test(text[i])) return true;
+        if (/[a-zA-Z]/.test(text[i])) return false;
+    }
+    return false;
+}
+
+function setTextDir(el, text) {
+    if (!el) return;
+    const rtl = isRTL(text);
+    el.dir = rtl ? 'rtl' : 'ltr';
+    el.style.textAlign = rtl ? 'right' : 'left';
+}
+
 function renderCalendarMiniCard(post) {
     const status = getPostStatus(post);
     const borderClass = getStatusBorderClass(post);
