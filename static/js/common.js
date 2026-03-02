@@ -60,6 +60,23 @@ function formatHour(h) {
     return h > 12 ? (h - 12) + ' PM' : h + ' AM';
 }
 
+function renderEditComment(content) {
+    const beforeMatch = content.match(/⸺ Before:\n([\s\S]*?)(?=\n\n⸺ After:)/);
+    const afterMatch = content.match(/⸺ After:\n([\s\S]*?)$/);
+    const labelMatch = content.match(/^✏️\s*(.+?)\s*edited/);
+    if (beforeMatch && afterMatch) {
+        const label = labelMatch ? labelMatch[1] : 'Field';
+        const before = esc(beforeMatch[1].trim());
+        const after = esc(afterMatch[1].trim());
+        return `<strong>${esc(label)} edited</strong>
+            <div class="edit-diff" dir="auto">
+                <div class="edit-before"><span class="edit-label">Before</span>${before}</div>
+                <div class="edit-after"><span class="edit-label">After</span>${after}</div>
+            </div>`;
+    }
+    return esc(content);
+}
+
 // === Platform Helpers ===
 function getPlatformIcon(platform) {
     if (platform === 'instagram') return '<i class="fa-brands fa-instagram text-pink-500"></i>';

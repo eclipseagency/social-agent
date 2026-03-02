@@ -125,6 +125,20 @@ def update_post(post_id):
             params.append(data[field])
 
     if fields:
+        # Track edits to caption and TOV as system comments
+        user_id = session.get('user_id', 1)
+        tracked_fields = {'caption': 'Caption', 'tov': 'Text on Design', 'topic': 'Text on Design'}
+        for field_key, label in tracked_fields.items():
+            if field_key in data and data[field_key] != (post.get(field_key) or ''):
+                old_val = (post.get(field_key) or '').strip()
+                new_val = (data[field_key] or '').strip()
+                if old_val and old_val != new_val:
+                    edit_msg = f"✏️ {label} edited\n\n⸺ Before:\n{old_val}\n\n⸺ After:\n{new_val}"
+                    db.execute(
+                        "INSERT INTO post_comments (post_id, user_id, content, comment_type) VALUES (?,?,?,?)",
+                        (post_id, user_id, edit_msg, 'edit')
+                    )
+
         fields.append("updated_at=datetime('now')")
         params.append(post_id)
         db.execute(f"UPDATE scheduled_posts SET {', '.join(fields)} WHERE id=?", params)

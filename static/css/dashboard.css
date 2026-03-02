@@ -971,6 +971,19 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .dark .post-chat-time { color: #6b7280; }
 .dark .post-chat-input { background: #1e293b; border-color: #374151; color: #e2e8f0; }
 
+/* Edit diff in comments */
+.post-chat-edit { max-width: 100% !important; background: #fffbeb !important; border: 1px solid #fcd34d; }
+.edit-diff { margin-top: 6px; font-size: 12px; line-height: 1.5; }
+.edit-before, .edit-after { padding: 6px 8px; border-radius: 6px; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+.edit-before { background: #fef2f2; border-left: 3px solid #ef4444; color: #991b1b; text-decoration: line-through; opacity: 0.7; }
+.edit-after { background: #f0fdf4; border-left: 3px solid #22c55e; color: #166534; }
+.edit-label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; text-decoration: none; }
+.edit-before .edit-label { color: #dc2626; }
+.edit-after .edit-label { color: #16a34a; }
+.dark .post-chat-edit { background: #1e1b0f !important; border-color: #854d0e; }
+.dark .edit-before { background: #1c0f0f; color: #fca5a5; border-color: #b91c1c; }
+.dark .edit-after { background: #0f1c14; color: #86efac; border-color: #15803d; }
+
 /* Overdue post alerts */
 .cal-card-overdue { border-left: 3px solid #ef4444 !important; animation: overduePulse 2s ease-in-out infinite; }
 .cal-overdue-badge { font-size: 9px; font-weight: 700; color: #ef4444; background: #fef2f2; padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
