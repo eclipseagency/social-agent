@@ -25,7 +25,7 @@
     <!-- Mobile Search Bar -->
     <div id="mobile-search-bar" class="lg:hidden fixed top-12 left-0 right-0 bg-white z-39 px-4 py-2 hidden shadow-md">
         <div class="relative">
-            <input type="text" id="mobile-search-input" placeholder="Search posts, accounts..."
+            <input type="search" name="mobile-search-nofill" id="mobile-search-input" placeholder="Search posts, accounts..."
                    class="w-full bg-gray-100 text-gray-800 text-sm rounded-lg pl-9 pr-3 py-2 placeholder-gray-400 border border-gray-200 focus:outline-none focus:border-indigo-500"
                    autocomplete="off" oninput="onGlobalSearch(this.value, 'mobile')" onkeydown="onSearchKeydown(event, 'mobile')">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
@@ -58,7 +58,7 @@
 
             <!-- Global Search -->
             <div class="relative mb-4">
-                <input type="text" id="global-search-input" placeholder="Search posts, accounts..."
+                <input type="search" name="global-search-nofill" id="global-search-input" placeholder="Search posts, accounts..."
                        class="w-full bg-slate-800 text-slate-200 text-sm rounded-lg pl-9 pr-3 py-2 placeholder-slate-500 border border-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                        autocomplete="off" oninput="onGlobalSearch(this.value)" onkeydown="onSearchKeydown(event)">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
@@ -154,7 +154,7 @@
     <div id="toast-container" class="fixed bottom-20 lg:bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <!-- Scripts -->
-    <script src="/static/js/common.js?v=2"></script>
+    <script src="/static/js/common.js?v=3"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

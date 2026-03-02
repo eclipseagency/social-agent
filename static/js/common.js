@@ -174,6 +174,8 @@ function checkAuth() {
             currentUser = JSON.parse(saved);
             // Ensure super admin flag is always set
             if (currentUser.email === 'marketing@eclipseadagency.com') currentUser.is_super_admin = true;
+            // Clear search inputs to prevent browser autofill
+            ['global-search-input', 'mobile-search-input'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             // Update UI elements
             const nameEl = document.getElementById('user-name');
             if (nameEl) nameEl.textContent = currentUser.name || currentUser.username || currentUser.email;
