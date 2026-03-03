@@ -683,9 +683,13 @@ function renderCalendarMiniCard(post) {
     const contentType = post.post_type || 'post';
     const wf = post.workflow_status || 'draft';
     const overdue = isPostOverdue(post);
+    const commentCount = post.comment_count || 0;
 
     // Show upload hint for designers on in_design posts
     const isDesignerUpload = canDo('uploadDesign') && wf === 'in_design';
+
+    // Show comment badge on pre-approved posts that have comments
+    const showCommentBadge = commentCount > 0 && ['draft', 'pending_review', 'in_design'].includes(wf);
 
     const canDrag = canDo('schedule') || canDo('approve');
     // Use the right click handler depending on which page we're on
@@ -696,6 +700,7 @@ function renderCalendarMiniCard(post) {
             ${overdue ? '<span class="cal-overdue-badge"><i class="fa-solid fa-clock"></i> Overdue</span>' : ''}
             ${time ? `<span class="cal-card-time">${esc(time)}</span>` : ''}
             <span class="cal-card-icons">${getPlatformIcon(platform)} ${getContentTypeIcon(contentType)}</span>
+            ${showCommentBadge ? `<span class="cal-comment-badge" title="${commentCount} comment${commentCount > 1 ? 's' : ''} — review needed"><i class="fa-solid fa-comment"></i> ${commentCount}</span>` : ''}
             <span class="cal-status-dot" style="background:${getStatusColor(status)}" title="${status}"></span>
         </div>
         ${thumbnail ? `<div class="cal-card-thumb" style="position:relative"><img src="${thumbnail}" alt="" loading="lazy">${contentType === 'carousel' && (post.design_output_urls || '').split(',').filter(u => u.trim()).length > 1 ? `<span style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px"><i class="fa-solid fa-images" style="margin-right:2px"></i>${(post.design_output_urls || '').split(',').filter(u => u.trim()).length}</span>` : ''}</div>` : ''}

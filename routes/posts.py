@@ -975,7 +975,8 @@ def calendar_posts():
                u_sm.username as assigned_sm_name,
                u_motion.username as assigned_motion_name,
                u_writer.username as assigned_writer_name,
-               u_manager.username as assigned_manager_name
+               u_manager.username as assigned_manager_name,
+               (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = sp.id AND pc.comment_type = 'comment') as comment_count
         FROM scheduled_posts sp
         LEFT JOIN clients c ON sp.client_id = c.id
         LEFT JOIN users u_designer ON sp.assigned_designer_id = u_designer.id
