@@ -691,7 +691,7 @@ function renderCalendarMiniCard(post) {
     // Show comment badge on pre-approved posts that have comments
     const showCommentBadge = commentCount > 0 && ['draft', 'pending_review', 'in_design'].includes(wf);
 
-    const canDrag = canDo('schedule') || canDo('approve');
+    const canDrag = canDo('schedule') || canDo('approve') || canDo('markPosted');
     // Use the right click handler depending on which page we're on
     const clickFn = typeof openClientPostDetail === 'function' && typeof clientId !== 'undefined' ? 'openClientPostDetail' : 'openPostDetail';
     return `<div class="cal-mini-card ${borderClass} ${isDesignerUpload ? 'cal-card-designer-upload' : ''} ${overdue ? 'cal-card-overdue' : ''}" data-post-id="${post.id}" ${canDrag ? `draggable="true" ondragstart="onCardDragStart(event, ${post.id})"` : ''}

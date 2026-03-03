@@ -1028,7 +1028,7 @@ def calendar_posts():
 # ============ RESCHEDULE (drag-and-drop) ============
 
 @posts_bp.route('/api/posts/<int:post_id>/reschedule', methods=['PUT'])
-@require_role('admin', 'sm_specialist')
+@require_role('admin', 'sm_specialist', 'moderator')
 def reschedule_post(post_id):
     """Reschedule a post to a new date/time (for calendar drag-and-drop)."""
     data = request.json or {}
