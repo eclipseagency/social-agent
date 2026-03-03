@@ -804,35 +804,6 @@ async function openPostSlideView(postId) {
         body += '</div>';
     }
 
-    // Reference images
-    const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
-    const canUploadRefs = canDo('uploadRef') && wf !== 'posted';
-    if (refUrls.length || canUploadRefs) {
-        body += '<div class="pres-images-grid">';
-        body += '<div class="pres-img-label">Design References</div>';
-        refUrls.forEach((u, i) => {
-            const url = u.trim();
-            body += `<div style="position:relative;display:inline-block">`;
-            body += `<img class="pres-ref-img" src="${url}" alt="Reference" onclick="window.open('${url}','_blank')">`;
-            if (canUploadRefs) {
-                body += `<button onclick="event.stopPropagation();deletePostReference(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:2px;right:2px" title="Remove">&times;</button>`;
-            }
-            body += `</div>`;
-        });
-        body += '</div>';
-        if (canUploadRefs) {
-            body += `<div class="upload-zone p-3 rounded-lg text-center cursor-pointer text-sm text-gray-500 mt-2 mb-4" id="psd-ref-upload-zone"
-                onclick="document.getElementById('psd-ref-input').click()"
-                ondragover="event.preventDefault(); this.classList.add('dragover')"
-                ondragleave="this.classList.remove('dragover')"
-                ondrop="handlePsdRefDrop(event)">
-                <i class="fa-solid fa-cloud-arrow-up text-lg mb-1 block text-blue-400"></i>
-                Drop reference images here or click to upload
-            </div>
-            <input type="file" id="psd-ref-input" multiple accept="image/*" class="hidden" onchange="uploadPsdReferences(this.files)">`;
-        }
-    }
-
     // Design output
     const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
     if (designUrls.length) {
@@ -921,6 +892,35 @@ async function openPostSlideView(postId) {
         body += '<div class="pres-notes-label">Notes for Designer</div>';
         body += `<div>${esc(post.brief_notes).replace(/\n/g, '<br>')}</div>`;
         body += '</div>';
+    }
+
+    // Reference images (after notes)
+    const refUrls = (post.design_reference_urls || '').split(',').filter(u => u.trim());
+    const canUploadRefs = canDo('uploadRef') && wf !== 'posted';
+    if (refUrls.length || canUploadRefs) {
+        body += '<div class="pres-images-grid">';
+        body += '<div class="pres-img-label">Design References</div>';
+        refUrls.forEach((u, i) => {
+            const url = u.trim();
+            body += `<div style="position:relative;display:inline-block">`;
+            body += `<img class="pres-ref-img" src="${url}" alt="Reference" onclick="window.open('${url}','_blank')">`;
+            if (canUploadRefs) {
+                body += `<button onclick="event.stopPropagation();deletePostReference(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:2px;right:2px" title="Remove">&times;</button>`;
+            }
+            body += `</div>`;
+        });
+        body += '</div>';
+        if (canUploadRefs) {
+            body += `<div class="upload-zone p-3 rounded-lg text-center cursor-pointer text-sm text-gray-500 mt-2 mb-4" id="psd-ref-upload-zone"
+                onclick="document.getElementById('psd-ref-input').click()"
+                ondragover="event.preventDefault(); this.classList.add('dragover')"
+                ondragleave="this.classList.remove('dragover')"
+                ondrop="handlePsdRefDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-lg mb-1 block text-blue-400"></i>
+                Drop reference images here or click to upload
+            </div>
+            <input type="file" id="psd-ref-input" multiple accept="image/*" class="hidden" onchange="uploadPsdReferences(this.files)">`;
+        }
     }
 
     // Comments chat section
