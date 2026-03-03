@@ -1043,23 +1043,10 @@ def reschedule_post(post_id):
         db.close()
         return jsonify({'error': 'Post not found'}), 404
 
-    # Only scheduled and approved posts can be rescheduled
-    wf_status = post.get('workflow_status', '') or ''
-    if wf_status not in ('scheduled', 'approved'):
-        db.close()
-        return jsonify({'error': 'Only scheduled or approved posts can be rescheduled'}), 400
-
     db.execute(
         "UPDATE scheduled_posts SET scheduled_at=?, updated_at=datetime('now') WHERE id=?",
         (new_datetime, post_id)
     )
-
-    # If approved post is being scheduled, also update workflow_status
-    if wf_status == 'approved':
-        db.execute(
-            "UPDATE scheduled_posts SET workflow_status='scheduled', status='pending' WHERE id=?",
-            (post_id,)
-        )
 
     db.commit()
     db.close()
