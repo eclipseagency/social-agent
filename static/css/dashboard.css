@@ -994,8 +994,12 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .dark .cal-overdue-badge { background: #450a0a; color: #fca5a5; }
 
 /* Comment badge on calendar cards */
-.cal-comment-badge { font-size: 9px; font-weight: 700; color: #6366f1; background: #eef2ff; padding: 1px 5px; border-radius: 4px; white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; }
+.cal-comment-badge { font-size: 9px; font-weight: 700; color: #6366f1; background: #eef2ff; padding: 1px 5px; border-radius: 4px; white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; position: relative; animation: commentPulse 2s ease-in-out infinite; }
+.cal-comment-badge::after { content: ''; position: absolute; inset: -3px; border-radius: 6px; border: 2px solid #6366f1; animation: commentRing 2s ease-in-out infinite; pointer-events: none; }
+@keyframes commentPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+@keyframes commentRing { 0%, 100% { opacity: 0; transform: scale(0.8); } 50% { opacity: 0.5; transform: scale(1.15); } }
 .dark .cal-comment-badge { background: #312e81; color: #a5b4fc; }
+.dark .cal-comment-badge::after { border-color: #818cf8; }
 
 /* @Mention Autocomplete Dropdown */
 .mention-dropdown { position: absolute; bottom: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 -4px 16px rgba(0,0,0,0.1); max-height: 180px; overflow-y: auto; z-index: 100; margin-bottom: 4px; display: none; }
