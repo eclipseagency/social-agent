@@ -766,7 +766,9 @@ def transition_post(post_id):
             if new_status not in ('posted',):
                 return jsonify({'error': 'Permission denied'}), 403
         elif user_role == 'manager':
-            pass  # Managers have same access as admin for transitions
+            # Managers can do most transitions but NOT approve (pending_review -> in_design)
+            if new_status == 'in_design':
+                return jsonify({'error': 'Permission denied — only admins can approve and send to design'}), 403
 
     db = get_db()
     post = dict_from_row(db.execute("""
