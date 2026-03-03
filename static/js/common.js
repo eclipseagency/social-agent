@@ -549,6 +549,17 @@ function initReqPlatformToggles(container) {
 function updateTime() {
     const el = document.getElementById('current-time');
     if (el) el.textContent = new Date().toLocaleString('en-US');
+    // Cairo clock (Africa/Cairo = UTC+2)
+    const cairoEl = document.getElementById('cairo-clock-time');
+    if (cairoEl) {
+        const now = new Date();
+        cairoEl.textContent = now.toLocaleTimeString('en-US', {
+            timeZone: 'Africa/Cairo',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
 }
 
 // === Topic Parsing (Carousel Support) ===
