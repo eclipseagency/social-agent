@@ -718,10 +718,14 @@ async function submitCreatePost(workflowStatus) {
     let postId;
 
     if (editId) {
+        // Get current workflow status before updating
+        const existing = clientPostsData.find(p => p.id === parseInt(editId));
+        const currentWf = existing?.workflow_status || 'draft';
         const res = await apiFetch(`${API_URL}/posts/${editId}`, { method: 'PUT', body: postData });
         if (!res || !res.success) { showToast('Failed to update post', 'error'); return; }
         postId = parseInt(editId);
-        if (workflowStatus !== 'draft') {
+        // Only transition if target status differs from current
+        if (workflowStatus !== 'draft' && workflowStatus !== currentWf) {
             await apiFetch(`${API_URL}/posts/${postId}/transition`, {
                 method: 'POST',
                 body: { status: workflowStatus, user_id: currentUser?.id || 1 }
@@ -804,78 +808,6 @@ async function openPostSlideView(postId) {
         body += '</div>';
     }
 
-    // Design output
-    const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
-    if (designUrls.length) {
-        const isCarousel = (post.post_type || '').toLowerCase() === 'carousel' && designUrls.length > 1;
-        if (isCarousel) {
-            // Carousel viewer with navigation
-            body += `<div class="pres-img-label" style="margin-bottom:8px">Design Output</div>`;
-            body += `<div class="carousel-preview" id="psd-carousel" style="border-radius:12px;margin-bottom:8px">`;
-            designUrls.forEach((u, i) => {
-                const url = u.trim();
-                body += `<img src="${url}" alt="Slide ${i+1}" data-slide="${i}" style="display:${i===0?'block':'none'};cursor:pointer" onclick="window.open('${url}','_blank')">`;
-            });
-            body += `<div class="carousel-nav prev" onclick="event.stopPropagation();carouselNav(-1)"><i class="fa-solid fa-chevron-left"></i></div>`;
-            body += `<div class="carousel-nav next" onclick="event.stopPropagation();carouselNav(1)"><i class="fa-solid fa-chevron-right"></i></div>`;
-            body += `<div class="carousel-dots" id="psd-carousel-dots">`;
-            designUrls.forEach((u, i) => {
-                body += `<div class="carousel-dot ${i===0?'active':''}" onclick="event.stopPropagation();carouselGoTo(${i})"></div>`;
-            });
-            body += `</div>`;
-            body += `</div>`;
-            body += `<div class="text-center text-xs text-gray-500 mb-2" id="psd-carousel-counter">Slide 1 of ${designUrls.length}</div>`;
-            // Thumbnail strip
-            const canDeleteSlide = canDo('uploadDesign') && ['in_design', 'approved'].includes(wf);
-            body += `<div class="flex flex-wrap gap-2 mb-4" id="psd-carousel-thumbs">`;
-            designUrls.forEach((u, i) => {
-                const url = u.trim();
-                body += `<div class="relative" style="width:64px;height:64px">`;
-                body += `<img src="${url}" class="w-full h-full object-cover rounded-lg border cursor-pointer ${i===0?'ring-2 ring-indigo-500':''}" data-thumb="${i}" onclick="carouselGoTo(${i})">`;
-                if (canDeleteSlide) {
-                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">&times;</button>`;
-                }
-                body += `</div>`;
-            });
-            body += `</div>`;
-        } else {
-            const canDeleteDesign = canDo('uploadDesign') && ['in_design', 'approved'].includes(wf);
-            body += '<div class="pres-images-grid">';
-            body += '<div class="pres-img-label">Design Output</div>';
-            designUrls.forEach((u, i) => {
-                const url = u.trim();
-                body += `<div style="position:relative;display:inline-block">`;
-                body += `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
-                if (canDeleteDesign) {
-                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:4px;right:4px" title="Remove">&times;</button>`;
-                }
-                body += `</div>`;
-            });
-            body += '</div>';
-        }
-    }
-
-    // Designer upload zone (conditional: in_design/approved + can upload design)
-    if (['in_design', 'approved'].includes(wf) && canDo('uploadDesign')) {
-        // Motion designer can only upload for video/reel posts
-        const postType = (post.post_type || '').toLowerCase();
-        const isMotion = currentUser?.role === 'motion_designer';
-        const isDesigner = currentUser?.role === 'designer';
-        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'banner', 'brochure'].includes(postType));
-
-        if (showUpload) {
-            body += `<div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500 mb-4" id="psd-upload-zone"
-                         onclick="document.getElementById('psd-design-input').click()"
-                         ondragover="event.preventDefault(); this.classList.add('dragover')"
-                         ondragleave="this.classList.remove('dragover')"
-                         ondrop="handlePsdDesignDrop(event)">
-                <i class="fa-solid fa-cloud-arrow-up text-2xl mb-1 block text-indigo-400"></i>
-                Drop designs here or click to upload
-            </div>
-            <input type="file" id="psd-design-input" multiple accept="image/*,video/*" class="hidden" onchange="uploadPsdDesign(this.files)">`;
-        }
-    }
-
     // Caption (hidden for stories/banners/brochures — only text on design matters)
     if (post.caption && !['story', 'banner', 'brochure'].includes(post.post_type)) {
         const capDir = isRTL(post.caption) ? 'rtl' : 'ltr';
@@ -920,6 +852,75 @@ async function openPostSlideView(postId) {
                 Drop reference images here or click to upload
             </div>
             <input type="file" id="psd-ref-input" multiple accept="image/*" class="hidden" onchange="uploadPsdReferences(this.files)">`;
+        }
+    }
+
+    // Design output (last section before comments)
+    const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
+    if (designUrls.length) {
+        const isCarousel = (post.post_type || '').toLowerCase() === 'carousel' && designUrls.length > 1;
+        if (isCarousel) {
+            body += `<div class="pres-img-label" style="margin-bottom:8px">Design Output</div>`;
+            body += `<div class="carousel-preview" id="psd-carousel" style="border-radius:12px;margin-bottom:8px">`;
+            designUrls.forEach((u, i) => {
+                const url = u.trim();
+                body += `<img src="${url}" alt="Slide ${i+1}" data-slide="${i}" style="display:${i===0?'block':'none'};cursor:pointer" onclick="window.open('${url}','_blank')">`;
+            });
+            body += `<div class="carousel-nav prev" onclick="event.stopPropagation();carouselNav(-1)"><i class="fa-solid fa-chevron-left"></i></div>`;
+            body += `<div class="carousel-nav next" onclick="event.stopPropagation();carouselNav(1)"><i class="fa-solid fa-chevron-right"></i></div>`;
+            body += `<div class="carousel-dots" id="psd-carousel-dots">`;
+            designUrls.forEach((u, i) => {
+                body += `<div class="carousel-dot ${i===0?'active':''}" onclick="event.stopPropagation();carouselGoTo(${i})"></div>`;
+            });
+            body += `</div>`;
+            body += `</div>`;
+            body += `<div class="text-center text-xs text-gray-500 mb-2" id="psd-carousel-counter">Slide 1 of ${designUrls.length}</div>`;
+            const canDeleteSlide = canDo('uploadDesign') && ['in_design', 'approved'].includes(wf);
+            body += `<div class="flex flex-wrap gap-2 mb-4" id="psd-carousel-thumbs">`;
+            designUrls.forEach((u, i) => {
+                const url = u.trim();
+                body += `<div class="relative" style="width:64px;height:64px">`;
+                body += `<img src="${url}" class="w-full h-full object-cover rounded-lg border cursor-pointer ${i===0?'ring-2 ring-indigo-500':''}" data-thumb="${i}" onclick="carouselGoTo(${i})">`;
+                if (canDeleteSlide) {
+                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">&times;</button>`;
+                }
+                body += `</div>`;
+            });
+            body += `</div>`;
+        } else {
+            const canDeleteDesign = canDo('uploadDesign') && ['in_design', 'approved'].includes(wf);
+            body += '<div class="pres-images-grid">';
+            body += '<div class="pres-img-label">Design Output</div>';
+            designUrls.forEach((u, i) => {
+                const url = u.trim();
+                body += `<div style="position:relative;display:inline-block">`;
+                body += `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
+                if (canDeleteDesign) {
+                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:4px;right:4px" title="Remove">&times;</button>`;
+                }
+                body += `</div>`;
+            });
+            body += '</div>';
+        }
+    }
+
+    // Designer upload zone (conditional: in_design/approved + can upload design)
+    if (['in_design', 'approved'].includes(wf) && canDo('uploadDesign')) {
+        const postType = (post.post_type || '').toLowerCase();
+        const isMotion = currentUser?.role === 'motion_designer';
+        const isDesigner = currentUser?.role === 'designer';
+        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'banner', 'brochure'].includes(postType));
+
+        if (showUpload) {
+            body += `<div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500 mb-4" id="psd-upload-zone"
+                         onclick="document.getElementById('psd-design-input').click()"
+                         ondragover="event.preventDefault(); this.classList.add('dragover')"
+                         ondragleave="this.classList.remove('dragover')"
+                         ondrop="handlePsdDesignDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-2xl mb-1 block text-indigo-400"></i>
+                Drop designs here or click to upload
+            </div>
+            <input type="file" id="psd-design-input" multiple accept="image/*,video/*" class="hidden" onchange="uploadPsdDesign(this.files)">`;
         }
     }
 
