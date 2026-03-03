@@ -110,7 +110,7 @@ def update_post(post_id):
 
     # Role-based field restrictions
     user_role = session.get('user_role', '')
-    if user_role in ('designer', 'motion_editor'):
+    if user_role in ('designer', 'motion_designer'):
         # Designers can only update design output
         updatable = ['design_output_urls']
     elif user_role == 'copywriter':
@@ -629,7 +629,7 @@ def my_work():
         existing_ids = {i['id'] for i in items}
         items.extend([r for r in returned if r['id'] not in existing_ids])
 
-    elif role in ('designer', 'motion_editor'):
+    elif role in ('designer', 'motion_designer'):
         # Posts assigned to this designer that are in_design
         rows = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
@@ -749,7 +749,7 @@ def transition_post(post_id):
     # Role-based transition guards
     user_role = session.get('user_role', '')
     if user_role != 'admin':
-        if user_role in ('designer', 'motion_editor'):
+        if user_role in ('designer', 'motion_designer'):
             # Designers can mark as done (in_design -> approved)
             if new_status != 'approved':
                 return jsonify({'error': 'Permission denied'}), 403

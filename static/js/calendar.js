@@ -312,7 +312,7 @@ async function openPostDetail(postId) {
             bannerEl.className = 'role-banner role-banner-copywriter';
             bannerEl.innerHTML = '<i class="fa-solid fa-eye"></i><div>View only — this post is in <strong>' + esc(wf.replace(/_/g, ' ')) + '</strong> stage.</div>';
         }
-    } else if (role === 'designer' || role === 'motion_editor') {
+    } else if (role === 'designer' || role === 'motion_designer') {
         if (wf === 'in_design') {
             bannerEl.className = 'role-banner role-banner-designer';
             bannerEl.innerHTML = '<i class="fa-solid fa-paintbrush"></i><div><strong>Your turn!</strong> Upload designs using the brief and references below.</div>';
@@ -584,7 +584,7 @@ async function openPostDetail(postId) {
         // Hide TOV editing for copywriter (they follow it, don't set it)
         if (tovSection && !post.tov) tovSection.style.display = 'none';
 
-    } else if (role === 'designer' || role === 'motion_editor') {
+    } else if (role === 'designer' || role === 'motion_designer') {
         // Designer: topic + notes + references are key info, design upload is their action
         if (topicSection && post.topic) topicSection.classList.add('role-focus');
         if (notesSection && post.brief_notes) notesSection.classList.add('role-focus');
