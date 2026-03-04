@@ -117,8 +117,8 @@ def update_post(post_id):
         # Copywriters can only update caption
         updatable = ['caption']
     elif user_role == 'sm_specialist':
-        # SM Specialists can update caption, topic, brief notes, tov, platforms, and schedule
-        updatable = ['caption', 'topic', 'brief_notes', 'tov', 'platforms', 'scheduled_at', 'priority', 'post_type', 'image_size']
+        # SM Specialists can update caption, topic, brief notes, tov, platforms, schedule, and references
+        updatable = ['caption', 'topic', 'brief_notes', 'tov', 'platforms', 'scheduled_at', 'priority', 'post_type', 'image_size', 'design_reference_urls']
     fields = []
     params = []
     for field in updatable:
