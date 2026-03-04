@@ -129,22 +129,21 @@ async function viewPostDetail(postId) {
         ${post.brief_notes ? `<div class="mb-4"><h4 class="font-semibold text-sm mb-1">Brief / Notes</h4><p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">${esc(post.brief_notes)}</p></div>` : ''}
         ${refImagesHtml}
         ${designImagesHtml}
-        <!-- Workflow Actions — visible to all users -->
+        <!-- Workflow Actions — filtered by role -->
         <div class="flex flex-wrap gap-2 mb-4">
-            ${post.workflow_status === 'draft' ? `
+            ${post.workflow_status === 'draft' && (canDo('createPost') || canDo('editCaption')) ? `
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>
             ` : ''}
-            ${post.workflow_status === 'in_design' ? `
+            ${post.workflow_status === 'in_design' && canDo('uploadDesign') ? `
                 <label class="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm cursor-pointer"><i class="fa-solid fa-upload mr-1"></i> Upload Design <input type="file" class="hidden" multiple accept="image/*" onchange="uploadDesignToPost(${post.id}, this)"></label>
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>
             ` : ''}
-            ${post.workflow_status === 'design_review' ? `
+            ${post.workflow_status === 'design_review' && canDo('approve') ? `
                 <button onclick="changePostWorkflowAndRefresh(${post.id}, 'approved')" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Approve</button>
                 <button onclick="promptReturnToDesign(${post.id})" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Designer</button>
-                <button onclick="promptReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Draft</button>
+                <button onclick="promptReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>
             ` : ''}
-            ${post.workflow_status === 'approved' ? `<button onclick="promptSchedulePost(${post.id})" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>` : ''}
-            ${post.workflow_status !== 'posted' ? `<button onclick="deletePipelinePost(${post.id})" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm hover:bg-red-200 border border-red-200 ml-auto"><i class="fa-solid fa-trash mr-1"></i> Delete</button>` : ''}
+            ${post.workflow_status === 'approved' && canDo('schedule') ? `<button onclick="promptSchedulePost(${post.id})" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>` : ''}
         </div>
         <!-- Comments -->
         <div class="border-t pt-4">
@@ -162,13 +161,6 @@ async function viewPostDetail(postId) {
 }
 
 function hidePostDetailModal() { document.getElementById('post-detail-modal').classList.add('hidden'); }
-
-async function deletePipelinePost(postId) {
-    if (!confirm('Delete this post?')) return;
-    const res = await fetch(API_URL + '/posts/' + postId, { method: 'DELETE' }).then(r => r.json());
-    if (res.success) { hidePostDetailModal(); loadPipeline(); showToast('Post deleted', 'success'); }
-    else showToast('Failed to delete', 'error');
-}
 
 async function changePostWorkflowAndRefresh(postId, newStatus) {
     await changePostWorkflow(postId, newStatus);
