@@ -83,6 +83,11 @@ def capacity():
     return render_template('dashboard/capacity.html', active_page='capacity')
 
 
+@dashboard_bp.route('/attendance')
+def attendance():
+    return render_template('dashboard/attendance.html', active_page='attendance')
+
+
 @dashboard_bp.route('/login')
 def login_page():
     return render_template('auth/login.html')

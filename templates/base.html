@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=15">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=16">
     {% block head %}{% endblock %}
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -96,6 +96,10 @@
                     <a href="/capacity" data-nav-perm="viewAll"
                        class="sidebar-link {% if active_page == 'capacity' %}active{% endif %}">
                         <i class="fa-solid fa-chart-gantt w-5 text-center"></i> Capacity
+                    </a>
+                    <a href="/attendance" data-nav-perm="viewAll"
+                       class="sidebar-link {% if active_page == 'attendance' %}active{% endif %}">
+                        <i class="fa-solid fa-user-clock w-5 text-center"></i> Attendance
                     </a>
                     <a href="/billing" id="billing-nav"
                        class="sidebar-link {% if active_page == 'billing' %}active{% endif %}">

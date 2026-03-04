@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+    <h2 class="text-lg font-bold"><i class="fa-solid fa-user-clock text-indigo-600 mr-2"></i>Attendance</h2>
+    <div class="flex items-center gap-3">
+        <div class="flex bg-gray-100 rounded-lg p-0.5 text-xs attendance-view-toggle">
+            <button id="btn-daily" onclick="switchView('daily')" class="px-3 py-1.5 rounded-md font-medium active">Daily</button>
+            <button id="btn-weekly" onclick="switchView('weekly')" class="px-3 py-1.5 rounded-md font-medium">Weekly</button>
+        </div>
+        <input type="date" id="report-date" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500" onchange="loadDailyReport(this.value)">
+    </div>
+</div>
+
+<!-- Summary cards -->
+<div class="attendance-summary mb-4" id="summary-cards">
+    <div class="att-stat-card on-time">
+        <div class="att-stat-num" id="count-ontime">0</div>
+        <div class="att-stat-label">On Time</div>
+    </div>
+    <div class="att-stat-card late">
+        <div class="att-stat-num" id="count-late">0</div>
+        <div class="att-stat-label">Late</div>
+    </div>
+    <div class="att-stat-card absent">
+        <div class="att-stat-num" id="count-absent">0</div>
+        <div class="att-stat-label">Absent</div>
+    </div>
+</div>
+
+<!-- Daily view -->
+<div id="daily-view">
+    <div class="attendance-table-wrap">
+        <table class="attendance-table" id="attendance-daily-table">
+            <thead>
+                <tr>
+                    <th>Team Member</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody id="daily-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Weekly view -->
+<div id="weekly-view" class="hidden">
+    <div class="attendance-table-wrap">
+        <table class="attendance-table" id="attendance-weekly-table">
+            <thead id="weekly-thead"></thead>
+            <tbody id="weekly-tbody"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentView = 'daily';
+
+function pageInit() {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+    document.getElementById('report-date').value = today;
+    loadDailyReport(today);
+}
+
+function switchView(view) {
+    currentView = view;
+    document.getElementById('btn-daily').classList.toggle('active', view === 'daily');
+    document.getElementById('btn-weekly').classList.toggle('active', view === 'weekly');
+    document.getElementById('daily-view').classList.toggle('hidden', view !== 'daily');
+    document.getElementById('weekly-view').classList.toggle('hidden', view !== 'weekly');
+    if (view === 'weekly') loadWeeklyReport();
+}
+
+async function loadDailyReport(date) {
+    if (!date) return;
+    try {
+        const data = await fetch(API_URL + '/attendance/report?date=' + date).then(r => r.json());
+        let onTime = 0, late = 0, absent = 0;
+        data.forEach(u => {
+            if (u.status === 'on_time') onTime++;
+            else if (u.status === 'late') late++;
+            else absent++;
+        });
+        document.getElementById('count-ontime').textContent = onTime;
+        document.getElementById('count-late').textContent = late;
+        document.getElementById('count-absent').textContent = absent;
+
+        const tbody = document.getElementById('daily-tbody');
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-8">No data</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(u => {
+            const badge = statusBadge(u.status);
+            return `<tr>
+                <td class="font-medium">${esc(u.username)}</td>
+                <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
+                <td>${badge}</td>
+                <td class="text-gray-500">${u.check_in_time || '—'}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+    }
+}
+
+async function loadWeeklyReport() {
+    try {
+        const data = await fetch(API_URL + '/attendance/weekly').then(r => r.json());
+        const { users, dates, grid } = data;
+
+        // Header
+        const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const thead = document.getElementById('weekly-thead');
+        thead.innerHTML = `<tr><th>Team Member</th>${dates.map(d => {
+            const dt = new Date(d + 'T00:00:00');
+            return `<th class="text-center">${dayNames[dt.getDay()]}<br><span class="text-[10px] font-normal text-gray-400">${d.slice(5)}</span></th>`;
+        }).join('')}</tr>`;
+
+        const tbody = document.getElementById('weekly-tbody');
+        if (users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${dates.length+1}" class="text-center text-gray-400 py-8">No data</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = users.map(u => {
+            const cells = dates.map(d => {
+                const s = grid[u.user_id] ? grid[u.user_id][d] : 'absent';
+                return `<td class="text-center"><span class="attendance-dot ${s}"></span></td>`;
+            }).join('');
+            return `<tr><td class="font-medium">${esc(u.username)}</td>${cells}</tr>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('weekly-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+    }
+}
+
+function statusBadge(status) {
+    const map = {
+        'on_time': '<span class="att-badge on-time">On Time</span>',
+        'late': '<span class="att-badge late">Late</span>',
+        'absent': '<span class="att-badge absent">Absent</span>'
+    };
+    return map[status] || map['absent'];
+}
+</script>
+{% endblock %}

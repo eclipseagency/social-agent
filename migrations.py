@@ -237,6 +237,11 @@ def run_migrations():
         _migration_25_calendar_pins(db)
         set_schema_version(db, 25)
 
+    if version < 26:
+        print("Running migration 26: Create attendance table...")
+        _migration_26_create_attendance(db)
+        set_schema_version(db, 26)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -644,6 +649,23 @@ def _migration_25_calendar_pins(db):
                 note TEXT DEFAULT '',
                 created_by_id INTEGER NOT NULL REFERENCES users(id),
                 created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+    db.commit()
+
+
+def _migration_26_create_attendance(db):
+    """Create attendance table for daily check-in tracking."""
+    if not table_exists(db, 'attendance'):
+        db.execute("""
+            CREATE TABLE attendance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                date TEXT NOT NULL,
+                check_in_time TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'on_time',
+                created_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(user_id, date)
             )
         """)
     db.commit()

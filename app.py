@@ -42,6 +42,7 @@ from routes.briefs import briefs_bp
 from routes.reports import reports_bp
 from routes.billing import billing_bp
 from routes.capacity import capacity_bp
+from routes.attendance import attendance_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(clients_bp)
@@ -55,6 +56,7 @@ app.register_blueprint(briefs_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(billing_bp)
 app.register_blueprint(capacity_bp)
+app.register_blueprint(attendance_bp)
 
 # Register page-rendering blueprint
 from routes.dashboard import dashboard_bp
