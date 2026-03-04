@@ -1166,3 +1166,45 @@ body:not(.dark) .search-item-sub { color: #64748b; }
     .reminder-ticker { border-radius: 8px; margin-bottom: 12px; }
     .reminder-msg { font-size: 11px; }
 }
+
+/* ===== Overview: Two-Panel Layout ===== */
+.overview-layout { display: flex; gap: 20px; min-height: calc(100vh - 160px); }
+.overview-board-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.overview-board-header { margin-bottom: 8px; }
+.overview-sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; }
+
+/* Overview kanban columns */
+.overview-kanban { display: flex; gap: 10px; flex: 1; min-height: 0; }
+.overview-col { flex: 1; min-width: 0; background: #f8fafc; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; }
+.overview-col-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px; color: #64748b; }
+.ov-col-count { background: #e2e8f0; color: #64748b; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+.overview-col-cards { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+
+/* Overview cards */
+.overview-card { display: block; background: white; border-radius: 10px; padding: 10px 12px; border-left: 3px solid #6366f1; cursor: pointer; transition: all 0.2s; font-size: 12px; text-decoration: none; color: inherit; }
+.overview-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.08); transform: translateY(-1px); }
+.overview-card.post-card { border-left-color: #10b981; }
+.overview-card .ov-title { font-weight: 600; font-size: 13px; margin: 4px 0 6px; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.overview-card .ov-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #94a3b8; }
+
+/* Sidebar sections */
+.overview-sidebar-section { background: white; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+/* Dark mode — overview */
+.dark .overview-col { background: #1e293b; }
+.dark .overview-col-header { color: #94a3b8; }
+.dark .ov-col-count { background: #334155; color: #94a3b8; }
+.dark .overview-card { background: #16213e; color: #e0e0e0; }
+.dark .overview-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+.dark .overview-card.post-card { border-left-color: #34d399; }
+.dark .overview-card .ov-meta { color: #64748b; }
+.dark .overview-card .ov-meta .bg-gray-100 { background: #334155 !important; color: #94a3b8 !important; }
+.dark .overview-sidebar-section { background: #16213e; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+/* Mobile: stack vertically, kanban scrolls horizontal */
+@media (max-width: 1023px) {
+    .overview-layout { flex-direction: column; min-height: auto; }
+    .overview-sidebar { width: 100%; }
+    .overview-kanban { overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+    .overview-col { min-width: 220px; flex-shrink: 0; }
+}

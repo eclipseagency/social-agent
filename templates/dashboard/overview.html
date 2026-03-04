@@ -1,66 +1,56 @@
 {% extends "base.html" %}
 {% block content %}
-<!-- Role-aware header -->
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
-    <h2 class="text-xl sm:text-2xl font-bold" id="dashboard-title"><i class="fa-solid fa-chart-line text-indigo-600 mr-2"></i>My Tasks</h2>
-    <p class="text-gray-500 text-sm" id="current-time"></p>
+<!-- Compact header -->
+<div class="flex justify-between items-center mb-3">
+    <h2 class="text-lg font-bold" id="dashboard-title"><i class="fa-solid fa-chart-line text-indigo-600 mr-2"></i>My Tasks</h2>
+    <p class="text-gray-400 text-xs" id="current-time"></p>
 </div>
 
-<!-- Role-specific Stats Cards — hidden for designer/copywriter -->
-<div id="stats-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-8" data-nav-perm="viewAll">
-    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
-        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Clients</h3>
-        <p class="text-xl sm:text-3xl font-bold text-indigo-600" id="stat-clients">0</p>
-    </div>
-    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-green-500">
-        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Linked Accounts</h3>
-        <p class="text-xl sm:text-3xl font-bold text-green-600" id="stat-accounts">0</p>
-    </div>
-    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-yellow-500">
-        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Pending</h3>
-        <p class="text-xl sm:text-3xl font-bold text-yellow-600" id="stat-pending">0</p>
-    </div>
-    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
-        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Published</h3>
-        <p class="text-xl sm:text-3xl font-bold text-blue-600" id="stat-posted">0</p>
-    </div>
-    <div class="stat-card bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-red-500 col-span-2 sm:col-span-1">
-        <h3 class="text-gray-500 text-xs sm:text-sm mb-1">Failed</h3>
-        <p class="text-xl sm:text-3xl font-bold text-red-600" id="stat-failed">0</p>
-    </div>
-</div>
+<!-- Coverage alerts banner -->
+<div id="coverage-alerts" class="mb-3"></div>
 
-<!-- My Action Items — role-filtered, links to Calendar -->
-<div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-    <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-user-check text-indigo-500 mr-2"></i>My Action Items</h3>
-    <div id="my-work-items" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        <p class="text-gray-400 text-sm col-span-full text-center py-4">Loading...</p>
-    </div>
-</div>
-
-<!-- Coverage Alerts -->
-<div id="coverage-alerts" class="mb-6 space-y-2"></div>
-
-<!-- Quick Suggestions -->
-<div id="dashboard-suggestions" class="hidden bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6" data-nav-perm="viewAll">
-    <h3 class="font-bold mb-3 text-sm sm:text-base"><i class="fa-solid fa-wand-magic-sparkles text-purple-500 mr-2"></i>Smart Suggestions</h3>
-    <div id="dashboard-suggestions-list" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
-</div>
-
-<!-- Quick Actions + Recent Activity -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
-        <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-bolt text-indigo-500 mr-2"></i>Quick Actions</h3>
-        <div class="grid grid-cols-2 gap-3 quick-actions-grid">
-            <a href="/calendar" class="bg-yellow-50 text-yellow-700 p-3 rounded-lg hover:bg-yellow-100 transition text-sm font-medium text-center"><i class="fa-solid fa-calendar-days mr-1"></i> Calendar</a>
-            <a href="/new-post" data-nav-perm="createPost" class="bg-indigo-50 text-indigo-700 p-3 rounded-lg hover:bg-indigo-100 transition text-sm font-medium text-center"><i class="fa-solid fa-pen-to-square mr-1"></i> New Post</a>
-            <a href="/pipeline" data-nav-perm="viewAll" class="bg-green-50 text-green-700 p-3 rounded-lg hover:bg-green-100 transition text-sm font-medium text-center"><i class="fa-solid fa-arrows-spin mr-1"></i> Pipeline</a>
-            <a href="/tasks" data-nav-perm="createPost" class="bg-purple-50 text-purple-700 p-3 rounded-lg hover:bg-purple-100 transition text-sm font-medium text-center"><i class="fa-solid fa-clipboard-list mr-1"></i> Tasks</a>
+<!-- Two-panel layout -->
+<div class="overview-layout">
+    <!-- Left: Kanban board -->
+    <div class="overview-board-panel">
+        <div class="overview-board-header">
+            <span class="text-sm font-bold"><i class="fa-solid fa-columns text-indigo-500 mr-1"></i>My Work <span id="board-count" class="text-xs font-normal text-gray-400 ml-1"></span></span>
+        </div>
+        <div class="overview-kanban" id="overview-kanban">
+            <div class="overview-col" data-col="todo">
+                <div class="overview-col-header"><span><i class="fa-solid fa-circle text-gray-400 mr-1"></i>To Do</span><span class="ov-col-count" id="col-count-todo">0</span></div>
+                <div class="overview-col-cards" id="col-todo"></div>
+            </div>
+            <div class="overview-col" data-col="in_progress">
+                <div class="overview-col-header"><span><i class="fa-solid fa-spinner text-blue-500 mr-1"></i>In Progress</span><span class="ov-col-count" id="col-count-in_progress">0</span></div>
+                <div class="overview-col-cards" id="col-in_progress"></div>
+            </div>
+            <div class="overview-col" data-col="in_review">
+                <div class="overview-col-header"><span><i class="fa-solid fa-eye text-purple-500 mr-1"></i>In Review</span><span class="ov-col-count" id="col-count-in_review">0</span></div>
+                <div class="overview-col-cards" id="col-in_review"></div>
+            </div>
+            <div class="overview-col" data-col="done">
+                <div class="overview-col-header"><span><i class="fa-solid fa-circle-check text-green-500 mr-1"></i>Done</span><span class="ov-col-count" id="col-count-done">0</span></div>
+                <div class="overview-col-cards" id="col-done"></div>
+            </div>
         </div>
     </div>
-    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6">
-        <h3 class="font-bold mb-4 text-sm sm:text-base"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i>Activity Timeline</h3>
-        <div id="activity-timeline" class="space-y-2 text-sm max-h-[400px] overflow-y-auto"></div>
+
+    <!-- Right: Sidebar -->
+    <div class="overview-sidebar">
+        <div class="overview-sidebar-section">
+            <h3 class="font-bold text-xs mb-3"><i class="fa-solid fa-bolt text-indigo-500 mr-1"></i>Quick Actions</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <a href="/calendar" class="bg-yellow-50 text-yellow-700 p-2 rounded-lg hover:bg-yellow-100 transition text-xs font-medium text-center"><i class="fa-solid fa-calendar-days mr-1"></i>Calendar</a>
+                <a href="/new-post" data-nav-perm="createPost" class="bg-indigo-50 text-indigo-700 p-2 rounded-lg hover:bg-indigo-100 transition text-xs font-medium text-center"><i class="fa-solid fa-pen-to-square mr-1"></i>New Post</a>
+                <a href="/pipeline" data-nav-perm="viewAll" class="bg-green-50 text-green-700 p-2 rounded-lg hover:bg-green-100 transition text-xs font-medium text-center"><i class="fa-solid fa-arrows-spin mr-1"></i>Pipeline</a>
+                <a href="/tasks" data-nav-perm="createPost" class="bg-purple-50 text-purple-700 p-2 rounded-lg hover:bg-purple-100 transition text-xs font-medium text-center"><i class="fa-solid fa-clipboard-list mr-1"></i>Tasks</a>
+            </div>
+        </div>
+        <div class="overview-sidebar-section" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+            <h3 class="font-bold text-xs mb-3"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-1"></i>Activity</h3>
+            <div id="activity-timeline" class="space-y-1 text-sm overflow-y-auto" style="flex:1;min-height:0;max-height:calc(100vh - 340px);"></div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -69,11 +59,9 @@
 <script>
 function pageInit() {
     setRoleGreeting();
-    loadDashboard();
-    loadMyWork();
+    loadOverviewBoard();
     loadCoverageAlerts();
     loadActivityTimeline();
-    loadDashboardSuggestions();
 }
 
 function setRoleGreeting() {
@@ -92,64 +80,133 @@ function setRoleGreeting() {
     titleEl.innerHTML = `<i class="fa-solid ${g.icon} ${g.color} mr-2"></i>${g.label}`;
 }
 
-async function loadDashboard() {
-    if (!canDo('viewAll')) return;
-    let stats;
-    try { stats = await fetch(API_URL + '/stats').then(r => r.json()); } catch (e) { return; }
-    document.getElementById('stat-clients').textContent = stats.total_clients;
-    document.getElementById('stat-accounts').textContent = stats.total_accounts;
-    document.getElementById('stat-pending').textContent = stats.pending_posts;
-    document.getElementById('stat-posted').textContent = stats.posted_posts;
-    document.getElementById('stat-failed').textContent = stats.failed_posts;
-}
-
-async function loadMyWork() {
+async function loadOverviewBoard() {
     if (!currentUser) return;
+    const uid = currentUser.id;
     const role = currentUser.role || 'user';
+
+    // Parallel fetch tasks + post action items
+    let tasks = [], posts = [];
     try {
-        const data = await fetch(API_URL + '/posts/my-work?user_id=' + currentUser.id + '&role=' + role).then(r => r.json());
-        const container = document.getElementById('my-work-items');
-        if (!data || data.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-full text-center py-8">
-                    <i class="fa-solid fa-circle-check text-4xl text-green-400 mb-3"></i>
-                    <p class="text-gray-500 font-medium">All caught up!</p>
-                    <p class="text-gray-400 text-sm mt-1">No pending action items right now.</p>
-                </div>`;
+        const [tasksRes, postsRes] = await Promise.all([
+            fetch(API_URL + '/tasks/my-tasks?user_id=' + uid).then(r => r.json()).catch(() => []),
+            fetch(API_URL + '/posts/my-work?user_id=' + uid + '&role=' + role).then(r => r.json()).catch(() => [])
+        ]);
+        tasks = tasksRes || [];
+        posts = postsRes || [];
+    } catch (e) { /* silent */ }
+
+    // Map task status to column
+    function taskColumn(status) {
+        const map = { 'todo': 'todo', 'in_progress': 'in_progress', 'in_review': 'in_review', 'done': 'done' };
+        return map[status] || 'todo';
+    }
+
+    // Map post action to column
+    function postColumn(action) {
+        const todoActions = ['needs_writing', 'needs_design', 'needs_caption', 'unassigned'];
+        const progressActions = ['returned_for_edits'];
+        const reviewActions = ['needs_review', 'ready_to_schedule'];
+        if (todoActions.includes(action)) return 'todo';
+        if (progressActions.includes(action)) return 'in_progress';
+        if (reviewActions.includes(action)) return 'in_review';
+        return 'todo';
+    }
+
+    // Normalize into unified items
+    const items = [];
+    tasks.forEach(t => {
+        items.push({
+            id: t.id,
+            type: 'task',
+            title: t.title || 'Untitled Task',
+            client_name: t.client_name || '',
+            priority: t.priority || 'normal',
+            action_label: t.status_label || t.status || '',
+            due_date: t.due_date || '',
+            column: taskColumn(t.status)
+        });
+    });
+    posts.forEach(p => {
+        items.push({
+            id: p.id,
+            type: 'post',
+            title: p.topic || 'Untitled Post',
+            client_name: p.client_name || '',
+            priority: p.priority || 'normal',
+            action_label: p.action_label || p.action || '',
+            due_date: p.scheduled_time || '',
+            column: postColumn(p.action)
+        });
+    });
+
+    // Count & render
+    const cols = { todo: [], in_progress: [], in_review: [], done: [] };
+    items.forEach(item => {
+        if (cols[item.column]) cols[item.column].push(item);
+    });
+
+    const totalActive = cols.todo.length + cols.in_progress.length + cols.in_review.length;
+    document.getElementById('board-count').textContent = totalActive > 0 ? `(${totalActive} active)` : '';
+
+    Object.keys(cols).forEach(col => {
+        const container = document.getElementById('col-' + col);
+        const countEl = document.getElementById('col-count-' + col);
+        if (countEl) countEl.textContent = cols[col].length;
+
+        if (cols[col].length === 0) {
+            container.innerHTML = `<div class="text-center py-4 text-gray-400 text-xs">${col === 'done' ? 'Completed items clear after 24h' : 'No items'}</div>`;
             return;
         }
-        const actionColors = {
-            'needs_caption': 'bg-yellow-100 text-yellow-800',
-            'needs_design': 'bg-orange-100 text-orange-800',
-            'needs_review': 'bg-purple-100 text-purple-800',
-            'returned_for_edits': 'bg-red-100 text-red-800',
-            'ready_to_schedule': 'bg-green-100 text-green-800',
-            'unassigned': 'bg-gray-100 text-gray-800',
-            'overdue': 'bg-red-100 text-red-800'
-        };
-        container.innerHTML = data.map(item => {
-            const badgeClass = actionColors[item.action] || 'bg-gray-100 text-gray-800';
-            return `
-            <a href="/calendar?open_post=${item.id}" class="action-item-card block hover:border-indigo-300 transition">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="px-2 py-0.5 rounded text-xs font-semibold badge-${item.priority || 'normal'}">${item.priority || 'normal'}</span>
-                    <span class="text-xs text-gray-400">${esc(item.client_name || '')}</span>
-                </div>
-                <p class="font-semibold text-sm mb-1">${esc(item.topic || 'Untitled')}</p>
-                <div class="flex items-center justify-between">
-                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${esc(item.action_label || item.action || '')}</span>
-                    <span class="text-indigo-600 text-xs font-medium">Open &rarr;</span>
-                </div>
-            </a>`;
-        }).join('');
-    } catch (e) {
-        document.getElementById('my-work-items').innerHTML = `
-            <div class="col-span-full text-center py-8">
+        container.innerHTML = cols[col].map(item => renderOverviewCard(item)).join('');
+    });
+
+    // If no items at all, show empty state
+    if (items.length === 0) {
+        document.getElementById('overview-kanban').innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16 w-full">
                 <i class="fa-solid fa-circle-check text-4xl text-green-400 mb-3"></i>
                 <p class="text-gray-500 font-medium">All caught up!</p>
-                <p class="text-gray-400 text-sm mt-1">No pending action items right now.</p>
+                <p class="text-gray-400 text-sm mt-1">No pending work items right now.</p>
             </div>`;
     }
+}
+
+function renderOverviewCard(item) {
+    const isPost = item.type === 'post';
+    const typeIcon = isPost ? 'fa-image' : 'fa-clipboard-list';
+    const typeColor = isPost ? 'text-emerald-500' : 'text-indigo-500';
+    const cardClass = isPost ? 'overview-card post-card' : 'overview-card';
+    const href = isPost ? `/calendar?open_post=${item.id}` : '/tasks';
+    const priorityBadge = item.priority && item.priority !== 'normal'
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-${item.priority}">${item.priority}</span>`
+        : '';
+
+    return `<a href="${href}" class="${cardClass}">
+        <div class="flex items-center gap-1.5">
+            <i class="fa-solid ${typeIcon} ${typeColor} text-[10px]"></i>
+            ${priorityBadge}
+            <span class="text-[10px] text-gray-400 ml-auto truncate max-w-[80px]">${esc(item.client_name)}</span>
+        </div>
+        <div class="ov-title">${esc(item.title)}</div>
+        <div class="ov-meta">
+            <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">${esc(item.action_label)}</span>
+            ${item.due_date ? `<span class="text-[10px] text-gray-400">${formatShortDate(item.due_date)}</span>` : ''}
+        </div>
+    </a>`;
+}
+
+function formatShortDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr.includes('Z') ? dateStr : dateStr + 'Z');
+        const now = new Date();
+        const diff = (d - now) / 86400000;
+        if (diff < 0 && diff > -1) return 'Today';
+        if (diff >= 0 && diff < 1) return 'Today';
+        if (diff >= 1 && diff < 2) return 'Tomorrow';
+        return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+    } catch (e) { return ''; }
 }
 
 async function loadCoverageAlerts() {
@@ -159,13 +216,13 @@ async function loadCoverageAlerts() {
         const data = await fetch(overviewUrl).then(r => r.json());
         const container = document.getElementById('coverage-alerts');
         if (!data || !data.alerts || data.alerts.length === 0) { container.innerHTML = ''; return; }
-        container.innerHTML = data.alerts.map(a => `
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-center gap-3">
-                <i class="fa-solid fa-triangle-exclamation text-yellow-500"></i>
-                <span class="text-sm text-yellow-800">${esc(a.message || a)}</span>
+        container.innerHTML = `<div class="flex flex-wrap gap-2">${data.alerts.map(a => `
+            <div class="inline-flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-1.5 text-xs text-yellow-800">
+                <i class="fa-solid fa-triangle-exclamation text-yellow-500 text-[10px]"></i>
+                ${esc(a.message || a)}
             </div>
-        `).join('');
-    } catch (e) { /* silent - new endpoint may not exist yet */ }
+        `).join('')}</div>`;
+    } catch (e) { /* silent */ }
 }
 
 async function loadActivityTimeline() {
@@ -176,67 +233,37 @@ async function loadActivityTimeline() {
         if (currentUser) actUrl += `&user_id=${currentUser.id}&role=${currentUser.role || ''}`;
         const data = await fetch(actUrl).then(r => r.json());
         if (!data || data.length === 0) {
-            container.innerHTML = '<p class="text-gray-400 text-center py-4">No recent activity</p>';
+            container.innerHTML = '<p class="text-gray-400 text-center py-4 text-xs">No recent activity</p>';
             return;
         }
-        const statusLabels = {
-            'draft': 'Draft', 'pending_review': 'Pending Review', 'in_design': 'In Design',
-            'approved': 'Approved', 'scheduled': 'Scheduled', 'posted': 'Posted'
-        };
         const statusIcons = {
             'draft': 'fa-pen text-gray-400', 'pending_review': 'fa-eye text-yellow-500',
             'in_design': 'fa-paintbrush text-orange-500', 'approved': 'fa-check text-green-500',
             'scheduled': 'fa-clock text-blue-500', 'posted': 'fa-rocket text-emerald-500'
         };
+        const statusLabels = {
+            'draft': 'Draft', 'pending_review': 'Pending Review', 'in_design': 'In Design',
+            'approved': 'Approved', 'scheduled': 'Scheduled', 'posted': 'Posted'
+        };
         container.innerHTML = data.map(a => {
             const icon = statusIcons[a.to_status] || 'fa-circle text-gray-400';
             const toLabel = statusLabels[a.to_status] || a.to_status;
-            const fromLabel = statusLabels[a.from_status] || a.from_status || '';
-            const topicPreview = getTopicPreview(a.topic, 30) || 'Untitled';
+            const topicPreview = getTopicPreview(a.topic, 25) || 'Untitled';
             const timeAgo = getTimeAgo(a.created_at);
-            return `<div class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 transition">
-                <div class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <i class="fa-solid ${icon} text-xs"></i>
+            return `<div class="flex items-start gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition">
+                <div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="fa-solid ${icon}" style="font-size:9px"></i>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p><strong class="text-gray-700">${esc(a.user_name || 'System')}</strong> moved to <span class="font-semibold">${toLabel}</span></p>
-                    <p class="text-gray-500 text-xs truncate">${esc(a.client_name || '')} &middot; ${esc(topicPreview)}${a.comment ? ' — "' + esc(a.comment) + '"' : ''}</p>
-                    <p class="text-gray-400 text-[10px] mt-0.5">${timeAgo}</p>
+                    <p class="text-xs"><strong class="text-gray-700">${esc(a.user_name || 'System')}</strong> &rarr; <span class="font-semibold">${toLabel}</span></p>
+                    <p class="text-gray-500 text-[10px] truncate">${esc(a.client_name || '')} &middot; ${esc(topicPreview)}</p>
+                    <p class="text-gray-400 text-[10px]">${timeAgo}</p>
                 </div>
             </div>`;
         }).join('');
     } catch (e) {
-        container.innerHTML = '<p class="text-gray-400 text-center py-4">No recent activity</p>';
+        container.innerHTML = '<p class="text-gray-400 text-center py-4 text-xs">No recent activity</p>';
     }
-}
-
-async function loadDashboardSuggestions() {
-    if (!canDo('viewAll')) return;
-    const section = document.getElementById('dashboard-suggestions');
-    const list = document.getElementById('dashboard-suggestions-list');
-    if (!section || !list) return;
-    try {
-        const data = await fetch(API_URL + '/suggestions').then(r => r.json());
-        if (!data || (!data.best_hours?.length && !data.best_platforms?.length)) { section.classList.add('hidden'); return; }
-        section.classList.remove('hidden');
-        let html = '';
-        if (data.best_hours && data.best_hours.length > 0) {
-            const top = data.best_hours[0];
-            html += `<div class="bg-green-50 rounded-xl p-3 text-center"><i class="fa-solid fa-clock text-green-500 text-lg"></i><p class="text-sm font-bold mt-1">${formatHour(top.hour)}</p><p class="text-[10px] text-gray-500">Best posting time</p></div>`;
-        }
-        if (data.best_content_types && data.best_content_types.length > 0) {
-            const top = data.best_content_types[0];
-            html += `<div class="bg-blue-50 rounded-xl p-3 text-center"><i class="fa-solid fa-shapes text-blue-500 text-lg"></i><p class="text-sm font-bold mt-1 capitalize">${top.type}</p><p class="text-[10px] text-gray-500">Top content type</p></div>`;
-        }
-        if (data.best_platforms && data.best_platforms.length > 0) {
-            const top = data.best_platforms[0];
-            html += `<div class="bg-pink-50 rounded-xl p-3 text-center">${getPlatformIcon(top.platform)}<p class="text-sm font-bold mt-1">${getPlatformName(top.platform)}</p><p class="text-[10px] text-gray-500">Best platform</p></div>`;
-        }
-        if (data.posting_frequency) {
-            html += `<div class="bg-amber-50 rounded-xl p-3 text-center"><i class="fa-solid fa-gauge-high text-amber-500 text-lg"></i><p class="text-sm font-bold mt-1">${data.posting_frequency.avg_posts_per_day}/day</p><p class="text-[10px] text-gray-500">Current frequency</p></div>`;
-        }
-        list.innerHTML = html;
-    } catch (e) { section.classList.add('hidden'); }
 }
 
 function getTimeAgo(dateStr) {
