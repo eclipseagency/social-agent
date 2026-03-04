@@ -6,9 +6,6 @@
     <p class="text-gray-400 text-xs" id="current-time"></p>
 </div>
 
-<!-- Check-in banner -->
-<div id="checkin-banner" class="hidden mb-3"></div>
-
 <!-- Coverage alerts banner -->
 <div id="coverage-alerts" class="mb-3"></div>
 
@@ -62,54 +59,9 @@
 <script>
 function pageInit() {
     setRoleGreeting();
-    loadCheckInStatus();
     loadOverviewBoard();
     loadCoverageAlerts();
     loadActivityTimeline();
-}
-
-async function loadCheckInStatus() {
-    const banner = document.getElementById('checkin-banner');
-    if (!banner) return;
-    try {
-        const data = await fetch(API_URL + '/attendance/my-status').then(r => r.json());
-        // Get Cairo time for display
-        const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
-        const h = cairoNow.getHours(), m = cairoNow.getMinutes();
-
-        if (data.checked_in) {
-            const label = data.status === 'on_time' ? 'On Time' : 'Late';
-            banner.className = 'checkin-banner done mb-3';
-            banner.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>Checked in at ${data.check_in_time} (${label})</span>`;
-        } else if (h < 9) {
-            banner.className = 'checkin-banner pending mb-3';
-            banner.innerHTML = `<i class="fa-solid fa-clock"></i><span>Check-in opens at 9:00 AM Cairo</span>`;
-        } else if (h >= 10) {
-            banner.className = 'checkin-banner closed mb-3';
-            banner.innerHTML = `<i class="fa-solid fa-circle-xmark"></i><span>Check-in window closed for today</span>`;
-        } else {
-            const cls = (h === 9 && m <= 20) ? 'on-time' : 'late';
-            banner.className = `checkin-banner ${cls} mb-3`;
-            banner.innerHTML = `<i class="fa-solid fa-clock"></i><span>${cls === 'on-time' ? 'Check in now — you\'re on time!' : 'Check in now — you\'ll be marked late'}</span><button onclick="doCheckIn()" class="checkin-btn">Check In</button>`;
-        }
-    } catch (e) {
-        banner.className = 'hidden';
-    }
-}
-
-async function doCheckIn() {
-    try {
-        const res = await fetch(API_URL + '/attendance/check-in', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-            showToast(data.status === 'on_time' ? 'Checked in on time!' : 'Checked in (late)', 'success');
-        } else {
-            showToast(data.error || 'Check-in failed', 'error');
-        }
-    } catch (e) {
-        showToast('Check-in failed', 'error');
-    }
-    loadCheckInStatus();
 }
 
 function setRoleGreeting() {

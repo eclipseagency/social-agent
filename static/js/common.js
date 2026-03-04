@@ -243,6 +243,8 @@ function checkAuth() {
             setInterval(loadReminders, 300000);
             // Load mention users for @mention autocomplete
             loadMentionUsers();
+            // Load global check-in banner
+            loadCheckInStatus();
             // Call page-specific init
             if (typeof pageInit === 'function') pageInit();
         } catch (e) {
@@ -909,6 +911,50 @@ function toggleReminderExpand() {
     const chevron = document.getElementById('reminder-chevron');
     if (list) list.style.display = _reminderExpanded ? 'block' : 'none';
     chevron?.classList.toggle('reminder-chevron-collapsed', !_reminderExpanded);
+}
+
+// === Check-in Banner (global) ===
+async function loadCheckInStatus() {
+    const banner = document.getElementById('checkin-banner');
+    if (!banner) return;
+    try {
+        const data = await fetch(API_URL + '/attendance/my-status').then(r => r.json());
+        const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+        const h = cairoNow.getHours(), m = cairoNow.getMinutes();
+
+        if (data.checked_in) {
+            const label = data.status === 'on_time' ? 'On Time' : 'Late';
+            banner.className = 'checkin-banner done';
+            banner.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>Checked in at ${data.check_in_time} (${label})</span>`;
+        } else if (h < 9) {
+            banner.className = 'checkin-banner pending';
+            banner.innerHTML = `<i class="fa-solid fa-clock"></i><span>Check-in opens at 9:00 AM Cairo</span>`;
+        } else if (h >= 10) {
+            banner.className = 'checkin-banner closed';
+            banner.innerHTML = `<i class="fa-solid fa-circle-xmark"></i><span>Check-in window closed for today</span>`;
+        } else {
+            const cls = (h === 9 && m <= 20) ? 'on-time' : 'late';
+            banner.className = `checkin-banner ${cls}`;
+            banner.innerHTML = `<i class="fa-solid fa-clock"></i><span>${cls === 'on-time' ? "Check in now — you're on time!" : "Check in now — you'll be marked late"}</span><button onclick="doCheckIn()" class="checkin-btn">Check In</button>`;
+        }
+    } catch (e) {
+        banner.className = 'hidden';
+    }
+}
+
+async function doCheckIn() {
+    try {
+        const res = await fetch(API_URL + '/attendance/check-in', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.status === 'on_time' ? 'Checked in on time!' : 'Checked in (late)', 'success');
+        } else {
+            showToast(data.error || 'Check-in failed', 'error');
+        }
+    } catch (e) {
+        showToast('Check-in failed', 'error');
+    }
+    loadCheckInStatus();
 }
 
 // === Init ===
