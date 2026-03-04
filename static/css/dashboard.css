@@ -915,6 +915,80 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .dark .cal-add-btn { color: #818cf8; }
 .dark .cal-add-btn:hover { background: #312e81; border-color: #818cf8; }
 
+/* Calendar Pin Button */
+.cal-pin-btn {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: #ec4899; background: transparent;
+    border: 1px solid transparent; cursor: pointer;
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+}
+.cal-day-clickable:hover .cal-pin-btn { opacity: 1; }
+.cal-pin-btn:hover { background: #fce7f3; border-color: #ec4899; }
+.dark .cal-pin-btn { color: #f472b6; }
+.dark .cal-pin-btn:hover { background: #4a1942; border-color: #f472b6; }
+
+/* Calendar Pin Badges */
+.cal-pin-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 6px; border-radius: 9999px; margin: 1px 2px 1px 0;
+    font-size: 9px; font-weight: 600; line-height: 1.4;
+    background: color-mix(in srgb, var(--pin-color) 12%, transparent);
+    color: var(--pin-color); border: 1px solid color-mix(in srgb, var(--pin-color) 25%, transparent);
+    cursor: default; max-width: 100%;
+}
+.cal-pin-icon { font-size: 8px; }
+.cal-pin-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-pin-del {
+    margin-left: 2px; cursor: pointer; font-size: 11px; font-weight: 700;
+    opacity: 0.5; line-height: 1;
+}
+.cal-pin-del:hover { opacity: 1; color: #ef4444; }
+.dark .cal-pin-badge {
+    background: color-mix(in srgb, var(--pin-color) 18%, transparent);
+    border-color: color-mix(in srgb, var(--pin-color) 35%, transparent);
+}
+
+/* Calendar Pin Popover */
+.cal-pin-popover {
+    position: absolute; z-index: 60; width: 220px;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15); padding: 12px;
+}
+.cal-pin-popover-title {
+    font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-pin-types { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+.cal-pin-type-opt {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 8px; border-radius: 8px; border: 1px solid #e2e8f0;
+    background: #f8fafc; cursor: pointer; font-size: 11px; font-weight: 500;
+    color: #334155; transition: all 0.15s;
+}
+.cal-pin-type-opt:hover { border-color: #6366f1; background: #eef2ff; }
+.cal-pin-type-opt.selected { border-color: #6366f1; background: #e0e7ff; color: #4338ca; }
+.cal-pin-note-input {
+    width: 100%; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 11px; margin-bottom: 8px; outline: none;
+}
+.cal-pin-note-input:focus { border-color: #6366f1; }
+.cal-pin-submit {
+    width: 100%; padding: 6px; border-radius: 8px; border: none;
+    background: #6366f1; color: #fff; font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s;
+}
+.cal-pin-submit:hover { background: #4f46e5; }
+.dark .cal-pin-popover { background: #1e293b; border-color: #334155; }
+.dark .cal-pin-popover-title { color: #94a3b8; }
+.dark .cal-pin-type-opt { background: #0f172a; border-color: #334155; color: #cbd5e1; }
+.dark .cal-pin-type-opt:hover { border-color: #818cf8; background: #1e1b4b; }
+.dark .cal-pin-type-opt.selected { border-color: #818cf8; background: #312e81; color: #c7d2fe; }
+.dark .cal-pin-note-input { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+.dark .cal-pin-note-input:focus { border-color: #818cf8; }
+.dark .cal-pin-submit { background: #818cf8; }
+.dark .cal-pin-submit:hover { background: #6366f1; }
+
 /* Global Search */
 #global-search-results {
     position: absolute; top: calc(100% + 4px); left: 0; right: 0;

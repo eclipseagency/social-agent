@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify, session
 from models import get_db, dict_from_row, dicts_from_rows
 from services.scheduler import publish_post, run_scheduler, force_publish_all, get_account_for_client, _get_env_account
 from services.cloudinary_service import upload_image
-from routes.auth import require_role, require_login
+from routes.auth import require_role, require_login, require_super_admin
 from routes.notifications import create_notification
 
 posts_bp = Blueprint('posts', __name__)
@@ -1335,3 +1335,75 @@ def force_publish():
         return jsonify({'success': True, 'message': msg, **result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+
+# ========== CALENDAR PINS ==========
+
+@posts_bp.route('/api/calendar/pins', methods=['GET'])
+@require_login
+def get_calendar_pins():
+    client_id = request.args.get('client_id')
+    year = request.args.get('year')
+    month = request.args.get('month')
+    if not client_id or not year or not month:
+        return jsonify({'pins': {}})
+
+    db = get_db()
+    date_prefix = f"{year}-{str(month).zfill(2)}"
+    rows = db.execute("""
+        SELECT cp.id, cp.pinned_date, cp.content_type, cp.note, cp.created_by_id,
+               u.username as created_by_name
+        FROM calendar_pins cp
+        LEFT JOIN users u ON cp.created_by_id = u.id
+        WHERE cp.client_id = ? AND cp.pinned_date LIKE ?
+        ORDER BY cp.created_at ASC
+    """, (client_id, date_prefix + '%')).fetchall()
+    db.close()
+
+    pins = {}
+    for row in rows:
+        d = row['pinned_date']
+        if d not in pins:
+            pins[d] = []
+        pins[d].append({
+            'id': row['id'],
+            'content_type': row['content_type'],
+            'note': row['note'],
+            'created_by_name': row['created_by_name'] or 'Admin',
+        })
+    return jsonify({'pins': pins})
+
+
+@posts_bp.route('/api/calendar/pins', methods=['POST'])
+@require_super_admin
+def create_calendar_pin():
+    data = request.get_json()
+    client_id = data.get('client_id')
+    pinned_date = data.get('pinned_date')
+    content_type = data.get('content_type')
+    note = data.get('note', '')
+
+    if not client_id or not pinned_date or not content_type:
+        return jsonify({'success': False, 'error': 'client_id, pinned_date, and content_type are required'}), 400
+
+    if content_type not in ('post', 'story', 'reel', 'video'):
+        return jsonify({'success': False, 'error': 'Invalid content_type'}), 400
+
+    db = get_db()
+    db.execute(
+        "INSERT INTO calendar_pins (client_id, pinned_date, content_type, note, created_by_id) VALUES (?,?,?,?,?)",
+        (client_id, pinned_date, content_type, note, session['user_id'])
+    )
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+@posts_bp.route('/api/calendar/pins/<int:pin_id>', methods=['DELETE'])
+@require_super_admin
+def delete_calendar_pin(pin_id):
+    db = get_db()
+    db.execute("DELETE FROM calendar_pins WHERE id=?", (pin_id,))
+    db.commit()
+    db.close()
+    return jsonify({'success': True})

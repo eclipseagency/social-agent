@@ -10,6 +10,7 @@ let createPostRefFiles = [];
 let createPostDesignFiles = [];
 let slideViewPostId = null;
 let carouselSlides = [];
+let clientCalPins = {};
 
 function pageInit() {
     loadClientDetail();
@@ -212,10 +213,14 @@ function toggleBriefExpand() {
 async function loadClientCalendar() {
     const year = clientMonth.getFullYear();
     const month = clientMonth.getMonth() + 1;
-    const data = await apiFetch(`${API_URL}/posts/calendar?year=${year}&month=${month}&client_id=${clientId}&include_unscheduled=1`);
+    const [data, pinsData] = await Promise.all([
+        apiFetch(`${API_URL}/posts/calendar?year=${year}&month=${month}&client_id=${clientId}&include_unscheduled=1`),
+        apiFetch(`${API_URL}/calendar/pins?client_id=${clientId}&year=${year}&month=${month}`)
+    ]);
     if (!data) return;
     clientPostsData = data.posts || [];
     clientCalByDate = data.by_date || {};
+    clientCalPins = (pinsData && pinsData.pins) ? pinsData.pins : {};
 
     // Designer/motion_designer only see posts in_design or later
     const role = currentUser?.role;
@@ -292,15 +297,123 @@ function renderClientCalendar() {
                       ondragover="onClientDayDragOver(event)" ondragleave="onClientDayDragLeave(event)" ondrop="onClientDayDrop(event, '${dateStr}')">
             <div class="flex justify-between items-center mb-1">
                 <span class="font-semibold text-xs ${isToday ? 'text-indigo-600' : ''}">${day}</span>
-                ${canCreate ? `<button class="cal-add-btn" onclick="event.stopPropagation(); openCreatePostModal('${dateStr}')" title="Add post">
-                    <i class="fa-solid fa-plus"></i>
-                </button>` : ''}
+                <div class="flex items-center gap-0.5">
+                    ${currentUser?.is_super_admin ? `<button class="cal-pin-btn" onclick="event.stopPropagation(); openPinPopover(this, '${dateStr}')" title="Add pin">
+                        <i class="fa-solid fa-thumbtack"></i>
+                    </button>` : ''}
+                    ${canCreate ? `<button class="cal-add-btn" onclick="event.stopPropagation(); openCreatePostModal('${dateStr}')" title="Add post">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>` : ''}
+                </div>
             </div>
+            ${renderCalPins(dateStr)}
             ${filtered.slice(0, 3).map(p => renderCalendarMiniCard(p)).join('')}
             ${filtered.length > 3 ? `<div class="text-[10px] text-indigo-600 font-semibold text-center cursor-pointer" onclick="event.stopPropagation(); showClientDayPosts('${dateStr}')">+${filtered.length - 3} more</div>` : ''}
         </div>`;
     }
     document.getElementById('client-calendar-grid').innerHTML = html;
+}
+
+// ========== CALENDAR PINS ==========
+
+const PIN_TYPE_META = {
+    post:  { icon: 'fa-solid fa-image',       label: 'Post',  color: '#6366f1' },
+    story: { icon: 'fa-solid fa-clock-rotate-left', label: 'Story', color: '#ec4899' },
+    reel:  { icon: 'fa-solid fa-film',         label: 'Reel',  color: '#a855f7' },
+    video: { icon: 'fa-solid fa-video',        label: 'Video', color: '#ef4444' },
+};
+
+function renderCalPins(dateStr) {
+    const pins = clientCalPins[dateStr];
+    if (!pins || !pins.length) return '';
+    return pins.map(p => {
+        const m = PIN_TYPE_META[p.content_type] || PIN_TYPE_META.post;
+        const del = currentUser?.is_super_admin
+            ? `<span class="cal-pin-del" onclick="event.stopPropagation(); deleteCalPin(${p.id})" title="Remove pin">&times;</span>`
+            : '';
+        const noteAttr = p.note ? ` title="${esc(p.note)}"` : '';
+        return `<div class="cal-pin-badge" style="--pin-color:${m.color}"${noteAttr}>
+            <i class="${m.icon} cal-pin-icon"></i><span class="cal-pin-label">${m.label}</span>${del}
+        </div>`;
+    }).join('');
+}
+
+function openPinPopover(btn, dateStr) {
+    closePinPopover();
+    const rect = btn.getBoundingClientRect();
+    const pop = document.createElement('div');
+    pop.id = 'cal-pin-popover';
+    pop.className = 'cal-pin-popover';
+    pop.innerHTML = `
+        <div class="cal-pin-popover-title">Pin content for ${dateStr}</div>
+        <div class="cal-pin-types">
+            ${Object.entries(PIN_TYPE_META).map(([k, v]) =>
+                `<button class="cal-pin-type-opt" data-type="${k}" onclick="selectPinType(this)">
+                    <i class="${v.icon}" style="color:${v.color}"></i> ${v.label}
+                </button>`
+            ).join('')}
+        </div>
+        <input type="text" id="pin-note-input" class="cal-pin-note-input" placeholder="Optional note..." maxlength="100">
+        <button class="cal-pin-submit" onclick="submitCalPin('${dateStr}')">Pin it</button>
+    `;
+    document.body.appendChild(pop);
+    // Position near the button
+    const popW = 220, popH = 220;
+    let left = rect.left + window.scrollX;
+    let top = rect.bottom + window.scrollY + 4;
+    if (left + popW > window.innerWidth) left = window.innerWidth - popW - 8;
+    if (top + popH > window.innerHeight + window.scrollY) top = rect.top + window.scrollY - popH - 4;
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.dataset.date = dateStr;
+    setTimeout(() => document.addEventListener('click', onPinPopoverOutside), 0);
+}
+
+function closePinPopover() {
+    const el = document.getElementById('cal-pin-popover');
+    if (el) el.remove();
+    document.removeEventListener('click', onPinPopoverOutside);
+}
+
+function onPinPopoverOutside(e) {
+    const pop = document.getElementById('cal-pin-popover');
+    if (pop && !pop.contains(e.target)) closePinPopover();
+}
+
+function selectPinType(btn) {
+    btn.closest('.cal-pin-types').querySelectorAll('.cal-pin-type-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+}
+
+async function submitCalPin(dateStr) {
+    const pop = document.getElementById('cal-pin-popover');
+    if (!pop) return;
+    const sel = pop.querySelector('.cal-pin-type-opt.selected');
+    if (!sel) { showToast('Select a content type', 'error'); return; }
+    const content_type = sel.dataset.type;
+    const note = (pop.querySelector('#pin-note-input')?.value || '').trim();
+    closePinPopover();
+    const res = await apiFetch(`${API_URL}/calendar/pins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, pinned_date: dateStr, content_type, note })
+    });
+    if (res && res.success) {
+        showToast('Pin added', 'success');
+        loadClientCalendar();
+    } else {
+        showToast(res?.error || 'Failed to add pin', 'error');
+    }
+}
+
+async function deleteCalPin(pinId) {
+    const res = await apiFetch(`${API_URL}/calendar/pins/${pinId}`, { method: 'DELETE' });
+    if (res && res.success) {
+        showToast('Pin removed', 'success');
+        loadClientCalendar();
+    } else {
+        showToast(res?.error || 'Failed to remove pin', 'error');
+    }
 }
 
 function changeClientMonth(delta) {
@@ -345,7 +458,7 @@ function showClientDayPosts(dateStr) {
 // ========== DAY CELL CLICK ==========
 
 function onDayCellClick(event, dateStr) {
-    if (event.target.closest('.cal-mini-card') || event.target.closest('.cal-add-btn')) return;
+    if (event.target.closest('.cal-mini-card') || event.target.closest('.cal-add-btn') || event.target.closest('.cal-pin-btn') || event.target.closest('.cal-pin-badge')) return;
     if (!canDo('createPost')) return;
     openCreatePostModal(dateStr);
 }

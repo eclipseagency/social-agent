@@ -232,6 +232,11 @@ def run_migrations():
         _migration_24_post_insights(db)
         set_schema_version(db, 24)
 
+    if version < 25:
+        print("Running migration 25: Create calendar_pins table...")
+        _migration_25_calendar_pins(db)
+        set_schema_version(db, 25)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -624,6 +629,23 @@ def _migration_24_post_insights(db):
     # Also add external_post_id to post_logs if not there
     if not column_exists(db, 'post_logs', 'external_post_id'):
         db.execute("ALTER TABLE post_logs ADD COLUMN external_post_id TEXT DEFAULT ''")
+    db.commit()
+
+
+def _migration_25_calendar_pins(db):
+    """Create calendar_pins table for admin visual reminders on client calendars."""
+    if not table_exists(db, 'calendar_pins'):
+        db.execute("""
+            CREATE TABLE calendar_pins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_id INTEGER NOT NULL REFERENCES clients(id),
+                pinned_date TEXT NOT NULL,
+                content_type TEXT NOT NULL,
+                note TEXT DEFAULT '',
+                created_by_id INTEGER NOT NULL REFERENCES users(id),
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
     db.commit()
 
 
