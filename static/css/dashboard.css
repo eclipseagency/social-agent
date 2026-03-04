@@ -294,6 +294,8 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
 .design-item-wrap:hover img { transform: scale(1.08); }
 .design-download-btn { position: absolute; bottom: 4px; right: 4px; background: rgba(99,102,241,0.9); color: white; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; text-decoration: none; opacity: 0; transition: opacity 0.15s; }
 .design-item-wrap:hover .design-download-btn { opacity: 1; }
+.design-remove-btn { position: absolute; top: 4px; left: 4px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; z-index: 2; opacity: 0.85; transition: opacity 0.15s, transform 0.15s; }
+.design-remove-btn:hover { opacity: 1; transform: scale(1.15); }
 
 /* Upload thumbnail gallery (platform images + brief references) */
 .upload-thumb-wrap { position: relative; width: 80px; height: 80px; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; display: inline-block; transition: transform 0.15s; }

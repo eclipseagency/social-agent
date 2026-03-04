@@ -425,7 +425,7 @@ async function openPostDetail(postId) {
     }
 
     // Can this user edit designs? (designer/motion_designer on in_design/approved, or admin)
-    const canEditDesigns = (canDo('uploadDesign') && ['in_design', 'approved'].includes(wf)) || (currentUser?.role === 'admin');
+    const canEditDesigns = (canDo('uploadDesign') && ['in_design', 'approved', 'pending_review'].includes(wf)) || (currentUser?.role === 'admin');
 
     if (designUrls.length) {
         // Designer has uploaded designs
@@ -435,7 +435,7 @@ async function openPostDetail(postId) {
             return `<div class="design-item-wrap">
                 <img src="${url}" alt="Design" onclick="window.open('${url}','_blank')">
                 <a href="${url}" download="design-${i + 1}" class="design-download-btn" title="Download"><i class="fa-solid fa-download"></i></a>
-                ${canEditDesigns ? `<button onclick="event.stopPropagation(); removeDesignSlide(${post.id}, ${i})" class="absolute top-1 left-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 hover:opacity-100 transition" style="position:absolute;top:4px;left:4px;opacity:0;z-index:2" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0" title="Remove"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                ${canEditDesigns ? `<button onclick="event.stopPropagation(); removeDesignSlide(${post.id}, ${i})" class="design-remove-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>` : ''}
             </div>`;
         }).join('');
         designsSection.style.display = '';
