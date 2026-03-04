@@ -230,7 +230,7 @@ async function removeDesignSlide(postId, index) {
     if (!confirm('Remove this design?')) return;
     const res = await apiFetch(`${API_URL}/posts/${postId}/remove-design-slide`, {
         method: 'POST',
-        body: JSON.stringify({ index }),
+        body: JSON.stringify({ slide_index: index }),
     });
     if (res && res.success) {
         showToast('Design removed', 'success');
