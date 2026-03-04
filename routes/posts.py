@@ -1264,6 +1264,69 @@ def activity_timeline():
     return jsonify(rows)
 
 
+# ============ DESIGNER REMINDERS ============
+
+@posts_bp.route('/api/reminders', methods=['GET'])
+@require_login
+def designer_reminders():
+    """Return pending design upload reminders for designers."""
+    user_id = request.args.get('user_id', type=int)
+    role = request.args.get('role', '')
+
+    if role not in ('designer', 'motion_designer') or not user_id:
+        return jsonify([])
+
+    db = get_db()
+    today = datetime.now().strftime('%Y-%m-%d')
+    tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+
+    # Find in_design posts assigned to this user with no design uploaded
+    if role == 'designer':
+        assign_col = 'sp.assigned_designer_id'
+    else:
+        assign_col = 'sp.assigned_motion_id'
+
+    rows = dicts_from_rows(db.execute(f"""
+        SELECT sp.id, sp.topic, sp.post_type, sp.scheduled_at, sp.platforms,
+               c.name as client_name
+        FROM scheduled_posts sp
+        LEFT JOIN clients c ON sp.client_id = c.id
+        WHERE sp.workflow_status = 'in_design'
+          AND {assign_col} = ?
+          AND (sp.design_output_urls IS NULL OR sp.design_output_urls = '')
+        ORDER BY sp.scheduled_at ASC
+    """, (user_id,)).fetchall())
+    db.close()
+
+    reminders = []
+    for row in rows:
+        post_label = row.get('topic') or row.get('post_type') or 'Post'
+        if len(post_label) > 40:
+            post_label = post_label[:37] + '...'
+        client = row.get('client_name') or 'Unknown'
+        sa = (row.get('scheduled_at') or '')[:10]
+
+        if sa and sa <= today:
+            rtype = 'urgent'
+            msg = f'"{post_label}" for {client} is due today — design needed!'
+        elif sa and sa == tomorrow:
+            rtype = 'warning'
+            msg = f'"{post_label}" for {client} is due tomorrow — design needed'
+        else:
+            rtype = 'info'
+            msg = f'"{post_label}" for {client} needs your design'
+
+        reminders.append({
+            'id': f'rem-{row["id"]}',
+            'post_id': row['id'],
+            'type': rtype,
+            'message': msg,
+            'client_name': client,
+        })
+
+    return jsonify(reminders)
+
+
 @posts_bp.route('/api/force-publish-all', methods=['POST'])
 def force_publish():
     try:

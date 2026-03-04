@@ -238,6 +238,9 @@ function checkAuth() {
             // Start notification polling
             loadNotificationCount();
             setInterval(loadNotificationCount, 30000);
+            // Start designer reminder polling
+            loadReminders();
+            setInterval(loadReminders, 300000);
             // Load mention users for @mention autocomplete
             loadMentionUsers();
             // Call page-specific init
@@ -814,6 +817,99 @@ document.addEventListener('click', function(e) {
         }
     });
 });
+
+// === Designer Reminders ===
+let _reminderExpanded = true;
+
+async function loadReminders() {
+    if (!currentUser || (currentUser.role !== 'designer' && currentUser.role !== 'motion_designer')) return;
+    try {
+        const data = await fetch(API_URL + '/reminders?user_id=' + currentUser.id + '&role=' + currentUser.role).then(r => r.json());
+        if (!data || !Array.isArray(data)) return;
+
+        const dismissed = JSON.parse(sessionStorage.getItem('dismissedReminders') || '[]');
+        const visible = data.filter(r => !dismissed.includes(r.id));
+
+        const ticker = document.getElementById('reminder-ticker');
+        const list = document.getElementById('reminder-list');
+        const label = document.getElementById('reminder-count-label');
+        if (!ticker || !list) return;
+
+        if (visible.length === 0) {
+            ticker.classList.add('hidden');
+            return;
+        }
+
+        const urgentCount = visible.filter(r => r.type === 'urgent').length;
+        const countText = visible.length === 1 ? '1 design pending' : visible.length + ' designs pending';
+        label.textContent = urgentCount > 0 ? countText + ' (' + urgentCount + ' urgent)' : countText;
+
+        // Set ticker urgency class
+        ticker.classList.remove('reminder-has-urgent', 'reminder-has-warning');
+        if (urgentCount > 0) ticker.classList.add('reminder-has-urgent');
+        else if (visible.some(r => r.type === 'warning')) ticker.classList.add('reminder-has-warning');
+
+        list.innerHTML = visible.map(r => {
+            const typeClass = 'reminder-item-' + r.type;
+            const icon = r.type === 'urgent' ? 'fa-circle-exclamation' : r.type === 'warning' ? 'fa-clock' : 'fa-info-circle';
+            return `<div class="reminder-item ${typeClass}" data-id="${r.id}">
+                <a href="/clients" class="reminder-link" title="View post">
+                    <i class="fa-solid ${icon} reminder-icon"></i>
+                    <span class="reminder-msg">${esc(r.message)}</span>
+                </a>
+                <button class="reminder-x" onclick="event.stopPropagation(); dismissReminder('${r.id}')" title="Dismiss">&times;</button>
+            </div>`;
+        }).join('');
+
+        ticker.classList.remove('hidden');
+        list.style.display = _reminderExpanded ? 'block' : 'none';
+        document.getElementById('reminder-chevron')?.classList.toggle('reminder-chevron-collapsed', !_reminderExpanded);
+    } catch (e) { /* silent */ }
+}
+
+function dismissReminder(id) {
+    const dismissed = JSON.parse(sessionStorage.getItem('dismissedReminders') || '[]');
+    if (!dismissed.includes(id)) dismissed.push(id);
+    sessionStorage.setItem('dismissedReminders', JSON.stringify(dismissed));
+    const el = document.querySelector(`.reminder-item[data-id="${id}"]`);
+    if (el) {
+        el.classList.add('reminder-dismiss-anim');
+        setTimeout(() => { el.remove(); updateReminderCount(); }, 300);
+    }
+}
+
+function dismissAllReminders() {
+    const items = document.querySelectorAll('.reminder-item');
+    const dismissed = JSON.parse(sessionStorage.getItem('dismissedReminders') || '[]');
+    items.forEach(el => {
+        const id = el.dataset.id;
+        if (id && !dismissed.includes(id)) dismissed.push(id);
+        el.classList.add('reminder-dismiss-anim');
+    });
+    sessionStorage.setItem('dismissedReminders', JSON.stringify(dismissed));
+    setTimeout(() => {
+        document.getElementById('reminder-ticker')?.classList.add('hidden');
+    }, 300);
+}
+
+function updateReminderCount() {
+    const remaining = document.querySelectorAll('.reminder-item:not(.reminder-dismiss-anim)');
+    const label = document.getElementById('reminder-count-label');
+    const ticker = document.getElementById('reminder-ticker');
+    if (remaining.length === 0) {
+        ticker?.classList.add('hidden');
+    } else if (label) {
+        label.textContent = remaining.length === 1 ? '1 design pending' : remaining.length + ' designs pending';
+    }
+}
+
+function toggleReminderExpand() {
+    _reminderExpanded = !_reminderExpanded;
+    const list = document.getElementById('reminder-list');
+    const chevron = document.getElementById('reminder-chevron');
+    if (list) list.style.display = _reminderExpanded ? 'block' : 'none';
+    chevron?.classList.toggle('reminder-chevron-collapsed', !_reminderExpanded);
+}
 
 // === Init ===
 document.addEventListener('DOMContentLoaded', function() {
