@@ -427,27 +427,25 @@ async function openPostDetail(postId) {
         saveBriefSection.classList.toggle('hidden', !(isEditable && canDo('createPost')));
     }
 
-    // Workflow action buttons — filtered by role permissions
+    // Workflow action buttons — visible to all users
     const actions = [];
-    if (wf === 'draft' && canDo('createPost')) {
+    if (wf === 'draft') {
         actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
     }
-    if (wf === 'draft' && canDo('editCaption') && !canDo('createPost')) {
-        // Copywriter: can send to design once caption and brief are ready
-        actions.push(`<button onclick="transitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Design</button>`);
-    }
-    if (wf === 'in_design' && canDo('uploadDesign')) {
+    if (wf === 'in_design') {
         actions.push(`<button onclick="document.getElementById('detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
+        actions.push(`<button onclick="transitionPost(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>`);
     }
-    if (wf === 'design_review' && canDo('approve')) {
+    if (wf === 'design_review') {
         actions.push(`<button onclick="transitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
         actions.push(`<button onclick="returnToDesign(${post.id})" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Design</button>`);
-        if (post.assigned_writer_id) {
-            actions.push(`<button onclick="returnToCaption(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>`);
-        }
+        actions.push(`<button onclick="returnToCaption(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Draft</button>`);
     }
-    if (wf === 'approved' && canDo('schedule')) {
+    if (wf === 'approved') {
         actions.push(`<button onclick="schedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule</button>`);
+    }
+    if (!['posted'].includes(wf)) {
+        actions.push(`<button onclick="deleteCalendarPost(${post.id})" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm hover:bg-red-200 border border-red-200"><i class="fa-solid fa-trash mr-1"></i> Delete</button>`);
     }
     document.getElementById('detail-actions').innerHTML = actions.join('');
 
@@ -525,6 +523,13 @@ async function openPostDetail(postId) {
 function closePostDetail() {
     document.getElementById('post-detail-modal').classList.add('hidden');
     currentDetailPost = null;
+}
+
+async function deleteCalendarPost(postId) {
+    if (!confirm('Delete this post?')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+    if (res && res.success) { closePostDetail(); loadCalendar(); showToast('Post deleted', 'success'); }
+    else showToast('Failed to delete', 'error');
 }
 
 // ========== SAVE BRIEF FROM DETAIL ==========

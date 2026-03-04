@@ -363,22 +363,25 @@ async function openClientPostDetail(postId) {
     if (assignments.length) { document.getElementById('client-detail-assignments').innerHTML = assignments.join(''); assignSection.style.display = ''; }
     else assignSection.style.display = 'none';
 
-    // Actions — role-based
+    // Actions — visible to all users
     const actions = [];
-    if (wf === 'draft' && (canDo('createPost') || canDo('editCaption'))) {
+    if (wf === 'draft') {
         actions.push(`<button onclick="clientTransitionPost(${post.id}, 'in_design')" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-paper-plane mr-1"></i> Send to Designer</button>`);
     }
-    if (wf === 'in_design' && canDo('uploadDesign')) {
+    if (wf === 'in_design') {
         actions.push(`<button onclick="document.getElementById('client-detail-design-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`);
         actions.push(`<button onclick="clientTransitionPost(${post.id}, 'design_review')" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700"><i class="fa-solid fa-eye mr-1"></i> Submit for Review</button>`);
     }
-    if (wf === 'design_review' && canDo('approve')) {
+    if (wf === 'design_review') {
         actions.push(`<button onclick="clientTransitionPost(${post.id}, 'approved')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"><i class="fa-solid fa-check mr-1"></i> Approve</button>`);
         actions.push(`<button onclick="clientReturnToDesign(${post.id})" class="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"><i class="fa-solid fa-rotate-left mr-1"></i> Return to Designer</button>`);
-        actions.push(`<button onclick="clientReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Copywriter</button>`);
+        actions.push(`<button onclick="clientReturnToCopywriter(${post.id})" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600"><i class="fa-solid fa-pen-nib mr-1"></i> Return to Draft</button>`);
     }
-    if (wf === 'approved' && canDo('schedule')) {
+    if (wf === 'approved') {
         actions.push(`<button onclick="clientSchedulePost(${post.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"><i class="fa-solid fa-calendar-check mr-1"></i> Schedule Post</button>`);
+    }
+    if (!['posted'].includes(wf)) {
+        actions.push(`<button onclick="deleteClientPost(${post.id})" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm hover:bg-red-200 border border-red-200"><i class="fa-solid fa-trash mr-1"></i> Delete</button>`);
     }
     document.getElementById('client-detail-actions').innerHTML = actions.join('');
 
@@ -388,6 +391,13 @@ async function openClientPostDetail(postId) {
 function closeClientPostDetail() {
     document.getElementById('client-post-detail-modal').classList.add('hidden');
     clientDetailPost = null;
+}
+
+async function deleteClientPost(postId) {
+    if (!confirm('Delete this post?')) return;
+    const res = await apiFetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+    if (res && res.success) { closeClientPostDetail(); loadClientData(); showToast('Post deleted', 'success'); }
+    else showToast('Failed to delete', 'error');
 }
 
 // ========== CLIENT CAPTION SAVE ==========
