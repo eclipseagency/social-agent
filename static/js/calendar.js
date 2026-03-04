@@ -203,26 +203,51 @@ async function handleFileDrop(files, dateStr) {
     await uploadDesignFiles(targetPost.id, files);
 }
 
+let _designUploading = false;
 async function uploadDesignFiles(postId, files) {
+    if (_designUploading) return;
+    _designUploading = true;
+
+    // Show loading state on upload zone
+    const uploadZone = document.getElementById('detail-upload-zone');
+    if (uploadZone) {
+        uploadZone.dataset.prevHtml = uploadZone.innerHTML;
+        uploadZone.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-indigo-500 text-xl mb-2"></i><p class="text-sm text-gray-500">Uploading...</p></div>';
+        uploadZone.style.pointerEvents = 'none';
+    }
+
     const formData = new FormData();
     for (const file of files) {
         formData.append('images', file);
     }
     if (currentUser) formData.append('user_id', currentUser.id);
 
-    showToast('Uploading designs...', 'info');
-    const res = await apiFetch(`${API_URL}/posts/${postId}/upload-design`, {
-        method: 'POST',
-        body: formData
-    });
+    try {
+        const res = await apiFetch(`${API_URL}/posts/${postId}/upload-design`, {
+            method: 'POST',
+            body: formData
+        });
 
-    if (res && res.success) {
-        showToast(`${res.urls?.length || 0} design(s) uploaded`, 'success');
-        loadCalendar();
-        // Refresh detail modal if open
-        if (currentDetailPost && currentDetailPost.id === postId) {
-            openPostDetail(postId);
+        if (res && res.success) {
+            showToast(`${res.urls?.length || 0} design(s) uploaded`, 'success');
+            loadCalendar();
+            if (currentDetailPost && currentDetailPost.id === postId) {
+                openPostDetail(postId);
+            }
+        } else {
+            // Restore upload zone on failure
+            if (uploadZone && uploadZone.dataset.prevHtml) {
+                uploadZone.innerHTML = uploadZone.dataset.prevHtml;
+                uploadZone.style.pointerEvents = '';
+            }
         }
+    } catch (e) {
+        if (uploadZone && uploadZone.dataset.prevHtml) {
+            uploadZone.innerHTML = uploadZone.dataset.prevHtml;
+            uploadZone.style.pointerEvents = '';
+        }
+    } finally {
+        _designUploading = false;
     }
 }
 
@@ -562,7 +587,7 @@ async function openPostDetail(postId) {
     // Show/hide design upload zone — when post is in_design or approved AND user can upload designs
     const uploadZone = document.getElementById('detail-upload-zone');
     if (uploadZone) {
-        uploadZone.style.display = (['in_design', 'approved'].includes(wf) && canDo('uploadDesign')) ? '' : 'none';
+        uploadZone.style.display = (['in_design', 'approved', 'pending_review'].includes(wf) && canDo('uploadDesign')) ? '' : 'none';
     }
 
     // ===== Role-specific UX tailoring =====
