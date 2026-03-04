@@ -177,7 +177,7 @@ function renderOverviewCard(item) {
     const typeIcon = isPost ? 'fa-image' : 'fa-clipboard-list';
     const typeColor = isPost ? 'text-emerald-500' : 'text-indigo-500';
     const cardClass = isPost ? 'overview-card post-card' : 'overview-card';
-    const href = isPost ? `/calendar?open_post=${item.id}` : '/tasks';
+    const href = isPost ? `/calendar?open_post=${item.id}` : `/tasks?open_task=${item.id}`;
     const priorityBadge = item.priority && item.priority !== 'normal'
         ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold badge-${item.priority}">${item.priority}</span>`
         : '';

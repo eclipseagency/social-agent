@@ -5,6 +5,12 @@ let taskSortables = [];
 function pageInit() {
     loadTasks();
     loadTaskFilterDropdowns();
+    // Auto-open task from URL param (e.g. ?open_task=123)
+    const params = new URLSearchParams(window.location.search);
+    const openTaskId = params.get('open_task');
+    if (openTaskId) {
+        setTimeout(() => viewTaskDetail(parseInt(openTaskId)), 400);
+    }
 }
 
 async function loadTaskFilterDropdowns() {
