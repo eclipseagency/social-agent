@@ -17,7 +17,7 @@ VALID_TRANSITIONS = {
     'draft': ['pending_review', 'in_design'],
     'pending_review': ['in_design', 'draft'],
     'in_design': ['approved', 'pending_review', 'draft'],
-    'approved': ['scheduled', 'posted', 'in_design'],
+    'approved': ['scheduled', 'posted', 'in_design', 'pending_review'],
     'scheduled': ['posted', 'approved'],
 }
 
