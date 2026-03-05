@@ -1161,12 +1161,33 @@ async function loadVerificationPings() {
     }
 }
 
+function playPingAlarm() {
+    try {
+        if (!_notifSoundCtx) _notifSoundCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = _notifSoundCtx;
+        // 3-tone urgent alarm: beep-beep-beep
+        [0, 0.25, 0.5].forEach(delay => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(1000, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(0.25, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.15);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.15);
+        });
+    } catch (e) { /* audio may be blocked */ }
+}
+
 function showPingModal(pingId) {
     const overlay = document.getElementById('ping-overlay');
     if (!overlay) return;
     _activePingId = pingId;
     _pingCountdownSeconds = 300;
     overlay.classList.remove('hidden');
+    playPingAlarm();
     updatePingCountdown();
     if (_pingCountdownInterval) clearInterval(_pingCountdownInterval);
     _pingCountdownInterval = setInterval(() => {
