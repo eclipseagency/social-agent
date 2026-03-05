@@ -1,4 +1,12 @@
 // Client detail page JS — Simplified calendar-first workflow
+function isVideoUrl(url) {
+    return /\.(mp4|mov|avi|webm|mkv|m4v)(\?|$)/i.test(url || '');
+}
+function mediaTag(url, cls, extra) {
+    if (isVideoUrl(url)) return `<video src="${url}" class="${cls}" ${extra || ''} muted playsinline preload="metadata" onclick="window.open('${url}','_blank')"></video>`;
+    return `<img src="${url}" class="${cls}" ${extra || ''} onclick="window.open('${url}','_blank')">`;
+}
+
 let clientData = null;
 let clientId = null;
 let clientMonth = new Date();
@@ -977,7 +985,9 @@ async function openPostSlideView(postId) {
             body += `<div class="carousel-preview" id="psd-carousel" style="border-radius:12px;margin-bottom:8px">`;
             designUrls.forEach((u, i) => {
                 const url = u.trim();
-                body += `<img src="${url}" alt="Slide ${i+1}" data-slide="${i}" style="display:${i===0?'block':'none'};cursor:pointer" onclick="window.open('${url}','_blank')">`;
+                body += isVideoUrl(url)
+                    ? `<video src="${url}" data-slide="${i}" style="display:${i===0?'block':'none'};cursor:pointer" muted playsinline preload="metadata" onclick="window.open('${url}','_blank')"></video>`
+                    : `<img src="${url}" alt="Slide ${i+1}" data-slide="${i}" style="display:${i===0?'block':'none'};cursor:pointer" onclick="window.open('${url}','_blank')">`;
             });
             body += `<div class="carousel-nav prev" onclick="event.stopPropagation();carouselNav(-1)"><i class="fa-solid fa-chevron-left"></i></div>`;
             body += `<div class="carousel-nav next" onclick="event.stopPropagation();carouselNav(1)"><i class="fa-solid fa-chevron-right"></i></div>`;
@@ -993,7 +1003,9 @@ async function openPostSlideView(postId) {
             designUrls.forEach((u, i) => {
                 const url = u.trim();
                 body += `<div class="relative" style="width:64px;height:64px">`;
-                body += `<img src="${url}" class="w-full h-full object-cover rounded-lg border cursor-pointer ${i===0?'ring-2 ring-indigo-500':''}" data-thumb="${i}" onclick="carouselGoTo(${i})">`;
+                body += isVideoUrl(url)
+                    ? `<video src="${url}" class="w-full h-full object-cover rounded-lg border cursor-pointer ${i===0?'ring-2 ring-indigo-500':''}" data-thumb="${i}" muted playsinline preload="metadata" onclick="carouselGoTo(${i})"></video>`
+                    : `<img src="${url}" class="w-full h-full object-cover rounded-lg border cursor-pointer ${i===0?'ring-2 ring-indigo-500':''}" data-thumb="${i}" onclick="carouselGoTo(${i})">`;
                 if (canDeleteSlide) {
                     body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">&times;</button>`;
                 }
@@ -1007,7 +1019,9 @@ async function openPostSlideView(postId) {
             designUrls.forEach((u, i) => {
                 const url = u.trim();
                 body += `<div style="position:relative;display:inline-block">`;
-                body += `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
+                body += isVideoUrl(url)
+                    ? `<video class="pres-design-img" src="${url}" muted playsinline preload="metadata" onclick="window.open('${url}','_blank')"></video>`
+                    : `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
                 if (canDeleteDesign) {
                     body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:4px;right:4px" title="Remove">&times;</button>`;
                 }

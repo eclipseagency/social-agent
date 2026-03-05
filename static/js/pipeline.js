@@ -109,7 +109,7 @@ async function viewPostDetail(postId) {
     let designImagesHtml = '';
     if (post.design_output_urls) {
         const urls = post.design_output_urls.split(',').filter(u => u.trim());
-        designImagesHtml = `<div class="mb-4"><h4 class="font-semibold text-sm mb-2">Design Output</h4><div class="flex gap-2 flex-wrap">${urls.map(u => `<img src="${u.trim()}" class="h-24 w-24 object-cover rounded-lg border">`).join('')}</div></div>`;
+        designImagesHtml = `<div class="mb-4"><h4 class="font-semibold text-sm mb-2">Design Output</h4><div class="flex gap-2 flex-wrap">${urls.map(u => { const url = u.trim(); const isVid = /\.(mp4|mov|avi|webm|mkv|m4v)(\?|$)/i.test(url); return isVid ? `<video src="${url}" class="h-24 w-24 object-cover rounded-lg border" muted playsinline preload="metadata"></video>` : `<img src="${url}" class="h-24 w-24 object-cover rounded-lg border">`; }).join('')}</div></div>`;
     }
 
     let refImagesHtml = '';

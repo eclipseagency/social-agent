@@ -457,8 +457,9 @@ async function openPostDetail(postId) {
         designsTitle.innerHTML = '<i class="fa-solid fa-palette mr-1"></i> Design Output';
         document.getElementById('detail-designs').innerHTML = designUrls.map((u, i) => {
             const url = u.trim();
+            const isVideo = /\.(mp4|mov|avi|webm|mkv|m4v)(\?|$)/i.test(url);
             return `<div class="design-item-wrap">
-                <img src="${url}" alt="Design" onclick="window.open('${url}','_blank')">
+                ${isVideo ? `<video src="${url}" muted playsinline preload="metadata" onclick="window.open('${url}','_blank')"></video>` : `<img src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`}
                 <a href="${url}" download="design-${i + 1}" class="design-download-btn" title="Download"><i class="fa-solid fa-download"></i></a>
                 ${canEditDesigns ? `<button onclick="event.stopPropagation(); removeDesignSlide(${post.id}, ${i})" class="design-remove-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>` : ''}
             </div>`;
