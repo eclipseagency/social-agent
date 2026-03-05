@@ -940,14 +940,11 @@ function updateShiftTracker() {
     const totalMs = SHIFT_HOURS * 3600000;
     const remainMs = Math.max(0, totalMs - elapsedMs);
     const pct = Math.min(100, (elapsedMs / totalMs) * 100);
-    const overtimeMs = Math.max(0, elapsedMs - totalMs);
 
     const elH = Math.floor(elapsedMs / 3600000);
     const elM = Math.floor((elapsedMs % 3600000) / 60000);
     const remH = Math.floor(remainMs / 3600000);
     const remM = Math.floor((remainMs % 3600000) / 60000);
-    const otH = Math.floor(overtimeMs / 3600000);
-    const otM = Math.floor((overtimeMs % 3600000) / 60000);
 
     const fill = document.getElementById('shift-progress-fill');
     const elapsedEl = document.getElementById('shift-elapsed');
@@ -958,17 +955,11 @@ function updateShiftTracker() {
 
     if (remainMs <= 0) {
         fill.className = 'shift-progress-fill done';
-        if (overtimeMs > 60000) {
-            remainEl.innerHTML = `<i class="fa-solid fa-fire"></i> +${otH}h ${otM}m overtime`;
-            remainEl.className = 'shift-overtime-label';
-        } else {
-            remainEl.textContent = 'Shift complete!';
-            remainEl.className = 'shift-done-label';
-        }
-        // One-time notification when shift ends
+        remainEl.textContent = 'Shift complete!';
+        remainEl.className = 'shift-done-label';
         if (!_shiftEndNotified) {
             _shiftEndNotified = true;
-            showToast('Your 6-hour shift is complete! Any extra time counts as overtime.', 'success');
+            showToast('Your 6-hour shift is complete!', 'success');
         }
     } else {
         fill.className = 'shift-progress-fill';
@@ -987,42 +978,38 @@ async function loadCheckInStatus() {
     if (!overlay) return;
     try {
         const data = await fetch(API_URL + '/attendance/my-status').then(r => r.json());
-        const w = data.window || { start: 9, ontime_minutes: 20, end: 10 };
+        const w = data.window || { start: 9, end: 10 };
         const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
         const h = cairoNow.getHours();
 
-        // Already checked in or outside window → hide overlay, let them through
+        // Already checked in → hide overlay permanently, start shift tracker
         if (data.checked_in) {
             _checkinTimeStr = data.check_in_time;
             updateShiftTracker();
+            overlay.classList.add('hidden');
+            if (_checkinClockInterval) { clearInterval(_checkinClockInterval); _checkinClockInterval = null; }
+            return;
         }
-        if (data.checked_in || h < w.start || h >= w.end) {
+
+        // Outside window and not checked in → hide overlay, let them through
+        if (h < w.start || h >= w.end) {
             overlay.classList.add('hidden');
             if (_checkinClockInterval) { clearInterval(_checkinClockInterval); _checkinClockInterval = null; }
             return;
         }
 
         // Within window and NOT checked in → block the UI
-        const m = cairoNow.getMinutes();
-        const isOnTime = (h === w.start && m <= w.ontime_minutes);
         const icon = document.getElementById('checkin-icon');
         const title = document.getElementById('checkin-title');
         const subtitle = document.getElementById('checkin-subtitle');
         const btn = document.getElementById('checkin-action-btn');
 
-        if (isOnTime) {
-            icon.innerHTML = '<i class="fa-solid fa-sun"></i>';
-            icon.className = 'checkin-icon on-time';
-            title.textContent = 'Good Morning!';
-            subtitle.textContent = "You're on time — check in to start your day";
-            btn.className = 'checkin-action-btn on-time';
-        } else {
-            icon.innerHTML = '<i class="fa-solid fa-clock"></i>';
-            icon.className = 'checkin-icon late';
-            title.textContent = "You're Late";
-            subtitle.textContent = `Check in now — window closes at ${w.end}:00`;
-            btn.className = 'checkin-action-btn late';
-        }
+        icon.innerHTML = '<i class="fa-solid fa-sun"></i>';
+        icon.className = 'checkin-icon on-time';
+        title.textContent = 'Good Morning!';
+        subtitle.textContent = "Please check in to start your day";
+        btn.className = 'checkin-action-btn on-time';
+
         btn.classList.remove('hidden');
         document.getElementById('checkin-status-msg').classList.add('hidden');
         overlay.classList.remove('hidden');

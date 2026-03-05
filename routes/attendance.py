@@ -9,8 +9,7 @@ CAIRO_TZ = timezone(timedelta(hours=2))
 
 # Check-in window configuration (Cairo time, 24h format)
 CHECKIN_START = 9    # Window opens at this hour
-CHECKIN_ONTIME = 20  # On-time if minute <= this (within start hour)
-CHECKIN_END = 10     # Window closes at this hour
+CHECKIN_END = 10     # Window closes at this hour (entire 9:00-10:00 is on-time)
 
 
 def _cairo_now():
@@ -31,11 +30,8 @@ def check_in():
     if hour >= CHECKIN_END:
         return jsonify({'success': False, 'error': 'Check-in window closed for today'}), 400
 
-    # Determine status
-    if hour == CHECKIN_START and minute <= CHECKIN_ONTIME:
-        status = 'on_time'
-    else:
-        status = 'late'
+    # Entire window is on-time (9:00-10:00)
+    status = 'on_time'
 
     user_id = session['user_id']
     db = get_db()
@@ -75,7 +71,6 @@ def my_status():
         'checked_in': False,
         'window': {
             'start': CHECKIN_START,
-            'ontime_minutes': CHECKIN_ONTIME,
             'end': CHECKIN_END
         }
     }

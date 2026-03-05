@@ -27,10 +27,6 @@
         <div class="att-stat-num" id="count-absent">0</div>
         <div class="att-stat-label">Absent</div>
     </div>
-    <div class="att-stat-card overtime">
-        <div class="att-stat-num" id="count-overtime">0</div>
-        <div class="att-stat-label">With Overtime</div>
-    </div>
 </div>
 
 <!-- Daily view -->
@@ -43,9 +39,6 @@
                     <th>Role</th>
                     <th>Status</th>
                     <th>Check In</th>
-                    <th>Shift End</th>
-                    <th>Hours Worked</th>
-                    <th>Overtime</th>
                 </tr>
             </thead>
             <tbody id="daily-tbody"></tbody>
@@ -93,7 +86,6 @@
 
 {% block scripts %}
 <script>
-const SHIFT_DURATION = 6;
 let currentView = 'daily';
 let _dailyRefreshInterval = null;
 let _lastCachedData = [];
@@ -127,38 +119,9 @@ function getCairoToday() {
     return getCairoNow().toLocaleDateString('en-CA');
 }
 
-function calcShiftInfo(checkInTime, reportDate) {
-    if (!checkInTime) return { shiftEnd: '—', hoursWorked: '—', overtime: '—', overtimeMs: 0 };
-
-    const [h, m] = checkInTime.split(':').map(Number);
-    const shiftEndH = h + SHIFT_DURATION;
-    const shiftEnd = `${String(shiftEndH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-
-    const isToday = reportDate === getCairoToday();
-    let workedMs;
-
-    if (isToday) {
-        const now = getCairoNow();
-        const checkin = new Date(now);
-        checkin.setHours(h, m, 0, 0);
-        workedMs = Math.max(0, now - checkin);
-    } else {
-        workedMs = SHIFT_DURATION * 3600000;
-    }
-
-    const workedH = Math.floor(workedMs / 3600000);
-    const workedM = Math.floor((workedMs % 3600000) / 60000);
-    const hoursWorked = `${workedH}h ${workedM}m`;
-
-    const overtimeMs = Math.max(0, workedMs - SHIFT_DURATION * 3600000);
-    let overtime = '—';
-    if (overtimeMs > 60000) {
-        const otH = Math.floor(overtimeMs / 3600000);
-        const otM = Math.floor((overtimeMs % 3600000) / 60000);
-        overtime = `+${otH}h ${otM}m`;
-    }
-
-    return { shiftEnd, hoursWorked, overtime, overtimeMs };
+function calcShiftInfo(checkInTime) {
+    if (!checkInTime) return {};
+    return {};
 }
 
 // ── Daily ──
@@ -176,45 +139,35 @@ async function loadDailyReport(date) {
         _lastCachedData = data;
         renderDailyData(data, date);
     } catch (e) {
-        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="7" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-red-400 py-8">Failed to load</td></tr>';
     }
 }
 
 function renderDailyData(data, date) {
-    let onTime = 0, late = 0, absent = 0, withOvertime = 0;
+    let onTime = 0, late = 0, absent = 0;
 
     const rows = data.map(u => {
         if (u.status === 'on_time') onTime++;
         else if (u.status === 'late') late++;
         else absent++;
 
-        const shift = calcShiftInfo(u.check_in_time, date);
-        if (shift.overtimeMs > 60000) withOvertime++;
-
         const badge = statusBadge(u.status);
-        const overtimeHtml = shift.overtime !== '—'
-            ? `<span class="att-overtime-val">${shift.overtime}</span>`
-            : '<span class="text-gray-300">—</span>';
 
         return `<tr>
             <td class="font-medium">${esc(u.username)}</td>
             <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
             <td>${badge}</td>
             <td class="text-gray-500">${u.check_in_time || '—'}</td>
-            <td class="text-gray-500">${shift.shiftEnd}</td>
-            <td class="font-medium">${shift.hoursWorked}</td>
-            <td>${overtimeHtml}</td>
         </tr>`;
     });
 
     document.getElementById('count-ontime').textContent = onTime;
     document.getElementById('count-late').textContent = late;
     document.getElementById('count-absent').textContent = absent;
-    document.getElementById('count-overtime').textContent = withOvertime;
 
     const tbody = document.getElementById('daily-tbody');
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">No data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-8">No data</td></tr>';
         return;
     }
     tbody.innerHTML = rows.join('');
@@ -250,11 +203,11 @@ async function loadWeeklyReport() {
                 if (s === 'on_time' || s === 'late') daysPresent++;
                 let label = '';
                 if (s === 'on_time' || s === 'late') {
-                    label = `<span class="text-[10px] text-gray-400">${SHIFT_DURATION}h</span>`;
+                    label = `<span class="text-[10px] text-gray-400">${6}h</span>`;
                 }
                 return `<td class="text-center"><span class="attendance-dot ${s}"></span><br>${label}</td>`;
             }).join('');
-            const totalHours = daysPresent * SHIFT_DURATION;
+            const totalHours = daysPresent * 6;
             return `<tr>
                 <td class="font-medium">${esc(u.username)}</td>
                 ${cells}
@@ -278,7 +231,6 @@ async function loadMonthlyReport(month) {
         document.getElementById('count-ontime').textContent = onTime;
         document.getElementById('count-late').textContent = late;
         document.getElementById('count-absent').textContent = absent;
-        document.getElementById('count-overtime').textContent = '—';
 
         const tbody = document.getElementById('monthly-tbody');
         if (data.length === 0) {
