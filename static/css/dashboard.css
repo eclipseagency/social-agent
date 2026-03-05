@@ -1115,6 +1115,15 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .cairo-clock-time { font-size: 22px; font-weight: 600; letter-spacing: 1px; color: #cbd5e1; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .cairo-clock-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.5px; color: #475569; margin-top: 2px; }
 
+/* Shift Tracker */
+.shift-tracker { margin-top: 12px; padding: 0 4px; }
+.shift-tracker.hidden { display: none; }
+.shift-progress-bar { height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; }
+.shift-progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); border-radius: 3px; transition: width 1s linear; min-width: 2px; }
+.shift-progress-fill.done { background: linear-gradient(90deg, #10b981, #34d399); }
+.shift-info { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10px; font-weight: 500; color: #64748b; font-variant-numeric: tabular-nums; }
+.shift-done-label { color: #34d399 !important; font-weight: 600; }
+
 /* === Designer Reminder Ticker === */
 .reminder-ticker { margin-bottom: 16px; border-radius: 10px; border: 1px solid #fbbf24; background: linear-gradient(135deg, #fffbeb, #fef3c7); overflow: hidden; box-shadow: 0 2px 8px rgba(251,191,36,0.15); }
 .reminder-ticker.reminder-has-urgent { border-color: #f87171; background: linear-gradient(135deg, #fef2f2, #fee2e2); box-shadow: 0 2px 8px rgba(248,113,113,0.2); }

@@ -122,6 +122,17 @@
                 <div class="cairo-clock-label">Cairo</div>
             </div>
 
+            <!-- Shift Tracker -->
+            <div id="shift-tracker" class="shift-tracker hidden">
+                <div class="shift-progress-bar">
+                    <div class="shift-progress-fill" id="shift-progress-fill"></div>
+                </div>
+                <div class="shift-info">
+                    <span id="shift-elapsed">0h 0m</span>
+                    <span id="shift-remaining">6h left</span>
+                </div>
+            </div>
+
             <!-- Bottom buttons -->
             <div class="mt-6 space-y-2 lg:absolute lg:bottom-6 lg:left-6 lg:right-6">
                 <button onclick="toggleDarkMode()" class="w-full bg-slate-800 text-slate-300 py-2 rounded-lg hover:bg-slate-700 text-sm transition"><i class="fa-solid fa-moon mr-2"></i>Dark Mode</button>

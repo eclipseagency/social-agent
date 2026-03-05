@@ -565,6 +565,8 @@ function updateTime() {
             hour12: true
         });
     }
+    // Shift progress
+    updateShiftTracker();
 }
 
 // === Topic Parsing (Carousel Support) ===
@@ -913,6 +915,51 @@ function toggleReminderExpand() {
     chevron?.classList.toggle('reminder-chevron-collapsed', !_reminderExpanded);
 }
 
+// === Shift Tracking ===
+const SHIFT_HOURS = 6;
+let _checkinTimeStr = null; // e.g. "09:05" Cairo time
+
+function updateShiftTracker() {
+    const tracker = document.getElementById('shift-tracker');
+    if (!tracker || !_checkinTimeStr) { if (tracker) tracker.classList.add('hidden'); return; }
+
+    const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+    const [ch, cm] = _checkinTimeStr.split(':').map(Number);
+    const checkinDate = new Date(cairoNow);
+    checkinDate.setHours(ch, cm, 0, 0);
+
+    const elapsedMs = cairoNow - checkinDate;
+    if (elapsedMs < 0) { tracker.classList.add('hidden'); return; }
+
+    const totalMs = SHIFT_HOURS * 3600000;
+    const remainMs = Math.max(0, totalMs - elapsedMs);
+    const pct = Math.min(100, (elapsedMs / totalMs) * 100);
+
+    const elH = Math.floor(elapsedMs / 3600000);
+    const elM = Math.floor((elapsedMs % 3600000) / 60000);
+    const remH = Math.floor(remainMs / 3600000);
+    const remM = Math.floor((remainMs % 3600000) / 60000);
+
+    const fill = document.getElementById('shift-progress-fill');
+    const elapsedEl = document.getElementById('shift-elapsed');
+    const remainEl = document.getElementById('shift-remaining');
+
+    fill.style.width = pct + '%';
+    elapsedEl.textContent = `${elH}h ${elM}m`;
+
+    if (remainMs <= 0) {
+        fill.className = 'shift-progress-fill done';
+        remainEl.textContent = 'Shift complete';
+        remainEl.className = 'shift-done-label';
+    } else {
+        fill.className = 'shift-progress-fill';
+        remainEl.textContent = `${remH}h ${remM}m left`;
+        remainEl.className = '';
+    }
+
+    tracker.classList.remove('hidden');
+}
+
 // === Check-in Overlay (global) ===
 let _checkinClockInterval = null;
 
@@ -926,6 +973,10 @@ async function loadCheckInStatus() {
         const h = cairoNow.getHours();
 
         // Already checked in or outside window → hide overlay, let them through
+        if (data.checked_in) {
+            _checkinTimeStr = data.check_in_time;
+            updateShiftTracker();
+        }
         if (data.checked_in || h < w.start || h >= w.end) {
             overlay.classList.add('hidden');
             if (_checkinClockInterval) { clearInterval(_checkinClockInterval); _checkinClockInterval = null; }
@@ -984,6 +1035,8 @@ async function doCheckIn() {
         const data = await res.json();
         if (data.success) {
             const label = data.status === 'on_time' ? 'On Time' : 'Late';
+            _checkinTimeStr = data.check_in_time;
+            updateShiftTracker();
             document.getElementById('checkin-icon').innerHTML = '<i class="fa-solid fa-circle-check"></i>';
             document.getElementById('checkin-icon').className = 'checkin-icon done';
             document.getElementById('checkin-title').textContent = 'Checked In!';
