@@ -131,9 +131,6 @@
 
         <!-- Main Content -->
         <main class="flex-1 p-4 lg:p-8 lg:ml-64 mt-14 lg:mt-0 pb-20 lg:pb-8">
-            <!-- Check-in Banner (global) -->
-            <div id="checkin-banner" class="hidden"></div>
-
             <!-- Designer Reminder Ticker -->
             <div id="reminder-ticker" class="reminder-ticker hidden">
                 <div class="reminder-header" onclick="toggleReminderExpand()">
@@ -180,8 +177,23 @@
     <!-- Toast Container -->
     <div id="toast-container" class="fixed bottom-20 lg:bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
+    <!-- Check-in Overlay (blocks UI until checked in during window) -->
+    <div id="checkin-overlay" class="checkin-overlay hidden">
+        <div class="checkin-card">
+            <div class="checkin-icon" id="checkin-icon"><i class="fa-solid fa-clock"></i></div>
+            <h2 class="checkin-title" id="checkin-title">Good Morning!</h2>
+            <p class="checkin-subtitle" id="checkin-subtitle">Please check in to start your day</p>
+            <div class="checkin-time" id="checkin-clock">--:--</div>
+            <div class="checkin-label">Cairo Time</div>
+            <button id="checkin-action-btn" onclick="doCheckIn()" class="checkin-action-btn">
+                <i class="fa-solid fa-right-to-bracket mr-2"></i>Check In
+            </button>
+            <p class="checkin-status-msg hidden" id="checkin-status-msg"></p>
+        </div>
+    </div>
+
     <!-- Scripts -->
-    <script src="/static/js/common.js?v=12"></script>
+    <script src="/static/js/common.js?v=13"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

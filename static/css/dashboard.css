@@ -1211,17 +1211,26 @@ body:not(.dark) .search-item-sub { color: #64748b; }
     .overview-col { min-width: 220px; flex-shrink: 0; }
 }
 
-/* ========== Check-in Banner ========== */
-.checkin-banner { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; }
-.checkin-banner i { font-size: 16px; flex-shrink: 0; }
-.checkin-banner span { flex: 1; }
-.checkin-banner.on-time { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-.checkin-banner.late { background: #fefce8; color: #854d0e; border: 1px solid #fde68a; }
-.checkin-banner.closed { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-.checkin-banner.done { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 12px; padding: 8px 14px; }
-.checkin-banner.pending { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
-.checkin-btn { background: #059669; color: white; border: none; padding: 6px 18px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-.checkin-btn:hover { background: #047857; }
+/* ========== Check-in Overlay ========== */
+.checkin-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; transition: opacity 0.4s; }
+.checkin-overlay.hidden { display: none; }
+.checkin-card { background: white; border-radius: 24px; padding: 48px 40px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 25px 60px rgba(0,0,0,0.3); animation: checkinSlideUp 0.4s ease-out; }
+@keyframes checkinSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+.checkin-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 32px; }
+.checkin-icon.on-time { background: #ecfdf5; color: #059669; }
+.checkin-icon.late { background: #fefce8; color: #d97706; }
+.checkin-icon.done { background: #dcfce7; color: #16a34a; }
+.checkin-title { font-size: 24px; font-weight: 700; color: #1e293b; margin: 0 0 8px; }
+.checkin-subtitle { font-size: 14px; color: #64748b; margin: 0 0 24px; }
+.checkin-time { font-size: 40px; font-weight: 700; color: #1e293b; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.checkin-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin: 4px 0 28px; }
+.checkin-action-btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 40px; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; color: white; cursor: pointer; transition: all 0.2s; width: 100%; }
+.checkin-action-btn.on-time { background: #059669; }
+.checkin-action-btn.on-time:hover { background: #047857; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,0.4); }
+.checkin-action-btn.late { background: #d97706; }
+.checkin-action-btn.late:hover { background: #b45309; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(217,119,6,0.4); }
+.checkin-action-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
+.checkin-status-msg { margin-top: 16px; font-size: 13px; color: #dc2626; font-weight: 500; }
 
 /* ========== Attendance Page ========== */
 .attendance-summary { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -1256,13 +1265,13 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .attendance-dot.weekend { background: #e2e8f0; }
 
 /* ========== Attendance Dark Mode ========== */
-.dark .checkin-banner.on-time { background: #064e3b; color: #a7f3d0; border-color: #065f46; }
-.dark .checkin-banner.late { background: #78350f; color: #fde68a; border-color: #92400e; }
-.dark .checkin-banner.closed { background: #7f1d1d; color: #fecaca; border-color: #991b1b; }
-.dark .checkin-banner.done { background: #14532d; color: #bbf7d0; border-color: #166534; }
-.dark .checkin-banner.pending { background: #1e293b; color: #94a3b8; border-color: #334155; }
-.dark .checkin-btn { background: #059669; }
-.dark .checkin-btn:hover { background: #047857; }
+.dark .checkin-card { background: #1e293b; }
+.dark .checkin-title { color: #f1f5f9; }
+.dark .checkin-subtitle { color: #94a3b8; }
+.dark .checkin-time { color: #f1f5f9; }
+.dark .checkin-icon.on-time { background: #064e3b; color: #34d399; }
+.dark .checkin-icon.late { background: #78350f; color: #fbbf24; }
+.dark .checkin-icon.done { background: #14532d; color: #4ade80; }
 
 .dark .att-stat-card { background: #16213e; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 .dark .att-stat-card.on-time { border-top-color: #34d399; }

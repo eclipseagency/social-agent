@@ -913,48 +913,100 @@ function toggleReminderExpand() {
     chevron?.classList.toggle('reminder-chevron-collapsed', !_reminderExpanded);
 }
 
-// === Check-in Banner (global) ===
+// === Check-in Overlay (global) ===
+let _checkinClockInterval = null;
+
 async function loadCheckInStatus() {
-    const banner = document.getElementById('checkin-banner');
-    if (!banner) return;
+    const overlay = document.getElementById('checkin-overlay');
+    if (!overlay) return;
     try {
         const data = await fetch(API_URL + '/attendance/my-status').then(r => r.json());
         const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
-        const h = cairoNow.getHours(), m = cairoNow.getMinutes();
+        const h = cairoNow.getHours();
 
-        if (data.checked_in) {
-            const label = data.status === 'on_time' ? 'On Time' : 'Late';
-            banner.className = 'checkin-banner done';
-            banner.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>Checked in at ${data.check_in_time} (${label})</span>`;
-        } else if (h < 9) {
-            banner.className = 'checkin-banner pending';
-            banner.innerHTML = `<i class="fa-solid fa-clock"></i><span>Check-in opens at 9:00 AM Cairo</span>`;
-        } else if (h >= 10) {
-            banner.className = 'checkin-banner closed';
-            banner.innerHTML = `<i class="fa-solid fa-circle-xmark"></i><span>Check-in window closed for today</span>`;
+        // Already checked in or outside window → hide overlay, let them through
+        if (data.checked_in || h < 9 || h >= 10) {
+            overlay.classList.add('hidden');
+            if (_checkinClockInterval) { clearInterval(_checkinClockInterval); _checkinClockInterval = null; }
+            return;
+        }
+
+        // 9:00-9:59 and NOT checked in → block the UI
+        const m = cairoNow.getMinutes();
+        const isOnTime = (h === 9 && m <= 20);
+        const icon = document.getElementById('checkin-icon');
+        const title = document.getElementById('checkin-title');
+        const subtitle = document.getElementById('checkin-subtitle');
+        const btn = document.getElementById('checkin-action-btn');
+
+        if (isOnTime) {
+            icon.innerHTML = '<i class="fa-solid fa-sun"></i>';
+            icon.className = 'checkin-icon on-time';
+            title.textContent = 'Good Morning!';
+            subtitle.textContent = "You're on time — check in to start your day";
+            btn.className = 'checkin-action-btn on-time';
         } else {
-            const cls = (h === 9 && m <= 20) ? 'on-time' : 'late';
-            banner.className = `checkin-banner ${cls}`;
-            banner.innerHTML = `<i class="fa-solid fa-clock"></i><span>${cls === 'on-time' ? "Check in now — you're on time!" : "Check in now — you'll be marked late"}</span><button onclick="doCheckIn()" class="checkin-btn">Check In</button>`;
+            icon.innerHTML = '<i class="fa-solid fa-clock"></i>';
+            icon.className = 'checkin-icon late';
+            title.textContent = 'You\'re Late';
+            subtitle.textContent = 'Check in now — window closes at 10:00 AM';
+            btn.className = 'checkin-action-btn late';
+        }
+        btn.classList.remove('hidden');
+        document.getElementById('checkin-status-msg').classList.add('hidden');
+        overlay.classList.remove('hidden');
+
+        // Live clock on overlay
+        updateCheckinClock();
+        if (!_checkinClockInterval) {
+            _checkinClockInterval = setInterval(updateCheckinClock, 1000);
         }
     } catch (e) {
-        banner.className = 'hidden';
+        overlay.classList.add('hidden');
     }
 }
 
+function updateCheckinClock() {
+    const el = document.getElementById('checkin-clock');
+    if (!el) return;
+    const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+    el.textContent = cairoNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+}
+
 async function doCheckIn() {
+    const btn = document.getElementById('checkin-action-btn');
+    const msg = document.getElementById('checkin-status-msg');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Checking in...';
     try {
         const res = await fetch(API_URL + '/attendance/check-in', { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-            showToast(data.status === 'on_time' ? 'Checked in on time!' : 'Checked in (late)', 'success');
+            const label = data.status === 'on_time' ? 'On Time' : 'Late';
+            document.getElementById('checkin-icon').innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            document.getElementById('checkin-icon').className = 'checkin-icon done';
+            document.getElementById('checkin-title').textContent = 'Checked In!';
+            document.getElementById('checkin-subtitle').textContent = `${data.check_in_time} — ${label}`;
+            btn.classList.add('hidden');
+            msg.classList.add('hidden');
+            // Fade out after a moment
+            setTimeout(() => {
+                const overlay = document.getElementById('checkin-overlay');
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.classList.add('hidden'); overlay.style.opacity = ''; }, 400);
+            }, 1200);
         } else {
-            showToast(data.error || 'Check-in failed', 'error');
+            msg.textContent = data.error || 'Check-in failed';
+            msg.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i>Check In';
         }
     } catch (e) {
-        showToast('Check-in failed', 'error');
+        msg.textContent = 'Connection error — try again';
+        msg.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i>Check In';
     }
-    loadCheckInStatus();
 }
 
 // === Init ===
