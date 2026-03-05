@@ -1,5 +1,7 @@
+import csv
+import io
 import random
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, make_response
 from datetime import datetime, timezone, timedelta
 from routes.auth import require_login, require_role
 from models import get_db
@@ -155,6 +157,48 @@ def ping_missed():
     return jsonify({'success': True})
 
 
+@attendance_bp.route('/api/attendance/check-out', methods=['POST'])
+@require_login
+def check_out():
+    """Manual check-out — records the current Cairo time."""
+    now = _cairo_now()
+    today = now.strftime('%Y-%m-%d')
+    current_time = now.strftime('%H:%M')
+    user_id = session['user_id']
+
+    db = get_db()
+    row = db.execute(
+        "SELECT id, check_in_time, check_out_time FROM attendance WHERE user_id=? AND date=?",
+        (user_id, today)
+    ).fetchone()
+    if not row:
+        db.close()
+        return jsonify({'success': False, 'error': 'You haven\'t checked in today'}), 400
+    if row['check_out_time']:
+        db.close()
+        return jsonify({'success': False, 'error': 'Already checked out'}), 409
+
+    db.execute(
+        "UPDATE attendance SET check_out_time=? WHERE id=?",
+        (current_time, row['id'])
+    )
+    db.commit()
+
+    # Calculate hours worked
+    ci_h, ci_m = map(int, row['check_in_time'].split(':'))
+    co_h, co_m = now.hour, now.minute
+    worked_min = (co_h * 60 + co_m) - (ci_h * 60 + ci_m)
+    hours = worked_min // 60
+    mins = worked_min % 60
+
+    db.close()
+    return jsonify({
+        'success': True,
+        'check_out_time': current_time,
+        'hours_worked': f'{hours}h {mins}m'
+    })
+
+
 @attendance_bp.route('/api/attendance/my-status')
 @require_login
 def my_status():
@@ -164,13 +208,14 @@ def my_status():
 
     db = get_db()
     row = db.execute(
-        "SELECT status, check_in_time FROM attendance WHERE user_id=? AND date=?",
+        "SELECT status, check_in_time, check_out_time FROM attendance WHERE user_id=? AND date=?",
         (user_id, today)
     ).fetchone()
     db.close()
 
     resp = {
         'checked_in': False,
+        'checked_out': False,
         'window': {
             'start': CHECKIN_START,
             'end': CHECKIN_END
@@ -180,6 +225,9 @@ def my_status():
         resp['checked_in'] = True
         resp['status'] = row['status']
         resp['check_in_time'] = row['check_in_time']
+        if row['check_out_time']:
+            resp['checked_out'] = True
+            resp['check_out_time'] = row['check_out_time']
     return jsonify(resp)
 
 
@@ -191,7 +239,7 @@ def daily_report():
     db = get_db()
     rows = db.execute("""
         SELECT u.id as user_id, u.username, u.role, u.job_title,
-               a.status, a.check_in_time
+               a.status, a.check_in_time, a.check_out_time
         FROM users u
         LEFT JOIN attendance a ON a.user_id = u.id AND a.date = ?
         WHERE u.is_active = 1
@@ -231,6 +279,13 @@ def daily_report():
     for r in rows:
         uid = r['user_id']
         act = activity_map.get(uid, {})
+        # Calculate hours worked if both check-in and check-out exist
+        hours_worked = ''
+        if r['check_in_time'] and r['check_out_time']:
+            ci_h, ci_m = map(int, r['check_in_time'].split(':'))
+            co_h, co_m = map(int, r['check_out_time'].split(':'))
+            worked_min = (co_h * 60 + co_m) - (ci_h * 60 + ci_m)
+            hours_worked = f"{worked_min // 60}h {worked_min % 60}m"
         result.append({
             'user_id': uid,
             'username': r['username'],
@@ -238,6 +293,8 @@ def daily_report():
             'job_title': r['job_title'] or '',
             'status': r['status'] or 'absent',
             'check_in_time': r['check_in_time'] or '',
+            'check_out_time': r['check_out_time'] or '',
+            'hours_worked': hours_worked,
             'missed_pings': missed_map.get(uid, 0),
             'total_pings': total_pings_map.get(uid, 0),
             'last_active': act.get('last_active', ''),
@@ -245,6 +302,70 @@ def daily_report():
         })
 
     return jsonify(result)
+
+
+@attendance_bp.route('/api/attendance/report/download')
+@require_role('admin', 'manager')
+def download_report():
+    """Download attendance report as Excel-compatible CSV."""
+    date = request.args.get('date', _cairo_now().strftime('%Y-%m-%d'))
+
+    db = get_db()
+    rows = db.execute("""
+        SELECT u.id as user_id, u.username, u.role, u.job_title,
+               a.status, a.check_in_time, a.check_out_time
+        FROM users u
+        LEFT JOIN attendance a ON a.user_id = u.id AND a.date = ?
+        WHERE u.is_active = 1
+        ORDER BY u.username
+    """, (date,)).fetchall()
+
+    ping_rows = db.execute("""
+        SELECT user_id, COUNT(*) as missed
+        FROM verification_pings WHERE date=? AND responded=-1
+        GROUP BY user_id
+    """, (date,)).fetchall()
+    missed_map = {r['user_id']: r['missed'] for r in ping_rows}
+
+    activity_rows = db.execute("""
+        SELECT user_id, MAX(created_at) as last_active
+        FROM user_activity WHERE date=?
+        GROUP BY user_id
+    """, (date,)).fetchall()
+    activity_map = {r['user_id']: r['last_active'] for r in activity_rows}
+    db.close()
+
+    output = io.StringIO()
+    output.write('\ufeff')  # BOM for Arabic in Excel
+    writer = csv.writer(output)
+    writer.writerow(['Name', 'Role', 'Status', 'Check In', 'Check Out', 'Hours Worked', 'Missed Pings', 'Last Active'])
+
+    for r in rows:
+        status = r['status'] or 'absent'
+        hours_worked = ''
+        if r['check_in_time'] and r['check_out_time']:
+            ci_h, ci_m = map(int, r['check_in_time'].split(':'))
+            co_h, co_m = map(int, r['check_out_time'].split(':'))
+            worked_min = (co_h * 60 + co_m) - (ci_h * 60 + ci_m)
+            hours_worked = f"{worked_min // 60}h {worked_min % 60}m"
+        last_active = activity_map.get(r['user_id'], '')
+        if last_active:
+            last_active = last_active.split(' ')[1][:5] if ' ' in last_active else last_active[:5]
+        writer.writerow([
+            r['username'],
+            r['job_title'] or r['role'] or '',
+            status.replace('_', ' ').title(),
+            r['check_in_time'] or '',
+            r['check_out_time'] or '',
+            hours_worked,
+            missed_map.get(r['user_id'], 0),
+            last_active
+        ])
+
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    response.headers['Content-Disposition'] = f'attachment; filename=attendance_{date}.csv'
+    return response
 
 
 @attendance_bp.route('/api/attendance/weekly')

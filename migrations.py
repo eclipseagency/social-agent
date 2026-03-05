@@ -252,6 +252,11 @@ def run_migrations():
         _migration_28_user_activity(db)
         set_schema_version(db, 28)
 
+    if version < 29:
+        print("Running migration 29: Add check_out_time to attendance...")
+        _migration_29_checkout(db)
+        set_schema_version(db, 29)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -712,6 +717,13 @@ def _migration_28_user_activity(db):
             )
         """)
         db.execute("CREATE INDEX IF NOT EXISTS idx_user_activity_lookup ON user_activity(user_id, date)")
+    db.commit()
+
+
+def _migration_29_checkout(db):
+    """Add check_out_time column to attendance for manual/auto check-out."""
+    if not column_exists(db, 'attendance', 'check_out_time'):
+        db.execute("ALTER TABLE attendance ADD COLUMN check_out_time TEXT")
     db.commit()
 
 

@@ -132,6 +132,12 @@
                     <span id="shift-elapsed">0h 0m</span>
                     <span id="shift-remaining">6h left</span>
                 </div>
+                <button id="checkout-btn" onclick="doCheckOut()" class="w-full mt-2 bg-red-900/30 text-red-400 py-1.5 rounded-lg hover:bg-red-900/50 text-xs font-medium transition hidden">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i>Check Out
+                </button>
+                <div id="checkout-done" class="hidden text-center text-[11px] text-green-400 mt-2">
+                    <i class="fa-solid fa-circle-check mr-1"></i>Checked out at <span id="checkout-time-label"></span>
+                </div>
             </div>
 
             <!-- Bottom buttons -->

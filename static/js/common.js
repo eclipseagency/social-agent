@@ -994,7 +994,21 @@ async function loadCheckInStatus() {
             updateShiftTracker();
             overlay.classList.add('hidden');
             if (_checkinClockInterval) { clearInterval(_checkinClockInterval); _checkinClockInterval = null; }
-            loadVerificationPings();
+            // Handle checkout state
+            const coBtn = document.getElementById('checkout-btn');
+            const coDone = document.getElementById('checkout-done');
+            if (data.checked_out) {
+                if (coBtn) coBtn.classList.add('hidden');
+                if (coDone) {
+                    coDone.classList.remove('hidden');
+                    const coLabel = document.getElementById('checkout-time-label');
+                    if (coLabel) coLabel.textContent = data.check_out_time || '';
+                }
+            } else {
+                if (coBtn) coBtn.classList.remove('hidden');
+                if (coDone) coDone.classList.add('hidden');
+                loadVerificationPings();
+            }
             return;
         }
 
@@ -1075,6 +1089,36 @@ async function doCheckIn() {
         msg.classList.remove('hidden');
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i>Check In';
+    }
+}
+
+// === Check-out ===
+async function doCheckOut() {
+    const btn = document.getElementById('checkout-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Checking out...';
+    try {
+        const res = await fetch(API_URL + '/attendance/check-out', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            btn.classList.add('hidden');
+            const coDone = document.getElementById('checkout-done');
+            coDone.classList.remove('hidden');
+            const coLabel = document.getElementById('checkout-time-label');
+            if (coLabel) coLabel.textContent = data.check_out_time;
+            showToast(`Checked out — ${data.hours_worked} worked today`, 'success');
+            // Clear any pending ping timeouts
+            _pingTimeouts.forEach(t => clearTimeout(t));
+            _pingTimeouts = [];
+        } else {
+            showToast(data.error || 'Check-out failed', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-right-from-bracket mr-1"></i>Check Out';
+        }
+    } catch (e) {
+        showToast('Connection error', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-right-from-bracket mr-1"></i>Check Out';
     }
 }
 

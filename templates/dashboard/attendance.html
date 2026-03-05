@@ -10,6 +10,9 @@
         </div>
         <input type="date" id="report-date" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500" onchange="loadDailyReport(this.value)">
         <input type="month" id="report-month" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 hidden" onchange="loadMonthlyReport(this.value)">
+        <button onclick="downloadReport()" class="flex items-center gap-1.5 text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
+            <i class="fa-solid fa-download"></i> Export
+        </button>
     </div>
 </div>
 
@@ -39,6 +42,8 @@
                     <th>Role</th>
                     <th>Status</th>
                     <th>Check In</th>
+                    <th>Check Out</th>
+                    <th>Hours</th>
                     <th>Pings</th>
                     <th>Last Active</th>
                 </tr>
@@ -141,7 +146,7 @@ async function loadDailyReport(date) {
         _lastCachedData = data;
         renderDailyData(data, date);
     } catch (e) {
-        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-8">Failed to load</td></tr>';
     }
 }
 
@@ -183,11 +188,17 @@ function renderDailyData(data, date) {
             }
         }
 
+        // Check out & hours
+        const checkOutHtml = u.check_out_time || '—';
+        const hoursHtml = u.hours_worked || '—';
+
         return `<tr ${rowClass}>
             <td class="font-medium">${esc(u.username)}</td>
             <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
             <td>${badge}</td>
             <td class="text-gray-500">${u.check_in_time || '—'}</td>
+            <td class="text-gray-500">${checkOutHtml}</td>
+            <td class="text-gray-500 font-medium">${hoursHtml}</td>
             <td>${pingsHtml}</td>
             <td>${lastActiveHtml}</td>
         </tr>`;
@@ -199,7 +210,7 @@ function renderDailyData(data, date) {
 
     const tbody = document.getElementById('daily-tbody');
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">No data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">No data</td></tr>';
         return;
     }
     tbody.innerHTML = rows.join('');
@@ -298,6 +309,11 @@ function statusBadge(status) {
         'absent': '<span class="att-badge absent">Absent</span>'
     };
     return map[status] || map['absent'];
+}
+
+function downloadReport() {
+    const date = document.getElementById('report-date').value || getCairoToday();
+    window.open(API_URL + '/attendance/report/download?date=' + date, '_blank');
 }
 </script>
 {% endblock %}
