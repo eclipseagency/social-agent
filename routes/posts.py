@@ -629,13 +629,14 @@ def my_work():
         existing_ids = {i['id'] for i in items}
         items.extend([r for r in returned if r['id'] not in existing_ids])
 
-    elif role in ('designer', 'motion_designer'):
-        # Posts assigned to this designer that are in_design
+    elif role == 'designer':
+        # Static/image designer — exclude motion content types
         rows = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
             FROM scheduled_posts sp
             LEFT JOIN clients c ON sp.client_id = c.id
             WHERE sp.assigned_designer_id=? AND sp.workflow_status='in_design'
+                  AND (sp.post_type NOT IN ('reel', 'video') OR sp.post_type IS NULL)
             ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
         """, (user_id,)).fetchall())
         for r in rows:
@@ -643,18 +644,46 @@ def my_work():
             r['action_label'] = 'يحتاج تصميم'
         items.extend(rows)
 
-        # Posts returned from review back to in_design
         returned = dicts_from_rows(db.execute("""
             SELECT sp.*, c.name as client_name
             FROM scheduled_posts sp
             LEFT JOIN clients c ON sp.client_id = c.id
             WHERE sp.assigned_designer_id=? AND sp.workflow_status='in_design' AND sp.revision_count > 0
+                  AND (sp.post_type NOT IN ('reel', 'video') OR sp.post_type IS NULL)
             ORDER BY sp.updated_at DESC
         """, (user_id,)).fetchall())
         for r in returned:
             r['action'] = 'returned_for_edits'
             r['action_label'] = 'مرتجع للتعديل'
-        # Don't duplicate - only add ones not already in items
+        existing_ids = {i['id'] for i in items}
+        items.extend([r for r in returned if r['id'] not in existing_ids])
+
+    elif role == 'motion_designer':
+        # Motion designer — only video/reel content, use assigned_motion_id
+        rows = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.assigned_motion_id=? AND sp.workflow_status='in_design'
+                  AND sp.post_type IN ('reel', 'video')
+            ORDER BY CASE sp.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END
+        """, (user_id,)).fetchall())
+        for r in rows:
+            r['action'] = 'needs_design'
+            r['action_label'] = 'يحتاج موشن'
+        items.extend(rows)
+
+        returned = dicts_from_rows(db.execute("""
+            SELECT sp.*, c.name as client_name
+            FROM scheduled_posts sp
+            LEFT JOIN clients c ON sp.client_id = c.id
+            WHERE sp.assigned_motion_id=? AND sp.workflow_status='in_design' AND sp.revision_count > 0
+                  AND sp.post_type IN ('reel', 'video')
+            ORDER BY sp.updated_at DESC
+        """, (user_id,)).fetchall())
+        for r in returned:
+            r['action'] = 'returned_for_edits'
+            r['action_label'] = 'مرتجع للتعديل'
         existing_ids = {i['id'] for i in items}
         items.extend([r for r in returned if r['id'] not in existing_ids])
 

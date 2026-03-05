@@ -39,6 +39,8 @@
                     <th>Role</th>
                     <th>Status</th>
                     <th>Check In</th>
+                    <th>Pings</th>
+                    <th>Last Active</th>
                 </tr>
             </thead>
             <tbody id="daily-tbody"></tbody>
@@ -145,6 +147,7 @@ async function loadDailyReport(date) {
 
 function renderDailyData(data, date) {
     let onTime = 0, late = 0, absent = 0;
+    const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
 
     const rows = data.map(u => {
         if (u.status === 'on_time') onTime++;
@@ -153,11 +156,40 @@ function renderDailyData(data, date) {
 
         const badge = statusBadge(u.status);
 
-        return `<tr>
+        // Pings column
+        let pingsHtml = '—';
+        if (u.total_pings > 0) {
+            const missed = u.missed_pings || 0;
+            if (missed > 0) {
+                pingsHtml = `<span class="att-badge absent" title="${missed} missed out of ${u.total_pings}">${missed} missed</span>`;
+            } else {
+                pingsHtml = `<span class="text-green-600 text-xs font-medium" title="All pings responded">✓ OK</span>`;
+            }
+        }
+
+        // Last active column
+        let lastActiveHtml = '—';
+        let rowClass = '';
+        if (u.last_active) {
+            const lastTime = u.last_active.split(' ')[1] || u.last_active;
+            lastActiveHtml = `<span class="text-xs">${lastTime.substring(0,5)}</span>`;
+            // Check if idle 2+ hours and shift not over
+            const lastDate = new Date(u.last_active.replace(' ', 'T') + '+02:00');
+            const diffMs = cairoNow - lastDate;
+            const diffHours = diffMs / (1000 * 60 * 60);
+            if (diffHours >= 2 && u.status !== 'absent') {
+                lastActiveHtml += ' <span class="text-red-500 text-[10px] font-bold">IDLE</span>';
+                rowClass = 'style="background:#fef2f2;"';
+            }
+        }
+
+        return `<tr ${rowClass}>
             <td class="font-medium">${esc(u.username)}</td>
             <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
             <td>${badge}</td>
             <td class="text-gray-500">${u.check_in_time || '—'}</td>
+            <td>${pingsHtml}</td>
+            <td>${lastActiveHtml}</td>
         </tr>`;
     });
 
@@ -167,7 +199,7 @@ function renderDailyData(data, date) {
 
     const tbody = document.getElementById('daily-tbody');
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-8">No data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">No data</td></tr>';
         return;
     }
     tbody.innerHTML = rows.join('');

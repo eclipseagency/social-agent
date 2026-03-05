@@ -3,8 +3,9 @@ Social Agent - Agency Workflow Management System
 Flask backend replacing the original AI-Social-Agent.exe
 """
 import os
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, session, request
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -61,6 +62,35 @@ app.register_blueprint(attendance_bp)
 # Register page-rendering blueprint
 from routes.dashboard import dashboard_bp
 app.register_blueprint(dashboard_bp)
+
+# Activity tracking middleware — log API calls from authenticated users
+CAIRO_TZ = timezone(timedelta(hours=2))
+_SKIP_PREFIXES = ('/static/', '/uploads/', '/dashboard/')
+_SKIP_ENDPOINTS = ('/api/attendance/my-pings', '/api/attendance/ping-response',
+                   '/api/attendance/ping-missed')
+
+
+@app.after_request
+def track_user_activity(response):
+    try:
+        path = request.path
+        if (request.method == 'OPTIONS'
+                or 'user_id' not in session
+                or any(path.startswith(p) for p in _SKIP_PREFIXES)
+                or path in _SKIP_ENDPOINTS):
+            return response
+        from models import get_db
+        now = datetime.now(CAIRO_TZ)
+        db = get_db()
+        db.execute(
+            "INSERT INTO user_activity (user_id, endpoint, date) VALUES (?, ?, ?)",
+            (session['user_id'], path, now.strftime('%Y-%m-%d'))
+        )
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+    return response
 
 # Serve legacy dashboard files and uploads
 DASHBOARD_DIR = os.path.join(BASE_DIR, 'dashboard')

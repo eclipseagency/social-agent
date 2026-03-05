@@ -189,6 +189,20 @@
     <!-- Toast Container -->
     <div id="toast-container" class="fixed bottom-20 lg:bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
+    <!-- Verification Ping Modal (blocks UI until responded) -->
+    <div id="ping-overlay" class="checkin-overlay hidden" style="background:rgba(0,0,0,0.75);">
+        <div class="checkin-card" style="border-top:4px solid #f59e0b;">
+            <div class="checkin-icon" style="color:#f59e0b;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <h2 class="checkin-title" style="color:#f59e0b;">Are you still working?</h2>
+            <p class="checkin-subtitle" style="color:#9ca3af;">Please confirm your presence</p>
+            <div id="ping-countdown" class="checkin-time" style="color:#f59e0b;font-size:2rem;">05:00</div>
+            <div class="checkin-label">Time remaining</div>
+            <button id="ping-confirm-btn" onclick="confirmPing()" class="checkin-action-btn" style="background:#f59e0b;color:#000;">
+                <i class="fa-solid fa-check mr-2"></i>Yes, I'm here
+            </button>
+        </div>
+    </div>
+
     <!-- Check-in Overlay (blocks UI until checked in during window) -->
     <div id="checkin-overlay" class="checkin-overlay hidden">
         <div class="checkin-card">

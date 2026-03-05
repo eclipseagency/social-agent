@@ -242,6 +242,16 @@ def run_migrations():
         _migration_26_create_attendance(db)
         set_schema_version(db, 26)
 
+    if version < 27:
+        print("Running migration 27: Create verification_pings table...")
+        _migration_27_verification_pings(db)
+        set_schema_version(db, 27)
+
+    if version < 28:
+        print("Running migration 28: Create user_activity table...")
+        _migration_28_user_activity(db)
+        set_schema_version(db, 28)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -668,6 +678,40 @@ def _migration_26_create_attendance(db):
                 UNIQUE(user_id, date)
             )
         """)
+    db.commit()
+
+
+def _migration_27_verification_pings(db):
+    """Create verification_pings table for random 'still here?' checks during shifts."""
+    if not table_exists(db, 'verification_pings'):
+        db.execute("""
+            CREATE TABLE verification_pings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                ping_time TEXT NOT NULL,
+                responded INTEGER DEFAULT 0,
+                responded_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+    db.commit()
+
+
+def _migration_28_user_activity(db):
+    """Create user_activity table for tracking API calls during shifts."""
+    if not table_exists(db, 'user_activity'):
+        db.execute("""
+            CREATE TABLE user_activity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                endpoint TEXT NOT NULL,
+                date TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_user_activity_lookup ON user_activity(user_id, date)")
     db.commit()
 
 

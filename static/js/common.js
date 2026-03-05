@@ -994,6 +994,7 @@ async function loadCheckInStatus() {
             updateShiftTracker();
             overlay.classList.add('hidden');
             if (_checkinClockInterval) { clearInterval(_checkinClockInterval); _checkinClockInterval = null; }
+            loadVerificationPings();
             return;
         }
 
@@ -1055,6 +1056,8 @@ async function doCheckIn() {
             document.getElementById('checkin-subtitle').textContent = `${data.check_in_time} — ${label}`;
             btn.classList.add('hidden');
             msg.classList.add('hidden');
+            // Load verification pings after check-in
+            loadVerificationPings();
             // Fade out after a moment
             setTimeout(() => {
                 const overlay = document.getElementById('checkin-overlay');
@@ -1073,6 +1076,112 @@ async function doCheckIn() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i>Check In';
     }
+}
+
+// === Verification Pings ===
+let _pingTimeouts = [];
+let _activePingId = null;
+let _pingCountdownInterval = null;
+let _pingCountdownSeconds = 300; // 5 minutes
+
+async function loadVerificationPings() {
+    if (isMobileDevice()) return;
+    // Only if checked in today
+    if (!_checkinTimeStr) return;
+    try {
+        const pings = await fetch(API_URL + '/attendance/my-pings').then(r => r.json());
+        // Clear any existing timeouts
+        _pingTimeouts.forEach(t => clearTimeout(t));
+        _pingTimeouts = [];
+
+        const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+        const nowMinutes = cairoNow.getHours() * 60 + cairoNow.getMinutes();
+
+        pings.forEach(ping => {
+            // Skip already responded or missed pings
+            if (ping.responded !== 0) return;
+            const [h, m] = ping.ping_time.split(':').map(Number);
+            const pingMinutes = h * 60 + m;
+            const delayMs = (pingMinutes - nowMinutes) * 60 * 1000 - (cairoNow.getSeconds() * 1000);
+
+            if (delayMs > 0) {
+                const tid = setTimeout(() => showPingModal(ping.id), delayMs);
+                _pingTimeouts.push(tid);
+            } else if (delayMs > -300000) {
+                // Ping is within the 5-min response window right now
+                showPingModal(ping.id);
+            }
+        });
+    } catch (e) {
+        console.error('Failed to load pings:', e);
+    }
+}
+
+function showPingModal(pingId) {
+    const overlay = document.getElementById('ping-overlay');
+    if (!overlay) return;
+    _activePingId = pingId;
+    _pingCountdownSeconds = 300;
+    overlay.classList.remove('hidden');
+    updatePingCountdown();
+    if (_pingCountdownInterval) clearInterval(_pingCountdownInterval);
+    _pingCountdownInterval = setInterval(() => {
+        _pingCountdownSeconds--;
+        updatePingCountdown();
+        if (_pingCountdownSeconds <= 0) {
+            clearInterval(_pingCountdownInterval);
+            _pingCountdownInterval = null;
+            missPing();
+        }
+    }, 1000);
+}
+
+function updatePingCountdown() {
+    const el = document.getElementById('ping-countdown');
+    if (!el) return;
+    const min = Math.floor(Math.max(0, _pingCountdownSeconds) / 60);
+    const sec = Math.max(0, _pingCountdownSeconds) % 60;
+    el.textContent = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    if (_pingCountdownSeconds <= 60) el.style.color = '#ef4444';
+    else el.style.color = '#f59e0b';
+}
+
+async function confirmPing() {
+    if (!_activePingId) return;
+    const btn = document.getElementById('ping-confirm-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Confirming...';
+    try {
+        await fetch(API_URL + '/attendance/ping-response', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ping_id: _activePingId })
+        });
+    } catch (e) { /* best effort */ }
+    if (_pingCountdownInterval) { clearInterval(_pingCountdownInterval); _pingCountdownInterval = null; }
+    _activePingId = null;
+    const overlay = document.getElementById('ping-overlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.classList.add('hidden'); overlay.style.opacity = ''; }, 400);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Yes, I\'m here';
+    showToast('Presence confirmed', 'success');
+}
+
+async function missPing() {
+    if (!_activePingId) return;
+    try {
+        await fetch(API_URL + '/attendance/ping-missed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ping_id: _activePingId })
+        });
+    } catch (e) { /* best effort */ }
+    _activePingId = null;
+    const overlay = document.getElementById('ping-overlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.classList.add('hidden'); overlay.style.opacity = ''; }, 400);
+    showToast('Verification missed — this has been recorded', 'error');
 }
 
 // === Init ===

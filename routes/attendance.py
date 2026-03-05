@@ -1,3 +1,4 @@
+import random
 from flask import Blueprint, request, jsonify, session
 from datetime import datetime, timezone, timedelta
 from routes.auth import require_login, require_role
@@ -50,6 +51,9 @@ def check_in():
     except Exception:
         db.close()
         return jsonify({'success': False, 'error': 'Already checked in today'}), 409
+
+    # Generate 2-3 random verification pings spread across the 6-hour shift
+    _generate_pings(db, user_id, today, hour, minute)
     db.close()
 
     return jsonify({
@@ -57,6 +61,98 @@ def check_in():
         'status': status,
         'check_in_time': current_time
     })
+
+
+def _generate_pings(db, user_id, date, checkin_hour, checkin_minute):
+    """Generate 2-3 random ping times, 45+ min apart, not in first 30 min of shift."""
+    shift_start_min = checkin_hour * 60 + checkin_minute  # minutes since midnight
+    shift_end_min = shift_start_min + 360  # 6 hours later
+    earliest = shift_start_min + 30  # skip first 30 min
+    latest = shift_end_min - 10  # leave 10 min buffer at end
+
+    if latest - earliest < 90:
+        # Shift too short for multiple pings
+        return
+
+    num_pings = random.randint(2, 3)
+    ping_minutes = []
+    for _ in range(num_pings * 20):  # max attempts
+        if len(ping_minutes) >= num_pings:
+            break
+        candidate = random.randint(earliest, latest)
+        # Ensure 45+ min apart from all existing pings
+        if all(abs(candidate - p) >= 45 for p in ping_minutes):
+            ping_minutes.append(candidate)
+
+    for m in sorted(ping_minutes):
+        h, mi = divmod(m, 60)
+        ping_time = f"{h:02d}:{mi:02d}"
+        db.execute(
+            "INSERT INTO verification_pings (user_id, date, ping_time) VALUES (?, ?, ?)",
+            (user_id, date, ping_time)
+        )
+    db.commit()
+
+
+@attendance_bp.route('/api/attendance/my-pings')
+@require_login
+def my_pings():
+    """Return today's verification pings for the current user."""
+    today = _cairo_now().strftime('%Y-%m-%d')
+    user_id = session['user_id']
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, ping_time, responded, responded_at FROM verification_pings WHERE user_id=? AND date=? ORDER BY ping_time",
+        (user_id, today)
+    ).fetchall()
+    db.close()
+    return jsonify([{
+        'id': r['id'],
+        'ping_time': r['ping_time'],
+        'responded': r['responded'],
+        'responded_at': r['responded_at']
+    } for r in rows])
+
+
+@attendance_bp.route('/api/attendance/ping-response', methods=['POST'])
+@require_login
+def ping_response():
+    """Mark a ping as responded."""
+    data = request.get_json() or {}
+    ping_id = data.get('ping_id')
+    if not ping_id:
+        return jsonify({'success': False, 'error': 'ping_id required'}), 400
+
+    now = _cairo_now().strftime('%Y-%m-%d %H:%M:%S')
+    user_id = session['user_id']
+    db = get_db()
+    db.execute(
+        "UPDATE verification_pings SET responded=1, responded_at=? WHERE id=? AND user_id=?",
+        (now, ping_id, user_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
+
+
+@attendance_bp.route('/api/attendance/ping-missed', methods=['POST'])
+@require_login
+def ping_missed():
+    """Mark a ping as missed (responded = -1)."""
+    data = request.get_json() or {}
+    ping_id = data.get('ping_id')
+    if not ping_id:
+        return jsonify({'success': False, 'error': 'ping_id required'}), 400
+
+    user_id = session['user_id']
+    db = get_db()
+    db.execute(
+        "UPDATE verification_pings SET responded=-1 WHERE id=? AND user_id=?",
+        (ping_id, user_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({'success': True})
 
 
 @attendance_bp.route('/api/attendance/my-status')
@@ -101,17 +197,51 @@ def daily_report():
         WHERE u.is_active = 1
         ORDER BY u.username
     """, (date,)).fetchall()
+
+    # Missed pings per user
+    ping_rows = db.execute("""
+        SELECT user_id, COUNT(*) as missed
+        FROM verification_pings
+        WHERE date=? AND responded=-1
+        GROUP BY user_id
+    """, (date,)).fetchall()
+    missed_map = {r['user_id']: r['missed'] for r in ping_rows}
+
+    # Total pings per user
+    total_ping_rows = db.execute("""
+        SELECT user_id, COUNT(*) as total
+        FROM verification_pings
+        WHERE date=?
+        GROUP BY user_id
+    """, (date,)).fetchall()
+    total_pings_map = {r['user_id']: r['total'] for r in total_ping_rows}
+
+    # Last activity per user
+    activity_rows = db.execute("""
+        SELECT user_id, MAX(created_at) as last_active, COUNT(*) as activity_count
+        FROM user_activity
+        WHERE date=?
+        GROUP BY user_id
+    """, (date,)).fetchall()
+    activity_map = {r['user_id']: {'last_active': r['last_active'], 'count': r['activity_count']} for r in activity_rows}
+
     db.close()
 
     result = []
     for r in rows:
+        uid = r['user_id']
+        act = activity_map.get(uid, {})
         result.append({
-            'user_id': r['user_id'],
+            'user_id': uid,
             'username': r['username'],
             'role': r['role'] or '',
             'job_title': r['job_title'] or '',
             'status': r['status'] or 'absent',
-            'check_in_time': r['check_in_time'] or ''
+            'check_in_time': r['check_in_time'] or '',
+            'missed_pings': missed_map.get(uid, 0),
+            'total_pings': total_pings_map.get(uid, 0),
+            'last_active': act.get('last_active', ''),
+            'activity_count': act.get('count', 0)
         })
 
     return jsonify(result)
