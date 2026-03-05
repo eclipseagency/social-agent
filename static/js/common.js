@@ -918,6 +918,7 @@ function toggleReminderExpand() {
 // === Shift Tracking ===
 const SHIFT_HOURS = 6;
 let _checkinTimeStr = null; // e.g. "09:05" Cairo time
+let _shiftEndNotified = false;
 
 function updateShiftTracker() {
     const tracker = document.getElementById('shift-tracker');
@@ -934,11 +935,14 @@ function updateShiftTracker() {
     const totalMs = SHIFT_HOURS * 3600000;
     const remainMs = Math.max(0, totalMs - elapsedMs);
     const pct = Math.min(100, (elapsedMs / totalMs) * 100);
+    const overtimeMs = Math.max(0, elapsedMs - totalMs);
 
     const elH = Math.floor(elapsedMs / 3600000);
     const elM = Math.floor((elapsedMs % 3600000) / 60000);
     const remH = Math.floor(remainMs / 3600000);
     const remM = Math.floor((remainMs % 3600000) / 60000);
+    const otH = Math.floor(overtimeMs / 3600000);
+    const otM = Math.floor((overtimeMs % 3600000) / 60000);
 
     const fill = document.getElementById('shift-progress-fill');
     const elapsedEl = document.getElementById('shift-elapsed');
@@ -949,8 +953,18 @@ function updateShiftTracker() {
 
     if (remainMs <= 0) {
         fill.className = 'shift-progress-fill done';
-        remainEl.textContent = 'Shift complete';
-        remainEl.className = 'shift-done-label';
+        if (overtimeMs > 60000) {
+            remainEl.innerHTML = `<i class="fa-solid fa-fire"></i> +${otH}h ${otM}m overtime`;
+            remainEl.className = 'shift-overtime-label';
+        } else {
+            remainEl.textContent = 'Shift complete!';
+            remainEl.className = 'shift-done-label';
+        }
+        // One-time notification when shift ends
+        if (!_shiftEndNotified) {
+            _shiftEndNotified = true;
+            showToast('Your 6-hour shift is complete! Any extra time counts as overtime.', 'success');
+        }
     } else {
         fill.className = 'shift-progress-fill';
         remainEl.textContent = `${remH}h ${remM}m left`;

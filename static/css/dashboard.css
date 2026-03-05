@@ -1123,6 +1123,8 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .shift-progress-fill.done { background: linear-gradient(90deg, #10b981, #34d399); }
 .shift-info { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10px; font-weight: 500; color: #64748b; font-variant-numeric: tabular-nums; }
 .shift-done-label { color: #34d399 !important; font-weight: 600; }
+.shift-overtime-label { color: #f59e0b !important; font-weight: 600; }
+.shift-overtime-label i { margin-right: 2px; font-size: 9px; }
 
 /* === Designer Reminder Ticker === */
 .reminder-ticker { margin-bottom: 16px; border-radius: 10px; border: 1px solid #fbbf24; background: linear-gradient(135deg, #fffbeb, #fef3c7); overflow: hidden; box-shadow: 0 2px 8px rgba(251,191,36,0.15); }
