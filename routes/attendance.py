@@ -166,6 +166,9 @@ def ping_missed():
 def check_out():
     """Manual check-out — records the current Cairo time."""
     now = _cairo_now()
+
+    if now.weekday() in (4, 5):
+        return jsonify({'success': False, 'error': 'No check-out on weekends'}), 400
     today = now.strftime('%Y-%m-%d')
     current_time = now.strftime('%H:%M')
     user_id = session['user_id']
