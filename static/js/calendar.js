@@ -365,11 +365,12 @@ async function openPostDetail(postId) {
     const hasEditPerm = canDo('createPost') || canDo('editCaption');
     const isEditable = wf !== 'posted' && hasEditPerm;
 
-    // Text on Design (topic) — handle carousel JSON
+    // Text on Design (topic) — handle carousel/grid JSON
     const topicSection = document.getElementById('detail-topic-section');
     const topicDisplay = document.getElementById('detail-topic');
     const topicInput = document.getElementById('detail-topic-input');
     const topicData = parseTopic(post.topic || '');
+    const isGridPost = (post.post_type || '').toLowerCase() === 'grid';
     topicSection.style.display = '';
     if (isEditable) {
         topicDisplay.style.display = 'none';
@@ -379,9 +380,20 @@ async function openPostDetail(postId) {
     } else {
         topicInput.classList.add('hidden');
         if (topicData.isCarousel && topicData.slides.length > 0) {
-            topicDisplay.innerHTML = topicData.slides.map((s, i) =>
-                `<div dir="auto" style="margin-bottom:6px;text-align:${isRTL(s.text) ? 'right' : 'left'}"><strong style="color:#6366f1;font-size:11px;text-transform:uppercase">Slide ${i + 1}</strong><br>${esc(s.text || '').replace(/\n/g, '<br>')}</div>`
-            ).join('');
+            if (isGridPost) {
+                // Grid: show each post with text on design + caption
+                topicDisplay.innerHTML = topicData.slides.map((s, i) =>
+                    `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fafafa">
+                        <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;margin-bottom:6px"><i class="fa-solid fa-grip mr-1"></i>Post ${i + 1}</div>
+                        ${s.text ? `<div dir="auto" style="margin-bottom:4px;text-align:${isRTL(s.text) ? 'right' : 'left'}"><strong style="color:#6366f1;font-size:10px;text-transform:uppercase">Text on Design</strong><br>${esc(s.text).replace(/\n/g, '<br>')}</div>` : ''}
+                        ${s.caption ? `<div dir="auto" style="text-align:${isRTL(s.caption) ? 'right' : 'left'};border-top:1px dashed #e5e7eb;padding-top:4px;margin-top:4px"><strong style="color:#22c55e;font-size:10px;text-transform:uppercase">Caption</strong><br>${esc(s.caption).replace(/\n/g, '<br>')}</div>` : ''}
+                    </div>`
+                ).join('');
+            } else {
+                topicDisplay.innerHTML = topicData.slides.map((s, i) =>
+                    `<div dir="auto" style="margin-bottom:6px;text-align:${isRTL(s.text) ? 'right' : 'left'}"><strong style="color:#6366f1;font-size:11px;text-transform:uppercase">Slide ${i + 1}</strong><br>${esc(s.text || '').replace(/\n/g, '<br>')}</div>`
+                ).join('');
+            }
             topicDisplay.style.display = '';
         } else if (post.topic) {
             topicDisplay.innerHTML = esc(post.topic).replace(/\n/g, '<br>');
@@ -580,7 +592,8 @@ async function openPostDetail(postId) {
     }
 
     // Stories/banners/brochures don't need a caption — only Text on Design
-    if (['story', 'banner', 'brochure'].includes(post.post_type)) {
+    // Grid posts have per-post captions in the topic JSON, not the shared caption field
+    if (['story', 'banner', 'brochure', 'grid'].includes(post.post_type)) {
         const captionSec = document.getElementById('detail-caption-section');
         if (captionSec) captionSec.style.display = 'none';
     }

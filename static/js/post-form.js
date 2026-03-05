@@ -54,6 +54,7 @@ function onPostTypeChange() {
         if (storyFeatures) storyFeatures.classList.add('hidden');
     }
     // Hide caption for stories/banners/brochures — only text on design matters
+    // Grid has per-post captions in the topic JSON, not the shared caption
     const captionContainer = document.getElementById('new-post-caption-container');
     if (captionContainer) {
         captionContainer.style.display = ['story', 'banner', 'brochure'].includes(currentPostType) ? 'none' : '';
@@ -75,7 +76,7 @@ function updatePreview() {
     if (countEl) countEl.textContent = activePlatforms;
     const typeEl = document.getElementById('preview-type');
     const typeTextEl = document.getElementById('preview-type-text');
-    const typeIcons = { story: ['fa-mobile-screen', 'Story'], reel: ['fa-film', 'Reel'], video: ['fa-video', 'Video'], carousel: ['fa-images', 'Carousel'], banner: ['fa-panorama', 'Banner'], brochure: ['fa-book-open', 'Brochure'] };
+    const typeIcons = { story: ['fa-mobile-screen', 'Story'], reel: ['fa-film', 'Reel'], video: ['fa-video', 'Video'], carousel: ['fa-images', 'Carousel'], grid: ['fa-grip', 'Grid'], banner: ['fa-panorama', 'Banner'], brochure: ['fa-book-open', 'Brochure'] };
     const t = typeIcons[currentPostType] || ['fa-image', 'Image'];
     if (typeEl) typeEl.innerHTML = `<i class="fa-solid ${t[0]}"></i>`;
     if (typeTextEl) typeTextEl.textContent = t[1];

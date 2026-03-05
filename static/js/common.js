@@ -572,25 +572,29 @@ function updateTime() {
 // === Topic Parsing (Carousel Support) ===
 
 function parseTopic(topic) {
-    if (!topic) return { isCarousel: false, slides: [], displayText: '' };
+    if (!topic) return { isCarousel: false, isGrid: false, slides: [], displayText: '' };
     try {
         const parsed = JSON.parse(topic);
         if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object') {
+            const hasCaption = parsed.some(s => s.caption !== undefined);
+            const label = hasCaption ? 'Post' : 'Slide';
             return {
                 isCarousel: true,
+                isGrid: hasCaption,
                 slides: parsed,
-                displayText: parsed.map((s, i) => `Slide ${i + 1}: ${s.text || ''}`).join(' | ')
+                displayText: parsed.map((s, i) => `${label} ${i + 1}: ${s.text || ''}`).join(' | ')
             };
         }
     } catch (e) { /* not JSON, plain text */ }
-    return { isCarousel: false, slides: [], displayText: topic };
+    return { isCarousel: false, isGrid: false, slides: [], displayText: topic };
 }
 
 function getTopicPreview(topic, maxLen = 35) {
-    const { isCarousel, slides, displayText } = parseTopic(topic);
+    const { isCarousel, isGrid, slides, displayText } = parseTopic(topic);
     if (isCarousel && slides.length > 0) {
         const first = (slides[0].text || '').trim();
-        const preview = first || `${slides.length} slides`;
+        const prefix = isGrid ? `[Grid] ` : '';
+        const preview = prefix + (first || `${slides.length} ${isGrid ? 'posts' : 'slides'}`);
         return preview.length > maxLen ? preview.substring(0, maxLen - 3) + '...' : preview;
     }
     if (!displayText) return '';
@@ -646,6 +650,7 @@ function getContentTypeIcon(type) {
         'reel': '<i class="fa-solid fa-film text-purple-500" title="Reel"></i>',
         'video': '<i class="fa-solid fa-video text-red-500" title="Video"></i>',
         'carousel': '<i class="fa-solid fa-images text-indigo-500" title="Carousel"></i>',
+        'grid': '<i class="fa-solid fa-grip text-emerald-500" title="Grid"></i>',
         'banner': '<i class="fa-solid fa-panorama text-teal-500" title="Banner"></i>',
         'brochure': '<i class="fa-solid fa-book-open text-amber-500" title="Brochure"></i>'
     };

@@ -251,9 +251,9 @@ async function loadClientCalendar() {
     }
     // Designer only sees image-based types
     if (currentUser?.role === 'designer') {
-        clientPostsData = clientPostsData.filter(p => ['post', 'story', 'carousel', 'banner', 'brochure'].includes((p.post_type || '').toLowerCase()));
+        clientPostsData = clientPostsData.filter(p => ['post', 'story', 'carousel', 'grid', 'banner', 'brochure'].includes((p.post_type || '').toLowerCase()));
         for (const date in clientCalByDate) {
-            clientCalByDate[date] = clientCalByDate[date].filter(p => ['post', 'story', 'carousel', 'banner', 'brochure'].includes((p.post_type || '').toLowerCase()));
+            clientCalByDate[date] = clientCalByDate[date].filter(p => ['post', 'story', 'carousel', 'grid', 'banner', 'brochure'].includes((p.post_type || '').toLowerCase()));
         }
     }
 
@@ -565,38 +565,73 @@ function isCarouselSelected() {
     return document.getElementById('cp-post-type').value === 'carousel';
 }
 
+function isGridSelected() {
+    return document.getElementById('cp-post-type').value === 'grid';
+}
+
+function isMultiSlideType() {
+    return isCarouselSelected() || isGridSelected();
+}
+
 function toggleCarouselSlidesUI() {
     const isCarousel = isCarouselSelected();
+    const isGrid = isGridSelected();
+    const multiSlide = isCarousel || isGrid;
     const postType = (document.getElementById('cp-post-type')?.value || 'post').toLowerCase();
     const tovContainer = document.getElementById('cp-tov-container');
     const slidesContainer = document.getElementById('cp-slides-container');
     const captionContainer = document.getElementById('cp-caption-container');
-    if (isCarousel) {
+    const addSlideBtn = slidesContainer?.querySelector('button[onclick="addCarouselSlide()"]');
+    const slideHint = slidesContainer?.querySelector('p.text-\\[11px\\]');
+    if (multiSlide) {
         tovContainer.classList.add('hidden');
         slidesContainer.classList.remove('hidden');
-        if (carouselSlides.length < 2) {
-            carouselSlides = [{ text: '' }, { text: '' }];
+        if (isGrid) {
+            // Grid: exactly 3 slides with caption fields — only reset if not already loaded (e.g. from edit)
+            if (carouselSlides.length !== 3 || !carouselSlides.some(s => (s.text && s.text.trim()) || (s.caption && s.caption.trim()))) {
+                carouselSlides = [{ text: '', caption: '' }, { text: '', caption: '' }, { text: '', caption: '' }];
+            }
+            if (addSlideBtn) addSlideBtn.style.display = 'none';
+            if (slideHint) slideHint.textContent = 'Grid posts always have exactly 3 posts';
+            // Hide the shared caption field — grid has per-post captions
+            if (captionContainer) captionContainer.style.display = 'none';
+        } else {
+            // Carousel
+            if (carouselSlides.length < 2) {
+                carouselSlides = [{ text: '' }, { text: '' }];
+            }
+            if (addSlideBtn) addSlideBtn.style.display = '';
+            if (slideHint) slideHint.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i>Minimum 2 slides for a carousel post';
         }
         renderCarouselSlides();
     } else {
         tovContainer.classList.remove('hidden');
         slidesContainer.classList.add('hidden');
+        if (addSlideBtn) addSlideBtn.style.display = '';
     }
     // Hide caption for stories/banners/brochures — only text on design matters
-    if (captionContainer) {
+    // Grid also hides shared caption (per-post captions in slides)
+    if (captionContainer && !isGrid) {
         captionContainer.style.display = ['story', 'banner', 'brochure'].includes(postType) ? 'none' : '';
     }
 }
 
 function renderCarouselSlides() {
     const list = document.getElementById('cp-slides-list');
+    const isGrid = isGridSelected();
     list.innerHTML = carouselSlides.map((slide, i) => `
         <div class="cp-slide-card">
-            <div class="cp-slide-number">Slide ${i + 1}</div>
-            <textarea rows="2" placeholder="Text for slide ${i + 1}..." oninput="onCarouselSlideInput(${i}, this.value)">${esc(slide.text || '')}</textarea>
-            ${carouselSlides.length > 2 ? `<button type="button" class="cp-slide-delete" onclick="removeCarouselSlide(${i})" title="Remove slide"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+            <div class="cp-slide-number">${isGrid ? 'Post' : 'Slide'} ${i + 1}</div>
+            <textarea rows="2" placeholder="Text on design for ${isGrid ? 'post' : 'slide'} ${i + 1}..." oninput="onCarouselSlideInput(${i}, this.value)">${esc(slide.text || '')}</textarea>
+            ${isGrid ? `<textarea rows="2" class="mt-1" placeholder="Caption for post ${i + 1}..." oninput="onGridSlideCaptionInput(${i}, this.value)" style="border-top:1px dashed #e5e7eb;padding-top:6px">${esc(slide.caption || '')}</textarea>` : ''}
+            ${!isGrid && carouselSlides.length > 2 ? `<button type="button" class="cp-slide-delete" onclick="removeCarouselSlide(${i})" title="Remove slide"><i class="fa-solid fa-trash-can"></i></button>` : ''}
         </div>
     `).join('');
+}
+
+function onGridSlideCaptionInput(i, val) {
+    if (carouselSlides[i]) carouselSlides[i].caption = val;
+    updateSlidePreview();
 }
 
 function addCarouselSlide() {
@@ -618,6 +653,10 @@ function onCarouselSlideInput(i, val) {
 }
 
 function getCarouselSlidesData() {
+    const isGrid = isGridSelected();
+    if (isGrid) {
+        return JSON.stringify(carouselSlides.map(s => ({ text: s.text || '', caption: s.caption || '' })));
+    }
     return JSON.stringify(carouselSlides.map(s => ({ text: s.text || '' })));
 }
 
@@ -658,14 +697,16 @@ function closeCreatePostModal() {
 
 function updateSlidePreview() {
     const isCarousel = isCarouselSelected();
-    const tov = isCarousel ? '' : document.getElementById('cp-tov').value.trim();
-    const caption = document.getElementById('cp-caption').value.trim();
+    const isGrid = isGridSelected();
+    const multiSlide = isCarousel || isGrid;
+    const tov = multiSlide ? '' : document.getElementById('cp-tov').value.trim();
+    const caption = isGrid ? '' : document.getElementById('cp-caption').value.trim();
     const notes = document.getElementById('cp-notes').value.trim();
     const platforms = getSelectedPlatforms();
     const postType = document.getElementById('cp-post-type').value;
     const date = document.getElementById('cp-date').value;
 
-    const hasSlideContent = isCarousel && carouselSlides.some(s => s.text && s.text.trim());
+    const hasSlideContent = multiSlide && carouselSlides.some(s => (s.text && s.text.trim()) || (s.caption && s.caption.trim()));
     if (!tov && !hasSlideContent && !caption && !notes && createPostRefFiles.length === 0 && platforms.length === 0) {
         document.getElementById('cp-slide-preview').innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Start typing to see preview...</p>';
         return;
@@ -684,6 +725,31 @@ function updateSlidePreview() {
     html += `<span class="pres-badge bg-gray-100 text-gray-700">${getContentTypeIcon(postType)} ${esc(postType)}</span>`;
     html += '</div>';
 
+    // Grid: per-post preview with text + caption
+    if (isGrid && carouselSlides.length > 0) {
+        carouselSlides.forEach((slide, i) => {
+            if ((slide.text && slide.text.trim()) || (slide.caption && slide.caption.trim())) {
+                html += `<div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fafafa">`;
+                html += `<div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;margin-bottom:6px"><i class="fa-solid fa-grip mr-1"></i>Post ${i + 1}</div>`;
+                if (slide.text && slide.text.trim()) {
+                    const tDir = isRTL(slide.text) ? 'rtl' : 'ltr';
+                    html += `<div class="pres-tov-block" dir="${tDir}" style="text-align:${tDir === 'rtl' ? 'right' : 'left'};font-size:15px;padding:10px 12px;margin-bottom:6px">`;
+                    html += `<div class="pres-tov-label">Text on Design</div>`;
+                    html += `<div>${esc(slide.text)}</div>`;
+                    html += '</div>';
+                }
+                if (slide.caption && slide.caption.trim()) {
+                    const cDir = isRTL(slide.caption) ? 'rtl' : 'ltr';
+                    html += `<div class="pres-caption-block" dir="${cDir}" style="text-align:${cDir === 'rtl' ? 'right' : 'left'};font-size:14px;padding:8px 12px;margin:0">`;
+                    html += `<div class="pres-caption-label">Caption</div>`;
+                    html += `<div>${esc(slide.caption)}</div>`;
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+        });
+    }
+
     // Carousel: per-slide preview cards
     if (isCarousel && carouselSlides.length > 0) {
         carouselSlides.forEach((slide, i) => {
@@ -697,8 +763,8 @@ function updateSlidePreview() {
         });
     }
 
-    // TOV block (indigo gradient) — only for non-carousel
-    if (!isCarousel && tov) {
+    // TOV block (indigo gradient) — only for non-multi-slide
+    if (!multiSlide && tov) {
         const tovDir = isRTL(tov) ? 'rtl' : 'ltr';
         html += `<div class="pres-tov-block" dir="${tovDir}" style="text-align:${tovDir === 'rtl' ? 'right' : 'left'}">`;
         html += '<div class="pres-tov-label">Text on Design</div>';
@@ -718,8 +784,8 @@ function updateSlidePreview() {
         html += '</div>';
     }
 
-    // Caption
-    if (caption) {
+    // Caption (not for grid — grid has per-post captions)
+    if (caption && !isGrid) {
         const cDir = isRTL(caption) ? 'rtl' : 'ltr';
         html += `<div class="pres-caption-block" dir="${cDir}" style="text-align:${cDir === 'rtl' ? 'right' : 'left'}">`;
         html += '<div class="pres-caption-label">Caption</div>';
@@ -801,6 +867,8 @@ async function submitCreatePost(workflowStatus) {
     const caption = document.getElementById('cp-caption').value.trim();
     const notes = document.getElementById('cp-notes').value.trim();
     const isCarousel = postType === 'carousel';
+    const isGrid = postType === 'grid';
+    const multiSlide = isCarousel || isGrid;
     const isAdminDirect = workflowStatus === 'posted' && canDo('manageClients');
 
     if (!date) { showToast('Please select a date', 'error'); return; }
@@ -812,10 +880,11 @@ async function submitCreatePost(workflowStatus) {
     }
 
     let topicValue;
-    if (isCarousel) {
-        if (carouselSlides.length < 2) { showToast('Carousel requires at least 2 slides', 'error'); return; }
+    if (multiSlide) {
+        if (isGrid && carouselSlides.length !== 3) { showToast('Grid requires exactly 3 posts', 'error'); return; }
+        if (isCarousel && carouselSlides.length < 2) { showToast('Carousel requires at least 2 slides', 'error'); return; }
         const hasContent = carouselSlides.some(s => s.text && s.text.trim());
-        if (!hasContent && !isAdminDirect) { showToast('Please enter text for at least one slide', 'error'); return; }
+        if (!hasContent && !isAdminDirect) { showToast('Please enter text for at least one ' + (isGrid ? 'post' : 'slide'), 'error'); return; }
         topicValue = getCarouselSlidesData();
     } else {
         topicValue = document.getElementById('cp-tov').value.trim();
@@ -909,18 +978,43 @@ async function openPostSlideView(postId) {
     // Body — presentation-style content
     let body = '';
 
-    // TOV / Topic block (indigo gradient) — carousel shows per-slide
+    // TOV / Topic block (indigo gradient) — carousel/grid shows per-slide
     const topicParsed = parseTopic(post.topic || '');
+    const isGridPost = (post.post_type || '').toLowerCase() === 'grid';
     if (topicParsed.isCarousel && topicParsed.slides.length > 0) {
-        topicParsed.slides.forEach((slide, i) => {
-            if (slide.text && slide.text.trim()) {
-                const sDir = isRTL(slide.text) ? 'rtl' : 'ltr';
-                body += `<div class="pres-tov-block" dir="${sDir}" style="text-align:${sDir === 'rtl' ? 'right' : 'left'};font-size:18px;padding:16px 18px;margin-bottom:8px">`;
-                body += `<div class="pres-tov-label">Slide ${i + 1}</div>`;
-                body += `<div>${esc(slide.text).replace(/\n/g, '<br>')}</div>`;
+        if (isGridPost) {
+            // Grid: show each post with text on design + caption
+            topicParsed.slides.forEach((slide, i) => {
+                body += `<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;margin-bottom:10px;background:#fafafa">`;
+                body += `<div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;margin-bottom:8px"><i class="fa-solid fa-grip mr-1"></i>Post ${i + 1}</div>`;
+                if (slide.text && slide.text.trim()) {
+                    const sDir = isRTL(slide.text) ? 'rtl' : 'ltr';
+                    body += `<div class="pres-tov-block" dir="${sDir}" style="text-align:${sDir === 'rtl' ? 'right' : 'left'};font-size:16px;padding:12px 14px;margin-bottom:6px">`;
+                    body += `<div class="pres-tov-label">Text on Design</div>`;
+                    body += `<div>${esc(slide.text).replace(/\n/g, '<br>')}</div>`;
+                    body += '</div>';
+                }
+                if (slide.caption && slide.caption.trim()) {
+                    const cDir = isRTL(slide.caption) ? 'rtl' : 'ltr';
+                    body += `<div class="pres-caption-block" dir="${cDir}" style="text-align:${cDir === 'rtl' ? 'right' : 'left'};font-size:14px;padding:10px 14px;margin:0">`;
+                    body += `<div class="pres-caption-label">Caption</div>`;
+                    body += `<div>${esc(slide.caption).replace(/\n/g, '<br>')}</div>`;
+                    body += '</div>';
+                }
                 body += '</div>';
-            }
-        });
+            });
+        } else {
+            // Carousel: show per-slide text
+            topicParsed.slides.forEach((slide, i) => {
+                if (slide.text && slide.text.trim()) {
+                    const sDir = isRTL(slide.text) ? 'rtl' : 'ltr';
+                    body += `<div class="pres-tov-block" dir="${sDir}" style="text-align:${sDir === 'rtl' ? 'right' : 'left'};font-size:18px;padding:16px 18px;margin-bottom:8px">`;
+                    body += `<div class="pres-tov-label">Slide ${i + 1}</div>`;
+                    body += `<div>${esc(slide.text).replace(/\n/g, '<br>')}</div>`;
+                    body += '</div>';
+                }
+            });
+        }
     } else if (post.topic) {
         const topicDir = isRTL(post.topic) ? 'rtl' : 'ltr';
         body += `<div class="pres-tov-block" dir="${topicDir}" style="text-align:${topicDir === 'rtl' ? 'right' : 'left'}">`;
@@ -930,7 +1024,8 @@ async function openPostSlideView(postId) {
     }
 
     // Caption (hidden for stories/banners/brochures — only text on design matters)
-    if (post.caption && !['story', 'banner', 'brochure'].includes(post.post_type)) {
+    // Grid posts have per-post captions in the topic JSON
+    if (post.caption && !['story', 'banner', 'brochure', 'grid'].includes(post.post_type)) {
         const capDir = isRTL(post.caption) ? 'rtl' : 'ltr';
         body += `<div class="pres-caption-block" dir="${capDir}" style="text-align:${capDir === 'rtl' ? 'right' : 'left'}">`;
         body += `<div class="pres-caption-label" style="display:flex;justify-content:space-between;align-items:center">Caption <button onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(post.caption)}'))" class="text-xs text-green-300 hover:text-white" title="Copy caption"><i class="fa-solid fa-copy"></i></button></div>`;
@@ -979,7 +1074,7 @@ async function openPostSlideView(postId) {
     // Design output (last section before comments)
     const designUrls = (post.design_output_urls || '').split(',').filter(u => u.trim());
     if (designUrls.length) {
-        const isCarousel = (post.post_type || '').toLowerCase() === 'carousel' && designUrls.length > 1;
+        const isCarousel = ((post.post_type || '').toLowerCase() === 'carousel' || (post.post_type || '').toLowerCase() === 'grid') && designUrls.length > 1;
         if (isCarousel) {
             body += `<div class="pres-img-label" style="margin-bottom:8px">Design Output</div>`;
             body += `<div class="carousel-preview" id="psd-carousel" style="border-radius:12px;margin-bottom:8px">`;
@@ -1037,7 +1132,7 @@ async function openPostSlideView(postId) {
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
         const isDesigner = currentUser?.role === 'designer';
-        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'banner', 'brochure'].includes(postType));
+        const showUpload = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'grid', 'banner', 'brochure'].includes(postType));
 
         if (showUpload) {
             body += `<div class="upload-zone p-4 rounded-lg text-center cursor-pointer text-sm text-gray-500 mb-4" id="psd-upload-zone"
@@ -1174,7 +1269,7 @@ function buildPostSlideActions(post) {
         const postType = (post.post_type || '').toLowerCase();
         const isMotion = currentUser?.role === 'motion_designer';
         const isDesigner = currentUser?.role === 'designer';
-        const showActions = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'banner', 'brochure'].includes(postType));
+        const showActions = (!isMotion && !isDesigner) || (isMotion && ['video', 'reel'].includes(postType)) || (isDesigner && ['post', 'story', 'carousel', 'grid', 'banner', 'brochure'].includes(postType));
 
         if (showActions) {
             actions += `<button onclick="document.getElementById('psd-design-input')?.click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"><i class="fa-solid fa-upload mr-1"></i> Upload Design</button>`;
@@ -1219,10 +1314,15 @@ async function editPostInModal(postId) {
     setSelectedPlatforms(post.platforms || '');
     document.getElementById('cp-post-type').value = post.post_type || 'post';
 
-    // Parse topic: carousel JSON or plain text
+    // Parse topic: carousel/grid JSON or plain text
     const topicParsed = parseTopic(post.topic || '');
+    const editPostType = post.post_type || 'post';
     if (topicParsed.isCarousel) {
-        carouselSlides = topicParsed.slides.map(s => ({ text: s.text || '' }));
+        if (editPostType === 'grid') {
+            carouselSlides = topicParsed.slides.map(s => ({ text: s.text || '', caption: s.caption || '' }));
+        } else {
+            carouselSlides = topicParsed.slides.map(s => ({ text: s.text || '' }));
+        }
         document.getElementById('cp-tov').value = '';
     } else {
         carouselSlides = [];
@@ -1616,6 +1716,7 @@ function addEditReqRow(platforms, type, count) {
                 <option value="reel" ${type==='reel'?'selected':''}>Reel</option>
                 <option value="video" ${type==='video'?'selected':''}>Video</option>
                 <option value="carousel" ${type==='carousel'?'selected':''}>Carousel</option>
+                <option value="grid" ${type==='grid'?'selected':''}>Grid (3 Posts)</option>
             </select>
             <input type="number" class="cr-count border rounded-lg px-2 py-1 text-sm w-16" min="1" value="${count||1}" placeholder="#">
             <span class="text-xs text-gray-400">/ month</span>
