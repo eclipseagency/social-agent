@@ -178,8 +178,8 @@ function renderDailyData(data, date) {
         let lastActiveHtml = '—';
         let rowClass = '';
         if (u.last_active) {
-            const lastTime = u.last_active.split(' ')[1] || u.last_active;
-            lastActiveHtml = `<span class="text-xs">${lastTime.substring(0,5)}</span>`;
+            const lastTime = (u.last_active.split(' ')[1] || u.last_active).substring(0,5);
+            lastActiveHtml = `<span class="text-xs">${to12h(lastTime)}</span>`;
             // Check if idle 2+ hours and shift not over
             const lastDate = new Date(u.last_active.replace(' ', 'T') + '+02:00');
             const diffMs = cairoNow - lastDate;
@@ -191,7 +191,7 @@ function renderDailyData(data, date) {
         }
 
         // Check out & hours
-        const checkOutHtml = u.check_out_time || '—';
+        const checkOutHtml = u.check_out_time ? to12h(u.check_out_time) : '—';
         const hoursHtml = u.hours_worked || '—';
 
         // Work summary
@@ -204,7 +204,7 @@ function renderDailyData(data, date) {
             <td class="font-medium">${esc(u.username)}</td>
             <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
             <td>${badge}</td>
-            <td class="text-gray-500">${u.check_in_time || '—'}</td>
+            <td class="text-gray-500">${u.check_in_time ? to12h(u.check_in_time) : '—'}</td>
             <td class="text-gray-500">${checkOutHtml}</td>
             <td class="text-gray-500 font-medium">${hoursHtml}</td>
             <td>${pingsHtml}</td>

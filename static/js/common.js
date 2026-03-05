@@ -60,6 +60,17 @@ function formatHour(h) {
     return h > 12 ? (h - 12) + ' PM' : h + ' AM';
 }
 
+function to12h(timeStr) {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    let h = parseInt(parts[0], 10);
+    const m = parts[1] || '00';
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    if (h === 0) h = 12;
+    else if (h > 12) h -= 12;
+    return h + ':' + m + ' ' + ampm;
+}
+
 function renderEditComment(content) {
     const beforeMatch = content.match(/⸺ Before:\n([\s\S]*?)(?=\n\n⸺ After:)/);
     const afterMatch = content.match(/⸺ After:\n([\s\S]*?)$/);
@@ -1005,7 +1016,7 @@ async function loadCheckInStatus() {
                 if (coDone) {
                     coDone.classList.remove('hidden');
                     const coLabel = document.getElementById('checkout-time-label');
-                    if (coLabel) coLabel.textContent = data.check_out_time || '';
+                    if (coLabel) coLabel.textContent = to12h(data.check_out_time) || '';
                 }
             } else {
                 if (coBtn) coBtn.classList.remove('hidden');
@@ -1070,7 +1081,7 @@ async function doCheckIn() {
             document.getElementById('checkin-icon').innerHTML = '<i class="fa-solid fa-circle-check"></i>';
             document.getElementById('checkin-icon').className = 'checkin-icon done';
             document.getElementById('checkin-title').textContent = 'Checked In!';
-            document.getElementById('checkin-subtitle').textContent = `${data.check_in_time} — ${label}`;
+            document.getElementById('checkin-subtitle').textContent = `${to12h(data.check_in_time)} — ${label}`;
             btn.classList.add('hidden');
             msg.classList.add('hidden');
             // Load verification pings after check-in
@@ -1137,7 +1148,7 @@ async function doCheckOut() {
             const coDone = document.getElementById('checkout-done');
             if (coDone) coDone.classList.remove('hidden');
             const coLabel = document.getElementById('checkout-time-label');
-            if (coLabel) coLabel.textContent = data.check_out_time;
+            if (coLabel) coLabel.textContent = to12h(data.check_out_time);
             showToast(`Checked out — ${data.hours_worked} worked today`, 'success');
             // Clear any pending ping timeouts
             _pingTimeouts.forEach(t => clearTimeout(t));

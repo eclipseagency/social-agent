@@ -19,6 +19,21 @@ def _cairo_now():
     return datetime.now(CAIRO_TZ)
 
 
+def _to_12h(time_str):
+    """Convert '14:30' to '2:30 PM'."""
+    if not time_str:
+        return ''
+    parts = time_str.split(':')
+    h = int(parts[0])
+    m = parts[1] if len(parts) > 1 else '00'
+    ampm = 'PM' if h >= 12 else 'AM'
+    if h == 0:
+        h = 12
+    elif h > 12:
+        h -= 12
+    return f"{h}:{m} {ampm}"
+
+
 @attendance_bp.route('/api/attendance/check-in', methods=['POST'])
 @require_login
 def check_in():
@@ -368,13 +383,14 @@ def download_report():
             hours_worked = f"{worked_min // 60}h {worked_min % 60}m"
         last_active = activity_map.get(r['user_id'], '')
         if last_active:
-            last_active = last_active.split(' ')[1][:5] if ' ' in last_active else last_active[:5]
+            raw_time = last_active.split(' ')[1][:5] if ' ' in last_active else last_active[:5]
+            last_active = _to_12h(raw_time)
         writer.writerow([
             r['username'],
             r['job_title'] or r['role'] or '',
             status.replace('_', ' ').title(),
-            r['check_in_time'] or '',
-            r['check_out_time'] or '',
+            _to_12h(r['check_in_time']),
+            _to_12h(r['check_out_time']),
             hours_worked,
             missed_map.get(r['user_id'], 0),
             last_active,
