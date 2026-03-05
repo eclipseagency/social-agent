@@ -661,6 +661,9 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     transition: transform 0.15s, box-shadow 0.15s;
     border: 1px solid #e2e8f0;
 }
+.pres-design-wrap img, .pres-design-wrap video { width: 200px !important; height: 160px !important; border-radius: 10px; border: 1px solid #e2e8f0; }
+.pres-design-wrap:hover img, .pres-design-wrap:hover video { transform: scale(1.04); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.pres-design-wrap .design-download-btn { bottom: 8px; right: 8px; width: 28px; height: 28px; font-size: 13px; }
 .pres-images-grid img.pres-design-img, .pres-images-grid video.pres-design-img {
     width: 200px;
     height: 160px;
@@ -773,6 +776,7 @@ body.dark { background-color: #1a1a2e; color: #e0e0e0; }
     .pres-notes-block { font-size: 13px; padding: 12px 14px; }
     .pres-images-grid img.pres-ref-img { width: 160px; height: 120px; }
     .pres-images-grid img.pres-design-img, .pres-images-grid video.pres-design-img { width: 140px; height: 110px; }
+    .pres-design-wrap img, .pres-design-wrap video { width: 140px !important; height: 110px !important; }
 }
 
 /* ===== Create Post Split Modal ===== */

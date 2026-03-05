@@ -1018,12 +1018,13 @@ async function openPostSlideView(postId) {
             body += '<div class="pres-img-label">Design Output</div>';
             designUrls.forEach((u, i) => {
                 const url = u.trim();
-                body += `<div style="position:relative;display:inline-block">`;
+                body += `<div class="design-item-wrap pres-design-wrap">`;
                 body += isVideoUrl(url)
                     ? `<video class="pres-design-img" src="${url}" muted playsinline preload="metadata" onclick="window.open('${url}','_blank')"></video>`
                     : `<img class="pres-design-img" src="${url}" alt="Design" onclick="window.open('${url}','_blank')">`;
+                body += `<a href="${url}" download="design-${i + 1}" class="design-download-btn" title="Download"><i class="fa-solid fa-download"></i></a>`;
                 if (canDeleteDesign) {
-                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600" style="position:absolute;top:4px;right:4px" title="Remove">&times;</button>`;
+                    body += `<button onclick="event.stopPropagation();deleteCarouselSlide(${post.id},${i})" class="design-remove-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>`;
                 }
                 body += `</div>`;
             });
