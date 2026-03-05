@@ -932,7 +932,7 @@ async function submitCreatePost(workflowStatus) {
         const formData = new FormData();
         for (const file of createPostRefFiles) formData.append('images', file);
         if (currentUser) formData.append('user_id', currentUser.id);
-        await apiFetch(`${API_URL}/posts/${postId}/upload-references`, { method: 'POST', body: formData });
+        await apiFetch(`${API_URL}/posts/${postId}/upload-reference`, { method: 'POST', body: formData });
     }
 
     // Step 3: Upload design files if admin direct post

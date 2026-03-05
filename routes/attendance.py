@@ -154,7 +154,7 @@ def weekly_report():
         grid[uid] = {}
         for d in dates:
             dt = datetime.strptime(d, '%Y-%m-%d')
-            if dt.weekday() >= 5:  # Weekend
+            if dt.weekday() in (4, 5):  # Friday & Saturday off
                 grid[uid][d] = 'weekend'
             else:
                 grid[uid][d] = lookup.get((uid, d), 'absent')
@@ -204,7 +204,7 @@ def monthly_report():
     working_days = 0
     for d in range(1, total_days + 1):
         dt = datetime(year, mon, d)
-        if dt.weekday() < 5:
+        if dt.weekday() not in (4, 5):  # Friday & Saturday off
             working_days += 1
 
     result = []
