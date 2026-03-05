@@ -1116,8 +1116,10 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .cairo-clock-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.5px; color: #475569; margin-top: 2px; }
 
 /* Shift Tracker */
-.shift-tracker { margin-top: 12px; padding: 0 4px; }
+.shift-tracker { margin-top: 12px; padding: 10px 12px; background: rgba(99,102,241,0.08); border-radius: 10px; border: 1px solid rgba(99,102,241,0.15); }
 .shift-tracker.hidden { display: none; }
+.shift-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #818cf8; margin-bottom: 8px; }
+.shift-label i { margin-right: 4px; font-size: 10px; }
 .shift-progress-bar { height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; }
 .shift-progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); border-radius: 3px; transition: width 1s linear; min-width: 2px; }
 .shift-progress-fill.done { background: linear-gradient(90deg, #10b981, #34d399); }
