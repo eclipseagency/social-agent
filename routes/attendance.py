@@ -19,6 +19,12 @@ def _cairo_now():
 @attendance_bp.route('/api/attendance/check-in', methods=['POST'])
 @require_login
 def check_in():
+    # Block mobile devices — only desktop/laptop allowed
+    ua = (request.headers.get('User-Agent') or '').lower()
+    mobile_keywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'opera mini', 'opera mobi', 'webos']
+    if any(kw in ua for kw in mobile_keywords):
+        return jsonify({'success': False, 'error': 'Check-in is only allowed from a laptop or desktop'}), 403
+
     now = _cairo_now()
     today = now.strftime('%Y-%m-%d')
     current_time = now.strftime('%H:%M')

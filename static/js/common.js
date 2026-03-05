@@ -973,9 +973,15 @@ function updateShiftTracker() {
 // === Check-in Overlay (global) ===
 let _checkinClockInterval = null;
 
+function isMobileDevice() {
+    return /Mobile|Android|iPhone|iPad|iPod|Opera Mini|Opera Mobi|webOS/i.test(navigator.userAgent);
+}
+
 async function loadCheckInStatus() {
     const overlay = document.getElementById('checkin-overlay');
     if (!overlay) return;
+    // Don't show check-in on mobile — only desktop/laptop
+    if (isMobileDevice()) { overlay.classList.add('hidden'); return; }
     try {
         const data = await fetch(API_URL + '/attendance/my-status').then(r => r.json());
         const w = data.window || { start: 9, end: 10 };
