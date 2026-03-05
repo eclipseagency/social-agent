@@ -921,19 +921,20 @@ async function loadCheckInStatus() {
     if (!overlay) return;
     try {
         const data = await fetch(API_URL + '/attendance/my-status').then(r => r.json());
+        const w = data.window || { start: 9, ontime_minutes: 20, end: 10 };
         const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
         const h = cairoNow.getHours();
 
         // Already checked in or outside window → hide overlay, let them through
-        if (data.checked_in || h < 9 || h >= 10) {
+        if (data.checked_in || h < w.start || h >= w.end) {
             overlay.classList.add('hidden');
             if (_checkinClockInterval) { clearInterval(_checkinClockInterval); _checkinClockInterval = null; }
             return;
         }
 
-        // 9:00-9:59 and NOT checked in → block the UI
+        // Within window and NOT checked in → block the UI
         const m = cairoNow.getMinutes();
-        const isOnTime = (h === 9 && m <= 20);
+        const isOnTime = (h === w.start && m <= w.ontime_minutes);
         const icon = document.getElementById('checkin-icon');
         const title = document.getElementById('checkin-title');
         const subtitle = document.getElementById('checkin-subtitle');
@@ -948,8 +949,8 @@ async function loadCheckInStatus() {
         } else {
             icon.innerHTML = '<i class="fa-solid fa-clock"></i>';
             icon.className = 'checkin-icon late';
-            title.textContent = 'You\'re Late';
-            subtitle.textContent = 'Check in now — window closes at 10:00 AM';
+            title.textContent = "You're Late";
+            subtitle.textContent = `Check in now — window closes at ${w.end}:00`;
             btn.className = 'checkin-action-btn late';
         }
         btn.classList.remove('hidden');

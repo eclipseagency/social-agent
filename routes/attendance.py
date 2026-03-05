@@ -7,6 +7,12 @@ attendance_bp = Blueprint('attendance', __name__)
 
 CAIRO_TZ = timezone(timedelta(hours=2))
 
+# Check-in window configuration (Cairo time, 24h format)
+# TODO: restore to 9, 20, 10 after testing
+CHECKIN_START = 2    # Window opens at this hour
+CHECKIN_ONTIME = 45  # On-time if minute <= this (within start hour)
+CHECKIN_END = 3      # Window closes at this hour
+
 
 def _cairo_now():
     return datetime.now(CAIRO_TZ)
@@ -21,13 +27,13 @@ def check_in():
     hour, minute = now.hour, now.minute
 
     # Check window
-    if hour < 9:
-        return jsonify({'success': False, 'error': 'Check-in opens at 9:00 AM'}), 400
-    if hour >= 10:
+    if hour < CHECKIN_START:
+        return jsonify({'success': False, 'error': f'Check-in opens at {CHECKIN_START}:00 AM'}), 400
+    if hour >= CHECKIN_END:
         return jsonify({'success': False, 'error': 'Check-in window closed for today'}), 400
 
     # Determine status
-    if hour == 9 and minute <= 20:
+    if hour == CHECKIN_START and minute <= CHECKIN_ONTIME:
         status = 'on_time'
     else:
         status = 'late'
@@ -66,13 +72,19 @@ def my_status():
     ).fetchone()
     db.close()
 
+    resp = {
+        'checked_in': False,
+        'window': {
+            'start': CHECKIN_START,
+            'ontime_minutes': CHECKIN_ONTIME,
+            'end': CHECKIN_END
+        }
+    }
     if row:
-        return jsonify({
-            'checked_in': True,
-            'status': row['status'],
-            'check_in_time': row['check_in_time']
-        })
-    return jsonify({'checked_in': False})
+        resp['checked_in'] = True
+        resp['status'] = row['status']
+        resp['check_in_time'] = row['check_in_time']
+    return jsonify(resp)
 
 
 @attendance_bp.route('/api/attendance/report')
