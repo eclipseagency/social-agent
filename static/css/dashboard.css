@@ -1255,10 +1255,12 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .att-stat-card.on-time { border-top: 3px solid #10b981; }
 .att-stat-card.late { border-top: 3px solid #f59e0b; }
 .att-stat-card.absent { border-top: 3px solid #ef4444; }
+.att-stat-card.overtime { border-top: 3px solid #6366f1; }
 .att-stat-num { font-size: 28px; font-weight: 700; line-height: 1.2; }
 .att-stat-card.on-time .att-stat-num { color: #059669; }
 .att-stat-card.late .att-stat-num { color: #d97706; }
 .att-stat-card.absent .att-stat-num { color: #dc2626; }
+.att-stat-card.overtime .att-stat-num { color: #6366f1; }
 .att-stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-top: 4px; }
 
 .attendance-view-toggle button { transition: all 0.2s; color: #6b7280; }
@@ -1281,6 +1283,20 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .attendance-dot.absent { background: #ef4444; }
 .attendance-dot.weekend { background: #e2e8f0; }
 
+.att-overtime-val { color: #d97706; font-weight: 600; font-size: 12px; }
+.att-weekly-legend { display: flex; gap: 16px; justify-content: center; margin-top: 12px; font-size: 11px; color: #64748b; }
+.att-weekly-legend span { display: flex; align-items: center; gap: 5px; }
+
+/* Monthly attendance percentage bar */
+.att-pct-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-bottom: 3px; }
+.att-pct-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.att-pct-fill.att-pct-good { background: #10b981; }
+.att-pct-fill.att-pct-warn { background: #f59e0b; }
+.att-pct-fill.att-pct-bad { background: #ef4444; }
+.att-pct-good { color: #059669; }
+.att-pct-warn { color: #d97706; }
+.att-pct-bad { color: #dc2626; }
+
 /* ========== Attendance Dark Mode ========== */
 .dark .checkin-card { background: #1e293b; }
 .dark .checkin-title { color: #f1f5f9; }
@@ -1294,6 +1310,13 @@ body:not(.dark) .search-item-sub { color: #64748b; }
 .dark .att-stat-card.on-time { border-top-color: #34d399; }
 .dark .att-stat-card.late { border-top-color: #fbbf24; }
 .dark .att-stat-card.absent { border-top-color: #f87171; }
+.dark .att-stat-card.overtime { border-top-color: #818cf8; }
+.dark .att-overtime-val { color: #fbbf24; }
+.dark .att-weekly-legend { color: #94a3b8; }
+.dark .att-pct-bar { background: #334155; }
+.dark .att-pct-good { color: #34d399; }
+.dark .att-pct-warn { color: #fbbf24; }
+.dark .att-pct-bad { color: #f87171; }
 .dark .att-stat-label { color: #64748b; }
 .dark .attendance-view-toggle { background: #1e293b; }
 .dark .attendance-view-toggle button { color: #94a3b8; }

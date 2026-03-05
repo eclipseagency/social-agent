@@ -169,3 +169,66 @@ def weekly_report():
         'dates': dates,
         'grid': grid
     })
+
+
+@attendance_bp.route('/api/attendance/monthly')
+@require_role('admin', 'manager')
+def monthly_report():
+    month = request.args.get('month')  # YYYY-MM
+    if not month:
+        month = _cairo_now().strftime('%Y-%m')
+
+    db = get_db()
+    users = db.execute(
+        "SELECT id, username, role, job_title FROM users WHERE is_active = 1 ORDER BY username"
+    ).fetchall()
+
+    records = db.execute(
+        "SELECT user_id, date, status, check_in_time FROM attendance WHERE date LIKE ?",
+        (month + '%',)
+    ).fetchall()
+    db.close()
+
+    # Build per-user stats
+    user_map = {}
+    for r in records:
+        uid = r['user_id']
+        if uid not in user_map:
+            user_map[uid] = {'on_time': 0, 'late': 0, 'days_present': 0, 'dates': {}}
+        user_map[uid][r['status']] = user_map[uid].get(r['status'], 0) + 1
+        user_map[uid]['days_present'] += 1
+        user_map[uid]['dates'][r['date']] = {
+            'status': r['status'],
+            'check_in_time': r['check_in_time']
+        }
+
+    # Count working days in month (Mon-Fri)
+    import calendar
+    year, mon = int(month[:4]), int(month[5:7])
+    total_days = calendar.monthrange(year, mon)[1]
+    working_days = 0
+    for d in range(1, total_days + 1):
+        dt = datetime(year, mon, d)
+        if dt.weekday() < 5:
+            working_days += 1
+
+    result = []
+    for u in users:
+        uid = u['id']
+        stats = user_map.get(uid, {'on_time': 0, 'late': 0, 'days_present': 0, 'dates': {}})
+        absent_days = working_days - stats['days_present']
+        total_hours = stats['days_present'] * 6
+        result.append({
+            'user_id': uid,
+            'username': u['username'],
+            'role': u['role'] or '',
+            'job_title': u['job_title'] or '',
+            'on_time': stats.get('on_time', 0),
+            'late': stats.get('late', 0),
+            'absent': max(0, absent_days),
+            'days_present': stats['days_present'],
+            'total_hours': total_hours,
+            'working_days': working_days
+        })
+
+    return jsonify(result)

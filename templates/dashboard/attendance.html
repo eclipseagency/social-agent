@@ -6,8 +6,10 @@
         <div class="flex bg-gray-100 rounded-lg p-0.5 text-xs attendance-view-toggle">
             <button id="btn-daily" onclick="switchView('daily')" class="px-3 py-1.5 rounded-md font-medium active">Daily</button>
             <button id="btn-weekly" onclick="switchView('weekly')" class="px-3 py-1.5 rounded-md font-medium">Weekly</button>
+            <button id="btn-monthly" onclick="switchView('monthly')" class="px-3 py-1.5 rounded-md font-medium">Monthly</button>
         </div>
         <input type="date" id="report-date" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500" onchange="loadDailyReport(this.value)">
+        <input type="month" id="report-month" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 hidden" onchange="loadMonthlyReport(this.value)">
     </div>
 </div>
 
@@ -25,18 +27,25 @@
         <div class="att-stat-num" id="count-absent">0</div>
         <div class="att-stat-label">Absent</div>
     </div>
+    <div class="att-stat-card overtime">
+        <div class="att-stat-num" id="count-overtime">0</div>
+        <div class="att-stat-label">With Overtime</div>
+    </div>
 </div>
 
 <!-- Daily view -->
 <div id="daily-view">
     <div class="attendance-table-wrap">
-        <table class="attendance-table" id="attendance-daily-table">
+        <table class="attendance-table">
             <thead>
                 <tr>
                     <th>Team Member</th>
                     <th>Role</th>
                     <th>Status</th>
-                    <th>Time</th>
+                    <th>Check In</th>
+                    <th>Shift End</th>
+                    <th>Hours Worked</th>
+                    <th>Overtime</th>
                 </tr>
             </thead>
             <tbody id="daily-tbody"></tbody>
@@ -47,9 +56,36 @@
 <!-- Weekly view -->
 <div id="weekly-view" class="hidden">
     <div class="attendance-table-wrap">
-        <table class="attendance-table" id="attendance-weekly-table">
+        <table class="attendance-table">
             <thead id="weekly-thead"></thead>
             <tbody id="weekly-tbody"></tbody>
+        </table>
+    </div>
+    <div class="att-weekly-legend">
+        <span><span class="attendance-dot on_time"></span> On Time</span>
+        <span><span class="attendance-dot late"></span> Late</span>
+        <span><span class="attendance-dot absent"></span> Absent</span>
+        <span><span class="attendance-dot weekend"></span> Weekend</span>
+    </div>
+</div>
+
+<!-- Monthly view -->
+<div id="monthly-view" class="hidden">
+    <div class="attendance-table-wrap">
+        <table class="attendance-table">
+            <thead>
+                <tr>
+                    <th>Team Member</th>
+                    <th>Role</th>
+                    <th class="text-center">Days Present</th>
+                    <th class="text-center">On Time</th>
+                    <th class="text-center">Late</th>
+                    <th class="text-center">Absent</th>
+                    <th class="text-center">Total Hours</th>
+                    <th class="text-center">Attendance %</th>
+                </tr>
+            </thead>
+            <tbody id="monthly-tbody"></tbody>
         </table>
     </div>
 </div>
@@ -57,83 +93,217 @@
 
 {% block scripts %}
 <script>
+const SHIFT_DURATION = 6;
 let currentView = 'daily';
+let _dailyRefreshInterval = null;
+let _lastCachedData = [];
+let _lastReportDate = null;
 
 function pageInit() {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+    const today = getCairoToday();
+    const month = today.substring(0, 7);
     document.getElementById('report-date').value = today;
+    document.getElementById('report-month').value = month;
     loadDailyReport(today);
 }
 
 function switchView(view) {
     currentView = view;
-    document.getElementById('btn-daily').classList.toggle('active', view === 'daily');
-    document.getElementById('btn-weekly').classList.toggle('active', view === 'weekly');
-    document.getElementById('daily-view').classList.toggle('hidden', view !== 'daily');
-    document.getElementById('weekly-view').classList.toggle('hidden', view !== 'weekly');
+    ['daily', 'weekly', 'monthly'].forEach(v => {
+        document.getElementById('btn-' + v).classList.toggle('active', v === view);
+        document.getElementById(v + '-view').classList.toggle('hidden', v !== view);
+    });
+    document.getElementById('report-date').classList.toggle('hidden', view === 'monthly');
+    document.getElementById('report-month').classList.toggle('hidden', view !== 'monthly');
     if (view === 'weekly') loadWeeklyReport();
+    if (view === 'monthly') loadMonthlyReport(document.getElementById('report-month').value);
 }
 
+function getCairoNow() {
+    return new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+}
+
+function getCairoToday() {
+    return getCairoNow().toLocaleDateString('en-CA');
+}
+
+function calcShiftInfo(checkInTime, reportDate) {
+    if (!checkInTime) return { shiftEnd: '—', hoursWorked: '—', overtime: '—', overtimeMs: 0 };
+
+    const [h, m] = checkInTime.split(':').map(Number);
+    const shiftEndH = h + SHIFT_DURATION;
+    const shiftEnd = `${String(shiftEndH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+    const isToday = reportDate === getCairoToday();
+    let workedMs;
+
+    if (isToday) {
+        const now = getCairoNow();
+        const checkin = new Date(now);
+        checkin.setHours(h, m, 0, 0);
+        workedMs = Math.max(0, now - checkin);
+    } else {
+        workedMs = SHIFT_DURATION * 3600000;
+    }
+
+    const workedH = Math.floor(workedMs / 3600000);
+    const workedM = Math.floor((workedMs % 3600000) / 60000);
+    const hoursWorked = `${workedH}h ${workedM}m`;
+
+    const overtimeMs = Math.max(0, workedMs - SHIFT_DURATION * 3600000);
+    let overtime = '—';
+    if (overtimeMs > 60000) {
+        const otH = Math.floor(overtimeMs / 3600000);
+        const otM = Math.floor((overtimeMs % 3600000) / 60000);
+        overtime = `+${otH}h ${otM}m`;
+    }
+
+    return { shiftEnd, hoursWorked, overtime, overtimeMs };
+}
+
+// ── Daily ──
 async function loadDailyReport(date) {
     if (!date) return;
+    _lastReportDate = date;
+
+    if (_dailyRefreshInterval) clearInterval(_dailyRefreshInterval);
+    if (date === getCairoToday()) {
+        _dailyRefreshInterval = setInterval(() => renderDailyData(_lastCachedData, date), 60000);
+    }
+
     try {
         const data = await fetch(API_URL + '/attendance/report?date=' + date).then(r => r.json());
-        let onTime = 0, late = 0, absent = 0;
-        data.forEach(u => {
-            if (u.status === 'on_time') onTime++;
-            else if (u.status === 'late') late++;
-            else absent++;
-        });
-        document.getElementById('count-ontime').textContent = onTime;
-        document.getElementById('count-late').textContent = late;
-        document.getElementById('count-absent').textContent = absent;
-
-        const tbody = document.getElementById('daily-tbody');
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-8">No data</td></tr>';
-            return;
-        }
-        tbody.innerHTML = data.map(u => {
-            const badge = statusBadge(u.status);
-            return `<tr>
-                <td class="font-medium">${esc(u.username)}</td>
-                <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
-                <td>${badge}</td>
-                <td class="text-gray-500">${u.check_in_time || '—'}</td>
-            </tr>`;
-        }).join('');
+        _lastCachedData = data;
+        renderDailyData(data, date);
     } catch (e) {
-        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="7" class="text-center text-red-400 py-8">Failed to load</td></tr>';
     }
 }
 
+function renderDailyData(data, date) {
+    let onTime = 0, late = 0, absent = 0, withOvertime = 0;
+
+    const rows = data.map(u => {
+        if (u.status === 'on_time') onTime++;
+        else if (u.status === 'late') late++;
+        else absent++;
+
+        const shift = calcShiftInfo(u.check_in_time, date);
+        if (shift.overtimeMs > 60000) withOvertime++;
+
+        const badge = statusBadge(u.status);
+        const overtimeHtml = shift.overtime !== '—'
+            ? `<span class="att-overtime-val">${shift.overtime}</span>`
+            : '<span class="text-gray-300">—</span>';
+
+        return `<tr>
+            <td class="font-medium">${esc(u.username)}</td>
+            <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
+            <td>${badge}</td>
+            <td class="text-gray-500">${u.check_in_time || '—'}</td>
+            <td class="text-gray-500">${shift.shiftEnd}</td>
+            <td class="font-medium">${shift.hoursWorked}</td>
+            <td>${overtimeHtml}</td>
+        </tr>`;
+    });
+
+    document.getElementById('count-ontime').textContent = onTime;
+    document.getElementById('count-late').textContent = late;
+    document.getElementById('count-absent').textContent = absent;
+    document.getElementById('count-overtime').textContent = withOvertime;
+
+    const tbody = document.getElementById('daily-tbody');
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">No data</td></tr>';
+        return;
+    }
+    tbody.innerHTML = rows.join('');
+}
+
+// ── Weekly ──
 async function loadWeeklyReport() {
     try {
         const data = await fetch(API_URL + '/attendance/weekly').then(r => r.json());
         const { users, dates, grid } = data;
 
-        // Header
         const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const thead = document.getElementById('weekly-thead');
-        thead.innerHTML = `<tr><th>Team Member</th>${dates.map(d => {
-            const dt = new Date(d + 'T00:00:00');
-            return `<th class="text-center">${dayNames[dt.getDay()]}<br><span class="text-[10px] font-normal text-gray-400">${d.slice(5)}</span></th>`;
-        }).join('')}</tr>`;
+        thead.innerHTML = `<tr>
+            <th>Team Member</th>
+            ${dates.map(d => {
+                const dt = new Date(d + 'T00:00:00');
+                return `<th class="text-center">${dayNames[dt.getDay()]}<br><span class="text-[10px] font-normal text-gray-400">${d.slice(5)}</span></th>`;
+            }).join('')}
+            <th class="text-center">Total</th>
+        </tr>`;
 
         const tbody = document.getElementById('weekly-tbody');
         if (users.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${dates.length+1}" class="text-center text-gray-400 py-8">No data</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${dates.length + 2}" class="text-center text-gray-400 py-8">No data</td></tr>`;
             return;
         }
+
         tbody.innerHTML = users.map(u => {
+            let daysPresent = 0;
             const cells = dates.map(d => {
                 const s = grid[u.user_id] ? grid[u.user_id][d] : 'absent';
-                return `<td class="text-center"><span class="attendance-dot ${s}"></span></td>`;
+                if (s === 'on_time' || s === 'late') daysPresent++;
+                let label = '';
+                if (s === 'on_time' || s === 'late') {
+                    label = `<span class="text-[10px] text-gray-400">${SHIFT_DURATION}h</span>`;
+                }
+                return `<td class="text-center"><span class="attendance-dot ${s}"></span><br>${label}</td>`;
             }).join('');
-            return `<tr><td class="font-medium">${esc(u.username)}</td>${cells}</tr>`;
+            const totalHours = daysPresent * SHIFT_DURATION;
+            return `<tr>
+                <td class="font-medium">${esc(u.username)}</td>
+                ${cells}
+                <td class="text-center font-semibold">${totalHours}h</td>
+            </tr>`;
         }).join('');
     } catch (e) {
-        document.getElementById('weekly-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+        document.getElementById('weekly-tbody').innerHTML = '<tr><td colspan="9" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+    }
+}
+
+// ── Monthly ──
+async function loadMonthlyReport(month) {
+    if (!month) return;
+    try {
+        const data = await fetch(API_URL + '/attendance/monthly?month=' + month).then(r => r.json());
+
+        // Update summary cards with monthly totals
+        let onTime = 0, late = 0, absent = 0;
+        data.forEach(u => { onTime += u.on_time; late += u.late; absent += u.absent; });
+        document.getElementById('count-ontime').textContent = onTime;
+        document.getElementById('count-late').textContent = late;
+        document.getElementById('count-absent').textContent = absent;
+        document.getElementById('count-overtime').textContent = '—';
+
+        const tbody = document.getElementById('monthly-tbody');
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">No data</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(u => {
+            const pct = u.working_days > 0 ? Math.round((u.days_present / u.working_days) * 100) : 0;
+            const pctClass = pct >= 90 ? 'att-pct-good' : pct >= 70 ? 'att-pct-warn' : 'att-pct-bad';
+            return `<tr>
+                <td class="font-medium">${esc(u.username)}</td>
+                <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
+                <td class="text-center font-semibold">${u.days_present}<span class="text-gray-400 font-normal">/${u.working_days}</span></td>
+                <td class="text-center"><span class="att-badge on-time">${u.on_time}</span></td>
+                <td class="text-center"><span class="att-badge late">${u.late}</span></td>
+                <td class="text-center"><span class="att-badge absent">${u.absent}</span></td>
+                <td class="text-center font-semibold">${u.total_hours}h</td>
+                <td class="text-center">
+                    <div class="att-pct-bar"><div class="att-pct-fill ${pctClass}" style="width:${pct}%"></div></div>
+                    <span class="text-xs font-semibold ${pctClass}">${pct}%</span>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        document.getElementById('monthly-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-8">Failed to load</td></tr>';
     }
 }
 
