@@ -164,11 +164,17 @@ def ping_missed():
 @attendance_bp.route('/api/attendance/check-out', methods=['POST'])
 @require_login
 def check_out():
-    """Manual check-out — records the current Cairo time."""
+    """Manual check-out — requires a work summary."""
     now = _cairo_now()
 
     if now.weekday() in (4, 5):
         return jsonify({'success': False, 'error': 'No check-out on weekends'}), 400
+
+    data = request.get_json() or {}
+    summary = (data.get('summary') or '').strip()
+    if not summary or len(summary) < 10:
+        return jsonify({'success': False, 'error': 'Please write what you accomplished today (at least 10 characters)'}), 400
+
     today = now.strftime('%Y-%m-%d')
     current_time = now.strftime('%H:%M')
     user_id = session['user_id']
@@ -186,8 +192,8 @@ def check_out():
         return jsonify({'success': False, 'error': 'Already checked out'}), 409
 
     db.execute(
-        "UPDATE attendance SET check_out_time=? WHERE id=?",
-        (current_time, row['id'])
+        "UPDATE attendance SET check_out_time=?, work_summary=? WHERE id=?",
+        (current_time, summary, row['id'])
     )
     db.commit()
 
@@ -250,7 +256,7 @@ def daily_report():
     db = get_db()
     rows = db.execute("""
         SELECT u.id as user_id, u.username, u.role, u.job_title,
-               a.status, a.check_in_time, a.check_out_time
+               a.status, a.check_in_time, a.check_out_time, a.work_summary
         FROM users u
         LEFT JOIN attendance a ON a.user_id = u.id AND a.date = ?
         WHERE u.is_active = 1
@@ -309,7 +315,8 @@ def daily_report():
             'missed_pings': missed_map.get(uid, 0),
             'total_pings': total_pings_map.get(uid, 0),
             'last_active': act.get('last_active', ''),
-            'activity_count': act.get('count', 0)
+            'activity_count': act.get('count', 0),
+            'work_summary': r['work_summary'] or ''
         })
 
     return jsonify(result)
@@ -324,7 +331,7 @@ def download_report():
     db = get_db()
     rows = db.execute("""
         SELECT u.id as user_id, u.username, u.role, u.job_title,
-               a.status, a.check_in_time, a.check_out_time
+               a.status, a.check_in_time, a.check_out_time, a.work_summary
         FROM users u
         LEFT JOIN attendance a ON a.user_id = u.id AND a.date = ?
         WHERE u.is_active = 1
@@ -349,7 +356,7 @@ def download_report():
     output = io.StringIO()
     output.write('\ufeff')  # BOM for Arabic in Excel
     writer = csv.writer(output)
-    writer.writerow(['Name', 'Role', 'Status', 'Check In', 'Check Out', 'Hours Worked', 'Missed Pings', 'Last Active'])
+    writer.writerow(['Name', 'Role', 'Status', 'Check In', 'Check Out', 'Hours Worked', 'Missed Pings', 'Last Active', 'Work Summary'])
 
     for r in rows:
         status = r['status'] or 'absent'
@@ -370,7 +377,8 @@ def download_report():
             r['check_out_time'] or '',
             hours_worked,
             missed_map.get(r['user_id'], 0),
-            last_active
+            last_active,
+            r['work_summary'] or ''
         ])
 
     response = make_response(output.getvalue())

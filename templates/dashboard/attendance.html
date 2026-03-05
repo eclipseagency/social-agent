@@ -46,6 +46,7 @@
                     <th>Hours</th>
                     <th>Pings</th>
                     <th>Last Active</th>
+                    <th>Work Summary</th>
                 </tr>
             </thead>
             <tbody id="daily-tbody"></tbody>
@@ -146,7 +147,7 @@ async function loadDailyReport(date) {
         _lastCachedData = data;
         renderDailyData(data, date);
     } catch (e) {
-        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+        document.getElementById('daily-tbody').innerHTML = '<tr><td colspan="9" class="text-center text-red-400 py-8">Failed to load</td></tr>';
     }
 }
 
@@ -192,6 +193,12 @@ function renderDailyData(data, date) {
         const checkOutHtml = u.check_out_time || '—';
         const hoursHtml = u.hours_worked || '—';
 
+        // Work summary
+        const summary = u.work_summary || '';
+        const summaryHtml = summary
+            ? `<span class="text-xs text-gray-600" title="${esc(summary)}">${esc(summary.length > 50 ? summary.substring(0, 50) + '...' : summary)}</span>`
+            : '<span class="text-gray-300 text-xs">—</span>';
+
         return `<tr ${rowClass}>
             <td class="font-medium">${esc(u.username)}</td>
             <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
@@ -201,6 +208,7 @@ function renderDailyData(data, date) {
             <td class="text-gray-500 font-medium">${hoursHtml}</td>
             <td>${pingsHtml}</td>
             <td>${lastActiveHtml}</td>
+            <td>${summaryHtml}</td>
         </tr>`;
     });
 
@@ -210,7 +218,7 @@ function renderDailyData(data, date) {
 
     const tbody = document.getElementById('daily-tbody');
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">No data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-8">No data</td></tr>';
         return;
     }
     tbody.innerHTML = rows.join('');
@@ -277,7 +285,7 @@ async function loadMonthlyReport(month) {
 
         const tbody = document.getElementById('monthly-tbody');
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">No data</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-8">No data</td></tr>';
             return;
         }
         tbody.innerHTML = data.map(u => {
@@ -298,7 +306,7 @@ async function loadMonthlyReport(month) {
             </tr>`;
         }).join('');
     } catch (e) {
-        document.getElementById('monthly-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-8">Failed to load</td></tr>';
+        document.getElementById('monthly-tbody').innerHTML = '<tr><td colspan="9" class="text-center text-red-400 py-8">Failed to load</td></tr>';
     }
 }
 

@@ -1096,17 +1096,46 @@ async function doCheckIn() {
 }
 
 // === Check-out ===
+function openCheckoutModal() {
+    const overlay = document.getElementById('checkout-overlay');
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        const ta = document.getElementById('checkout-summary');
+        if (ta) { ta.value = ''; ta.focus(); }
+        const err = document.getElementById('checkout-error');
+        if (err) err.classList.add('hidden');
+    }
+}
+
+function closeCheckoutModal() {
+    const overlay = document.getElementById('checkout-overlay');
+    if (overlay) overlay.classList.add('hidden');
+}
+
 async function doCheckOut() {
-    const btn = document.getElementById('checkout-btn');
+    const summary = (document.getElementById('checkout-summary')?.value || '').trim();
+    const errEl = document.getElementById('checkout-error');
+    if (!summary || summary.length < 10) {
+        if (errEl) { errEl.textContent = 'Please write at least 10 characters about what you did today'; errEl.classList.remove('hidden'); }
+        return;
+    }
+    if (errEl) errEl.classList.add('hidden');
+
+    const btn = document.getElementById('checkout-submit-btn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Checking out...';
     try {
-        const res = await fetch(API_URL + '/attendance/check-out', { method: 'POST' });
+        const res = await fetch(API_URL + '/attendance/check-out', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ summary })
+        });
         const data = await res.json();
         if (data.success) {
-            btn.classList.add('hidden');
+            closeCheckoutModal();
+            document.getElementById('checkout-btn')?.classList.add('hidden');
             const coDone = document.getElementById('checkout-done');
-            coDone.classList.remove('hidden');
+            if (coDone) coDone.classList.remove('hidden');
             const coLabel = document.getElementById('checkout-time-label');
             if (coLabel) coLabel.textContent = data.check_out_time;
             showToast(`Checked out — ${data.hours_worked} worked today`, 'success');
@@ -1114,12 +1143,12 @@ async function doCheckOut() {
             _pingTimeouts.forEach(t => clearTimeout(t));
             _pingTimeouts = [];
         } else {
-            showToast(data.error || 'Check-out failed', 'error');
+            if (errEl) { errEl.textContent = data.error || 'Check-out failed'; errEl.classList.remove('hidden'); }
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-right-from-bracket mr-1"></i>Check Out';
         }
     } catch (e) {
-        showToast('Connection error', 'error');
+        if (errEl) { errEl.textContent = 'Connection error — try again'; errEl.classList.remove('hidden'); }
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-right-from-bracket mr-1"></i>Check Out';
     }

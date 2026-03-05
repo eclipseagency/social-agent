@@ -257,6 +257,11 @@ def run_migrations():
         _migration_29_checkout(db)
         set_schema_version(db, 29)
 
+    if version < 30:
+        print("Running migration 30: Add work_summary to attendance...")
+        _migration_30_work_summary(db)
+        set_schema_version(db, 30)
+
     final_version = get_schema_version(db)
     print(f"Migrations complete. Schema version: {final_version}")
     db.close()
@@ -724,6 +729,13 @@ def _migration_29_checkout(db):
     """Add check_out_time column to attendance for manual/auto check-out."""
     if not column_exists(db, 'attendance', 'check_out_time'):
         db.execute("ALTER TABLE attendance ADD COLUMN check_out_time TEXT")
+    db.commit()
+
+
+def _migration_30_work_summary(db):
+    """Add work_summary column to attendance for end-of-day summaries."""
+    if not column_exists(db, 'attendance', 'work_summary'):
+        db.execute("ALTER TABLE attendance ADD COLUMN work_summary TEXT DEFAULT ''")
     db.commit()
 
 
