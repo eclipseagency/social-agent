@@ -29,6 +29,10 @@ def check_in():
         return jsonify({'success': False, 'error': 'Check-in is only allowed from a laptop or desktop'}), 403
 
     now = _cairo_now()
+
+    # Block weekends (Friday=4, Saturday=5)
+    if now.weekday() in (4, 5):
+        return jsonify({'success': False, 'error': 'No check-in on weekends'}), 400
     today = now.strftime('%Y-%m-%d')
     current_time = now.strftime('%H:%M')
     hour, minute = now.hour, now.minute
@@ -206,6 +210,9 @@ def my_status():
     today = now.strftime('%Y-%m-%d')
     user_id = session['user_id']
 
+    # Weekend — no check-in needed
+    is_weekend = now.weekday() in (4, 5)
+
     db = get_db()
     row = db.execute(
         "SELECT status, check_in_time, check_out_time FROM attendance WHERE user_id=? AND date=?",
@@ -216,6 +223,7 @@ def my_status():
     resp = {
         'checked_in': False,
         'checked_out': False,
+        'is_weekend': is_weekend,
         'window': {
             'start': CHECKIN_START,
             'end': CHECKIN_END

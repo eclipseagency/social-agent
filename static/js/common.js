@@ -988,6 +988,9 @@ async function loadCheckInStatus() {
         const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
         const h = cairoNow.getHours();
 
+        // Weekend — no check-in needed
+        if (data.is_weekend) { overlay.classList.add('hidden'); return; }
+
         // Already checked in → hide overlay permanently, start shift tracker
         if (data.checked_in) {
             _checkinTimeStr = data.check_in_time;
