@@ -83,6 +83,7 @@
                     <th class="text-center">Late</th>
                     <th class="text-center">Absent</th>
                     <th class="text-center">Total Hours</th>
+                    <th class="text-center">Missed Pings</th>
                     <th class="text-center">Attendance %</th>
                 </tr>
             </thead>
@@ -239,6 +240,7 @@ async function loadWeeklyReport() {
                 return `<th class="text-center">${dayNames[dt.getDay()]}<br><span class="text-[10px] font-normal text-gray-400">${d.slice(5)}</span></th>`;
             }).join('')}
             <th class="text-center">Total</th>
+            <th class="text-center">Missed Pings</th>
         </tr>`;
 
         const tbody = document.getElementById('weekly-tbody');
@@ -247,22 +249,37 @@ async function loadWeeklyReport() {
             return;
         }
 
+        const hours = data.hours || {};
+        const missedPings = data.missed_pings || {};
+
         tbody.innerHTML = users.map(u => {
             let daysPresent = 0;
+            let totalActualHours = 0;
             const cells = dates.map(d => {
                 const s = grid[u.user_id] ? grid[u.user_id][d] : 'absent';
                 if (s === 'on_time' || s === 'late') daysPresent++;
                 let label = '';
+                const hKey = u.user_id + '_' + d;
                 if (s === 'on_time' || s === 'late') {
-                    label = `<span class="text-[10px] text-gray-400">${6}h</span>`;
+                    const h = hours[hKey];
+                    if (h) {
+                        label = `<span class="text-[10px] text-gray-400">${h}h</span>`;
+                        totalActualHours += h;
+                    } else {
+                        label = `<span class="text-[10px] text-gray-400">—</span>`;
+                    }
                 }
                 return `<td class="text-center"><span class="attendance-dot ${s}"></span><br>${label}</td>`;
             }).join('');
-            const totalHours = daysPresent * 6;
+            const missed = missedPings[u.user_id] || 0;
+            const missedHtml = missed > 0
+                ? `<span class="att-badge absent">${missed}</span>`
+                : '<span class="text-green-600 text-xs">✓</span>';
             return `<tr>
                 <td class="font-medium">${esc(u.username)}</td>
                 ${cells}
-                <td class="text-center font-semibold">${totalHours}h</td>
+                <td class="text-center font-semibold">${totalActualHours ? totalActualHours.toFixed(1) + 'h' : (daysPresent * 6) + 'h'}</td>
+                <td class="text-center">${missedHtml}</td>
             </tr>`;
         }).join('');
     } catch (e) {
@@ -291,6 +308,10 @@ async function loadMonthlyReport(month) {
         tbody.innerHTML = data.map(u => {
             const pct = u.working_days > 0 ? Math.round((u.days_present / u.working_days) * 100) : 0;
             const pctClass = pct >= 90 ? 'att-pct-good' : pct >= 70 ? 'att-pct-warn' : 'att-pct-bad';
+            const missed = u.missed_pings || 0;
+            const missedHtml = missed > 0
+                ? `<span class="att-badge absent">${missed}</span>`
+                : '<span class="text-green-600 text-xs font-medium">✓</span>';
             return `<tr>
                 <td class="font-medium">${esc(u.username)}</td>
                 <td class="text-gray-500">${esc(u.job_title || u.role)}</td>
@@ -298,7 +319,8 @@ async function loadMonthlyReport(month) {
                 <td class="text-center"><span class="att-badge on-time">${u.on_time}</span></td>
                 <td class="text-center"><span class="att-badge late">${u.late}</span></td>
                 <td class="text-center"><span class="att-badge absent">${u.absent}</span></td>
-                <td class="text-center font-semibold">${u.total_hours}h</td>
+                <td class="text-center font-semibold">${u.total_hours}</td>
+                <td class="text-center">${missedHtml}</td>
                 <td class="text-center">
                     <div class="att-pct-bar"><div class="att-pct-fill ${pctClass}" style="width:${pct}%"></div></div>
                     <span class="text-xs font-semibold ${pctClass}">${pct}%</span>

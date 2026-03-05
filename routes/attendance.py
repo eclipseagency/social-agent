@@ -407,20 +407,41 @@ def weekly_report():
     ).fetchall()
 
     records = db.execute(
-        "SELECT user_id, date, status FROM attendance WHERE date >= ? AND date <= ?",
+        "SELECT user_id, date, status, check_in_time, check_out_time FROM attendance WHERE date >= ? AND date <= ?",
         (dates[0], dates[6])
     ).fetchall()
+
+    # Missed pings per user per date
+    ping_rows = db.execute("""
+        SELECT user_id, date, COUNT(*) as missed
+        FROM verification_pings
+        WHERE date >= ? AND date <= ? AND responded = -1
+        GROUP BY user_id, date
+    """, (dates[0], dates[6])).fetchall()
+    missed_lookup = {}
+    for r in ping_rows:
+        missed_lookup[(r['user_id'], r['date'])] = r['missed']
+
     db.close()
 
     # Build lookup
     lookup = {}
+    hours_lookup = {}
     for r in records:
         lookup[(r['user_id'], r['date'])] = r['status']
+        # Calculate actual hours if checked out
+        if r['check_in_time'] and r['check_out_time']:
+            ci_h, ci_m = map(int, r['check_in_time'].split(':'))
+            co_h, co_m = map(int, r['check_out_time'].split(':'))
+            worked = (co_h * 60 + co_m) - (ci_h * 60 + ci_m)
+            hours_lookup[f"{r['user_id']}_{r['date']}"] = round(worked / 60, 1)
 
     grid = {}
     user_list = []
+    user_missed = {}
     for u in users:
         uid = u['id']
+        total_missed = 0
         user_list.append({
             'user_id': uid,
             'username': u['username'],
@@ -434,11 +455,15 @@ def weekly_report():
                 grid[uid][d] = 'weekend'
             else:
                 grid[uid][d] = lookup.get((uid, d), 'absent')
+            total_missed += missed_lookup.get((uid, d), 0)
+        user_missed[uid] = total_missed
 
     return jsonify({
         'users': user_list,
         'dates': dates,
-        'grid': grid
+        'grid': grid,
+        'hours': hours_lookup,
+        'missed_pings': user_missed
     })
 
 
@@ -455,9 +480,19 @@ def monthly_report():
     ).fetchall()
 
     records = db.execute(
-        "SELECT user_id, date, status, check_in_time FROM attendance WHERE date LIKE ?",
+        "SELECT user_id, date, status, check_in_time, check_out_time FROM attendance WHERE date LIKE ?",
         (month + '%',)
     ).fetchall()
+
+    # Missed pings per user for the month
+    ping_rows = db.execute("""
+        SELECT user_id, COUNT(*) as missed
+        FROM verification_pings
+        WHERE date LIKE ? AND responded = -1
+        GROUP BY user_id
+    """, (month + '%',)).fetchall()
+    missed_map = {r['user_id']: r['missed'] for r in ping_rows}
+
     db.close()
 
     # Build per-user stats
@@ -465,9 +500,14 @@ def monthly_report():
     for r in records:
         uid = r['user_id']
         if uid not in user_map:
-            user_map[uid] = {'on_time': 0, 'late': 0, 'days_present': 0, 'dates': {}}
+            user_map[uid] = {'on_time': 0, 'late': 0, 'days_present': 0, 'actual_minutes': 0, 'dates': {}}
         user_map[uid][r['status']] = user_map[uid].get(r['status'], 0) + 1
         user_map[uid]['days_present'] += 1
+        # Calculate actual hours from check-in/out
+        if r['check_in_time'] and r['check_out_time']:
+            ci_h, ci_m = map(int, r['check_in_time'].split(':'))
+            co_h, co_m = map(int, r['check_out_time'].split(':'))
+            user_map[uid]['actual_minutes'] += (co_h * 60 + co_m) - (ci_h * 60 + ci_m)
         user_map[uid]['dates'][r['date']] = {
             'status': r['status'],
             'check_in_time': r['check_in_time']
@@ -486,9 +526,10 @@ def monthly_report():
     result = []
     for u in users:
         uid = u['id']
-        stats = user_map.get(uid, {'on_time': 0, 'late': 0, 'days_present': 0, 'dates': {}})
+        stats = user_map.get(uid, {'on_time': 0, 'late': 0, 'days_present': 0, 'actual_minutes': 0, 'dates': {}})
         absent_days = working_days - stats['days_present']
-        total_hours = stats['days_present'] * 6
+        actual_mins = stats.get('actual_minutes', 0)
+        total_hours = f"{actual_mins // 60}h {actual_mins % 60}m" if actual_mins > 0 else f"{stats['days_present'] * 6}h"
         result.append({
             'user_id': uid,
             'username': u['username'],
@@ -499,6 +540,8 @@ def monthly_report():
             'absent': max(0, absent_days),
             'days_present': stats['days_present'],
             'total_hours': total_hours,
+            'total_hours_num': round(actual_mins / 60, 1) if actual_mins > 0 else stats['days_present'] * 6,
+            'missed_pings': missed_map.get(uid, 0),
             'working_days': working_days
         })
 
