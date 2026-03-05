@@ -927,7 +927,7 @@ let _shiftEndNotified = false;
 
 function updateShiftTracker() {
     const tracker = document.getElementById('shift-tracker');
-    if (!tracker || !_checkinTimeStr) { if (tracker) tracker.classList.add('hidden'); return; }
+    if (!tracker || !_checkinTimeStr || isMobileDevice()) { if (tracker) tracker.classList.add('hidden'); return; }
 
     const cairoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
     const [ch, cm] = _checkinTimeStr.split(':').map(Number);
