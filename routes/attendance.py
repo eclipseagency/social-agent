@@ -8,8 +8,8 @@ attendance_bp = Blueprint('attendance', __name__)
 CAIRO_TZ = timezone(timedelta(hours=2))
 
 # Check-in window configuration (Cairo time, 24h format)
-CHECKIN_START = 1    # TEMP FOR TESTING — revert to 9
-CHECKIN_END = 2      # TEMP FOR TESTING — revert to 10
+CHECKIN_START = 13   # TEMP FOR TESTING — revert to 9
+CHECKIN_END = 14     # TEMP FOR TESTING — revert to 10
 
 
 def _cairo_now():
